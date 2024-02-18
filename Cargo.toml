@@ -11,3 +11,4 @@ log = "0.4.20"
 rusqlite = { version = "0.30.0", features = ["bundled"] }
 sea-query = "0.30.7"
 chimitheque_types = { path = "../chimitheque_types" }
+sea-query-rusqlite = "0.5.0"
