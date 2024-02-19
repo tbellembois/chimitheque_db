@@ -3,6 +3,7 @@ use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
+use serde::Serialize;
 
 #[derive(Iden)]
 enum Supplier {
@@ -11,7 +12,7 @@ enum Supplier {
     SupplierLabel,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct SupplierStruct {
     match_exact_search: bool,
     supplier_id: i32,
@@ -83,7 +84,7 @@ mod tests {
 
     use log::info;
 
-    use crate::init::{connect, init_db};
+    use crate::init::init_db;
 
     use super::*;
 
@@ -94,6 +95,32 @@ mod tests {
     fn init_test_db() -> Connection {
         let mut db_connection = Connection::open_in_memory().unwrap();
         init_db(&mut db_connection).unwrap();
+
+        // insert fake suppliers.
+        let _ = db_connection.execute(
+            "INSERT INTO supplier (supplier_label) VALUES (?1)",
+            [String::from("FAKE_SUPPLIER")],
+        );
+        let _ = db_connection.execute(
+            "INSERT INTO supplier (supplier_label) VALUES (?1)",
+            [String::from("FAKE_SUPPLIER ONE")],
+        );
+        let _ = db_connection.execute(
+            "INSERT INTO supplier (supplier_label) VALUES (?1)",
+            [String::from("FAKE_SUPPLIER TWO")],
+        );
+        let _ = db_connection.execute(
+            "INSERT INTO supplier (supplier_label) VALUES (?1)",
+            [String::from("FAKE_SUPPLIER THREE")],
+        );
+        let _ = db_connection.execute(
+            "INSERT INTO supplier (supplier_label) VALUES (?1)",
+            [String::from("AAA FAKE_SUPPLIER")],
+        );
+        let _ = db_connection.execute(
+            "INSERT INTO supplier (supplier_label) VALUES (?1)",
+            [String::from("YET ANOTHER SUPPLIER")],
+        );
 
         db_connection
     }
@@ -115,10 +142,14 @@ mod tests {
 
         info!("testing filter search");
         let filter = RequestFilter {
-            search: Some(String::from("PROLABO")),
+            search: Some(String::from("FAKE_SUPPLIER")),
             ..Default::default()
         };
         let (suppliers, count) = get_suppliers(&db_connection, filter).unwrap();
+
+        // expected number of results.
         assert_eq!(count, 5);
+        // expected exact match appears first.
+        assert!(suppliers[0].supplier_label.eq("FAKE_SUPPLIER"))
     }
 }
