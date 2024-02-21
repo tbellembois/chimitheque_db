@@ -6,7 +6,7 @@ use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
 #[derive(Iden)]
-enum Supplier {
+pub enum Supplier {
     Table,
     SupplierId,
     SupplierLabel,
@@ -14,9 +14,9 @@ enum Supplier {
 
 #[derive(Debug, Serialize)]
 pub struct SupplierStruct {
-    match_exact_search: bool,
-    supplier_id: i32,
-    supplier_label: String,
+    pub(crate) match_exact_search: bool,
+    pub(crate) supplier_id: u64,
+    pub(crate) supplier_label: String,
 }
 
 impl From<&Row<'_>> for SupplierStruct {
@@ -97,30 +97,42 @@ mod tests {
         init_db(&mut db_connection).unwrap();
 
         // insert fake suppliers.
-        let _ = db_connection.execute(
-            "INSERT INTO supplier (supplier_label) VALUES (?1)",
-            [String::from("FAKE_SUPPLIER")],
-        );
-        let _ = db_connection.execute(
-            "INSERT INTO supplier (supplier_label) VALUES (?1)",
-            [String::from("FAKE_SUPPLIER ONE")],
-        );
-        let _ = db_connection.execute(
-            "INSERT INTO supplier (supplier_label) VALUES (?1)",
-            [String::from("FAKE_SUPPLIER TWO")],
-        );
-        let _ = db_connection.execute(
-            "INSERT INTO supplier (supplier_label) VALUES (?1)",
-            [String::from("FAKE_SUPPLIER THREE")],
-        );
-        let _ = db_connection.execute(
-            "INSERT INTO supplier (supplier_label) VALUES (?1)",
-            [String::from("AAA FAKE_SUPPLIER")],
-        );
-        let _ = db_connection.execute(
-            "INSERT INTO supplier (supplier_label) VALUES (?1)",
-            [String::from("YET ANOTHER SUPPLIER")],
-        );
+        let _ = db_connection
+            .execute(
+                "INSERT INTO supplier (supplier_label) VALUES (?1)",
+                [String::from("FAKE_SUPPLIER")],
+            )
+            .unwrap();
+        let _ = db_connection
+            .execute(
+                "INSERT INTO supplier (supplier_label) VALUES (?1)",
+                [String::from("FAKE_SUPPLIER ONE")],
+            )
+            .unwrap();
+        let _ = db_connection
+            .execute(
+                "INSERT INTO supplier (supplier_label) VALUES (?1)",
+                [String::from("FAKE_SUPPLIER TWO")],
+            )
+            .unwrap();
+        let _ = db_connection
+            .execute(
+                "INSERT INTO supplier (supplier_label) VALUES (?1)",
+                [String::from("FAKE_SUPPLIER THREE")],
+            )
+            .unwrap();
+        let _ = db_connection
+            .execute(
+                "INSERT INTO supplier (supplier_label) VALUES (?1)",
+                [String::from("AAA FAKE_SUPPLIER")],
+            )
+            .unwrap();
+        let _ = db_connection
+            .execute(
+                "INSERT INTO supplier (supplier_label) VALUES (?1)",
+                [String::from("YET ANOTHER SUPPLIER")],
+            )
+            .unwrap();
 
         db_connection
     }
