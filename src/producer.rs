@@ -6,77 +6,77 @@ use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
 #[derive(Iden)]
-pub enum Supplier {
+pub enum Producer {
     Table,
-    SupplierId,
-    SupplierLabel,
+    ProducerId,
+    ProducerLabel,
 }
 
 #[derive(Debug, Serialize)]
-pub struct SupplierStruct {
+pub struct ProducerStruct {
     pub(crate) match_exact_search: bool,
-    pub(crate) supplier_id: u64,
-    pub(crate) supplier_label: String,
+    pub(crate) producer_id: u64,
+    pub(crate) producer_label: String,
 }
 
-impl From<&Row<'_>> for SupplierStruct {
+impl From<&Row<'_>> for ProducerStruct {
     fn from(row: &Row) -> Self {
         Self {
-            supplier_id: row.get_unwrap("supplier_id"),
-            supplier_label: row.get_unwrap("supplier_label"),
+            producer_id: row.get_unwrap("producer_id"),
+            producer_label: row.get_unwrap("producer_label"),
             match_exact_search: false,
         }
     }
 }
 
-pub fn get_suppliers(
+pub fn get_producers(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<SupplierStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<ProducerStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
     let (sql, values) = Query::select()
-        .columns([Supplier::SupplierId, Supplier::SupplierLabel])
-        .from(Supplier::Table)
+        .columns([Producer::ProducerId, Producer::ProducerLabel])
+        .from(Producer::Table)
         .conditions(
             filter.search.is_some(),
             |q| {
                 q.and_where(
-                    Expr::col(Supplier::SupplierLabel)
+                    Expr::col(Producer::ProducerLabel)
                         .like(format!("%{}%", filter.search.clone().unwrap())),
                 );
             },
             |_| {},
         )
-        .order_by(Supplier::SupplierLabel, Order::Asc)
+        .order_by(Producer::ProducerLabel, Order::Asc)
         .build_rusqlite(SqliteQueryBuilder);
 
     let mut stmt = db_connection.prepare(sql.as_str())?;
-    let rows = stmt.query_map(&*values.as_params(), |row| Ok(SupplierStruct::from(row)))?;
+    let rows = stmt.query_map(&*values.as_params(), |row| Ok(ProducerStruct::from(row)))?;
 
     // Result supliers and count.
-    let mut suppliers = Vec::new();
+    let mut producers = Vec::new();
     let mut count = 0;
-    for maybe_supplier in rows {
-        let mut supplier = maybe_supplier?;
+    for maybe_producer in rows {
+        let mut producer = maybe_producer?;
 
-        // Set match_exact_search for supplier matching filter.search.
-        if filter.search.is_some() && supplier.supplier_label.eq(&filter.search.clone().unwrap()) {
-            supplier.match_exact_search = true;
+        // Set match_exact_search for producer matching filter.search.
+        if filter.search.is_some() && producer.producer_label.eq(&filter.search.clone().unwrap()) {
+            producer.match_exact_search = true;
 
-            // Inserting the supplier at the beginning of the results.
-            suppliers.insert(0, supplier)
+            // Inserting the producer at the beginning of the results.
+            producers.insert(0, producer)
         } else {
-            // Inserting the supplier at the end of the results.
-            suppliers.push(supplier);
+            // Inserting the producer at the end of the results.
+            producers.push(producer);
         }
 
         count += 1;
     }
 
-    debug!("suppliers: {:#?}", suppliers);
+    debug!("producers: {:#?}", producers);
 
-    Ok((suppliers, count))
+    Ok((producers, count))
 }
 
 #[cfg(test)]
@@ -96,46 +96,46 @@ mod tests {
         let mut db_connection = Connection::open_in_memory().unwrap();
         init_db(&mut db_connection).unwrap();
 
-        // insert fake suppliers.
+        // insert fake producers.
         let _ = db_connection
             .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("FAKE_SUPPLIER")],
+                "INSERT INTO producer (producer_label) VALUES (?1)",
+                [String::from("FAKE_PRODUCER")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("FAKE_SUPPLIER ONE")],
+                "INSERT INTO producer (producer_label) VALUES (?1)",
+                [String::from("FAKE_PRODUCER ONE")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("FAKE_SUPPLIER TWO")],
+                "INSERT INTO producer (producer_label) VALUES (?1)",
+                [String::from("FAKE_PRODUCER TWO")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("FAKE_SUPPLIER THREE")],
+                "INSERT INTO producer (producer_label) VALUES (?1)",
+                [String::from("FAKE_PRODUCER THREE")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("AAA FAKE_SUPPLIER")],
+                "INSERT INTO producer (producer_label) VALUES (?1)",
+                [String::from("AAA FAKE_PRODUCER")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("YET ANOTHER SUPPLIER")],
+                "INSERT INTO producer (producer_label) VALUES (?1)",
+                [String::from("YET ANOTHER PRODUCER")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
+                "INSERT INTO producer (producer_label) VALUES (?1)",
                 [String::from("12345")],
             )
             .unwrap();
@@ -144,13 +144,13 @@ mod tests {
     }
 
     #[test]
-    fn test_get_suppliers() {
+    fn test_get_producers() {
         init_logger();
 
         let db_connection = init_test_db();
 
         info!("testing ok result");
-        assert!(get_suppliers(
+        assert!(get_producers(
             &db_connection,
             RequestFilter {
                 ..Default::default()
@@ -160,14 +160,14 @@ mod tests {
 
         info!("testing filter search");
         let filter = RequestFilter {
-            search: Some(String::from("FAKE_SUPPLIER")),
+            search: Some(String::from("FAKE_PRODUCER")),
             ..Default::default()
         };
-        let (suppliers, count) = get_suppliers(&db_connection, filter).unwrap();
+        let (producers, count) = get_producers(&db_connection, filter).unwrap();
 
         // expected number of results.
         assert_eq!(count, 5);
         // expected exact match appears first.
-        assert!(suppliers[0].supplier_label.eq("FAKE_SUPPLIER"))
+        assert!(producers[0].producer_label.eq("FAKE_PRODUCER"))
     }
 }

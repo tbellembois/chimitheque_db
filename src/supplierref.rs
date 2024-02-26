@@ -81,8 +81,6 @@ pub fn get_supplierrefs(
         .order_by(Supplierref::SupplierrefLabel, Order::Asc)
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("{}", sql.as_str());
-
     let mut stmt = db_connection.prepare(sql.as_str())?;
     let rows = stmt.query_map(&*values.as_params(), |row| Ok(SupplierrefStruct::from(row)))?;
 
@@ -162,6 +160,19 @@ mod tests {
         let _ = db_connection
             .execute(
                 "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                [String::from("1234"), String::from("300")],
+            )
+            .unwrap();
+        let _ = db_connection
+            .execute(
+                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                [String::from("12"), String::from("300")],
+            )
+            .unwrap();
+
+        let _ = db_connection
+            .execute(
+                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
                 [String::from("2_ref1"), String::from("301")],
             )
             .unwrap();
@@ -169,6 +180,18 @@ mod tests {
             .execute(
                 "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
                 [String::from("2_ref2"), String::from("301")],
+            )
+            .unwrap();
+        let _ = db_connection
+            .execute(
+                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                [String::from("1234"), String::from("301")],
+            )
+            .unwrap();
+        let _ = db_connection
+            .execute(
+                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                [String::from("22"), String::from("301")],
             )
             .unwrap();
 
@@ -188,7 +211,7 @@ mod tests {
         let (_, count) = get_supplierrefs(&db_connection, filter).unwrap();
 
         // expected number of results.
-        assert_eq!(count, 4);
+        assert_eq!(count, 8);
 
         info!("testing filter search");
         let filter = RequestFilter {

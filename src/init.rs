@@ -11,189 +11,196 @@ pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
 }
 
 pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
-    let sql =
-        "
+    // https://sqlite.org/stricttables.html
+    // INTEGER
+    // REAL
+    // TEXT
+    // BLOB
+    // ANY
+    let sql = r#"
         DROP TABLE IF EXISTS bookmark;
         CREATE TABLE bookmark (
-            bookmark_id	integer,
-            person	integer NOT NULL,
-            product	integer NOT NULL,
+            bookmark_id	INTEGER,
+            person	INTEGER NOT NULL,
+            product	INTEGER NOT NULL,
             FOREIGN KEY(person) REFERENCES person(person_id),
             FOREIGN KEY(product) REFERENCES product(product_id),
             PRIMARY KEY(bookmark_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS borrowing;
         CREATE TABLE borrowing (
-            borrowing_id	integer,
-            borrowing_comment	string,
-            person	integer NOT NULL,
-            borrower	integer NOT NULL,
-            storage	integer NOT NULL UNIQUE,
+            borrowing_id	INTEGER,
+            borrowing_comment	TEXT,
+            person	INTEGER NOT NULL,
+            borrower	INTEGER NOT NULL,
+            storage	INTEGER NOT NULL UNIQUE,
             FOREIGN KEY(person) REFERENCES person(person_id),
             FOREIGN KEY(storage) REFERENCES storage(storage_id),
             FOREIGN KEY(borrower) REFERENCES person(person_id),
             PRIMARY KEY(borrowing_id)
-        );
-        DROP TABLE IF EXISTS captcha;
-        CREATE TABLE captcha (
-            captcha_id	integer,
-            captcha_token	string NOT NULL,
-            captcha_text	string NOT NULL,
-            PRIMARY KEY(captcha_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS casnumber;
         CREATE TABLE casnumber (
-            casnumber_id	integer,
-            casnumber_label	string NOT NULL UNIQUE,
-            casnumber_cmr	string,
+            casnumber_id	INTEGER,
+            casnumber_label	TEXT NOT NULL UNIQUE,
+            casnumber_cmr	TEXT,
             PRIMARY KEY(casnumber_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS category;
         CREATE TABLE category (
-            category_id	integer,
-            category_label	string NOT NULL,
+            category_id	INTEGER,
+            category_label	TEXT NOT NULL,
             PRIMARY KEY(category_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS cenumber;
         CREATE TABLE cenumber (
-            cenumber_id	integer,
-            cenumber_label	string NOT NULL UNIQUE,
+            cenumber_id	INTEGER,
+            cenumber_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(cenumber_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS classofcompound;
         CREATE TABLE classofcompound (
-            classofcompound_id	integer,
-            classofcompound_label	string NOT NULL UNIQUE,
+            classofcompound_id	INTEGER,
+            classofcompound_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(classofcompound_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS empiricalformula;
         CREATE TABLE empiricalformula (
-            empiricalformula_id	integer,
-            empiricalformula_label	string NOT NULL UNIQUE,
+            empiricalformula_id	INTEGER,
+            empiricalformula_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(empiricalformula_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS entity;
         CREATE TABLE entity (
-            entity_id	integer,
-            entity_name	string NOT NULL UNIQUE,
-            entity_description	string,
+            entity_id	INTEGER,
+            entity_name	TEXT NOT NULL UNIQUE,
+            entity_description	TEXT,
             PRIMARY KEY(entity_id)
-        );
-        DROP TABLE IF EXISTS entityldapgroups;
-        CREATE TABLE entityldapgroups (
-            entityldapgroups_entity_id	integer NOT NULL,
-            entityldapgroups_ldapgroup	string NOT NULL,
-            PRIMARY KEY(entityldapgroups_entity_id,entityldapgroups_ldapgroup),
-            FOREIGN KEY(entityldapgroups_entity_id) REFERENCES entity(entity_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS entitypeople;
         CREATE TABLE entitypeople (
-            entitypeople_entity_id	integer NOT NULL,
-            entitypeople_person_id	integer NOT NULL,
+            entitypeople_entity_id	INTEGER NOT NULL,
+            entitypeople_person_id	INTEGER NOT NULL,
             PRIMARY KEY(entitypeople_entity_id,entitypeople_person_id),
             FOREIGN KEY(entitypeople_person_id) REFERENCES person(person_id),
             FOREIGN KEY(entitypeople_entity_id) REFERENCES entity(entity_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS hazardstatement;
         CREATE TABLE hazardstatement (
-            hazardstatement_id	integer,
-            hazardstatement_label	string NOT NULL,
-            hazardstatement_reference	string NOT NULL,
-            hazardstatement_cmr	string,
+            hazardstatement_id	INTEGER,
+            hazardstatement_label	TEXT NOT NULL,
+            hazardstatement_reference	TEXT NOT NULL,
+            hazardstatement_cmr	TEXT,
             PRIMARY KEY(hazardstatement_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS linearformula;
         CREATE TABLE linearformula (
-            linearformula_id	integer,
-            linearformula_label	string NOT NULL UNIQUE,
+            linearformula_id	INTEGER,
+            linearformula_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(linearformula_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS name;
         CREATE TABLE name (
-            name_id	integer,
-            name_label	string NOT NULL UNIQUE,
+            name_id	INTEGER,
+            name_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(name_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS permission;
         CREATE TABLE permission (
-            permission_id	integer,
-            person	integer NOT NULL,
-            permission_perm_name	string NOT NULL,
-            permission_item_name	string NOT NULL,
-            permission_entity_id	integer,
+            permission_id	INTEGER,
+            person	INTEGER NOT NULL,
+            permission_perm_name	TEXT NOT NULL,
+            permission_item_name	TEXT NOT NULL,
+            permission_entity_id	INTEGER,
             FOREIGN KEY(person) REFERENCES person(person_id),
             PRIMARY KEY(permission_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS person;
         CREATE TABLE person (
-            person_id	integer,
-            person_email	string NOT NULL,
-            person_password	string NOT NULL,
-            person_aeskey	string NOT NULL,
+            person_id	INTEGER,
+            person_email	TEXT NOT NULL,
             PRIMARY KEY(person_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS personentities;
         CREATE TABLE personentities (
-            personentities_person_id	integer NOT NULL,
-            personentities_entity_id	integer NOT NULL,
+            personentities_person_id	INTEGER NOT NULL,
+            personentities_entity_id	INTEGER NOT NULL,
             PRIMARY KEY(personentities_person_id,personentities_entity_id),
             FOREIGN KEY(personentities_person_id) REFERENCES person(person_id),
             FOREIGN KEY(personentities_entity_id) REFERENCES entity(entity_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS physicalstate;
         CREATE TABLE physicalstate (
-            physicalstate_id	integer,
-            physicalstate_label	string NOT NULL UNIQUE,
+            physicalstate_id	INTEGER,
+            physicalstate_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(physicalstate_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS precautionarystatement;
         CREATE TABLE precautionarystatement (
-            precautionarystatement_id	integer,
-            precautionarystatement_label	string NOT NULL,
-            precautionarystatement_reference	string NOT NULL,
+            precautionarystatement_id	INTEGER,
+            precautionarystatement_label	TEXT NOT NULL,
+            precautionarystatement_reference	TEXT NOT NULL,
             PRIMARY KEY(precautionarystatement_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS producer;
         CREATE TABLE producer (
-            producer_id	integer,
-            producer_label	string NOT NULL,
+            producer_id	INTEGER,
+            producer_label	TEXT NOT NULL,
             PRIMARY KEY(producer_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS producerref;
         CREATE TABLE producerref (
-            producerref_id	integer,
-            producerref_label	string NOT NULL,
-            producer	integer,
+            producerref_id	INTEGER,
+            producerref_label	TEXT NOT NULL,
+            producer	INTEGER,
             FOREIGN KEY(producer) REFERENCES producer(producer_id),
             PRIMARY KEY(producerref_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS product;
         CREATE TABLE product (
-            product_id	integer,
-            product_specificity	string,
-            product_msds	string,
-            product_restricted	boolean DEFAULT 0,
-            product_radioactive	boolean DEFAULT 0,
-            product_threedformula	string,
-            product_twodformula	string,
-            product_molformula	blob,
-            product_disposalcomment	string,
-            product_remark	string,
-            product_qrcode	string,
-            product_sheet	string,
-            product_concentration	integer,
-            product_temperature	integer,
-            casnumber	integer,
-            cenumber	integer,
-            person	integer NOT NULL,
-            empiricalformula	integer,
-            linearformula	integer,
-            physicalstate	integer,
-            signalword	integer,
-            name	integer NOT NULL,
-            producerref	integer,
-            unit_temperature	integer,
-            category	integer,
+            product_id	INTEGER,
+            product_specificity	TEXT,
+            product_msds	TEXT,
+            product_restricted	INTEGER DEFAULT 0,
+            product_radioactive	INTEGER DEFAULT 0,
+            product_threedformula	TEXT,
+            product_twodformula	TEXT,
+            product_disposalcomment	TEXT,
+            product_remark	TEXT,
+            product_qrcode	TEXT,
+            product_sheet	TEXT,
+            product_concentration	REAL,
+            product_temperature	REAL,
+            casnumber	INTEGER,
+            cenumber	INTEGER,
+            person	INTEGER NOT NULL,
+            empiricalformula	INTEGER,
+            linearformula	INTEGER,
+            physicalstate	INTEGER,
+            signalword	INTEGER,
+            name	INTEGER NOT NULL,
+            producerref	INTEGER,
+            unit_temperature	INTEGER,
+            category	INTEGER,
             product_number_per_carton	INTEGER,
             product_number_per_bag	INTEGER,
             FOREIGN KEY(person) REFERENCES person(person_id),
@@ -208,97 +215,106 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
             FOREIGN KEY(physicalstate) REFERENCES physicalstate(physicalstate_id),
             FOREIGN KEY(signalword) REFERENCES signalword(signalword_id),
             FOREIGN KEY(name) REFERENCES name(name_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS productclassofcompound;
         CREATE TABLE productclassofcompound (
-            productclassofcompound_product_id	integer NOT NULL,
-            productclassofcompound_classofcompound_id	integer NOT NULL,
+            productclassofcompound_product_id	INTEGER NOT NULL,
+            productclassofcompound_classofcompound_id	INTEGER NOT NULL,
             PRIMARY KEY(productclassofcompound_product_id,productclassofcompound_classofcompound_id),
             FOREIGN KEY(productclassofcompound_product_id) REFERENCES product(product_id),
             FOREIGN KEY(productclassofcompound_classofcompound_id) REFERENCES classofcompound(classofcompound_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS producthazardstatements;
         CREATE TABLE producthazardstatements (
-            producthazardstatements_product_id	integer NOT NULL,
-            producthazardstatements_hazardstatement_id	integer NOT NULL,
+            producthazardstatements_product_id	INTEGER NOT NULL,
+            producthazardstatements_hazardstatement_id	INTEGER NOT NULL,
             PRIMARY KEY(producthazardstatements_product_id,producthazardstatements_hazardstatement_id),
             FOREIGN KEY(producthazardstatements_product_id) REFERENCES product(product_id),
             FOREIGN KEY(producthazardstatements_hazardstatement_id) REFERENCES hazardstatement(hazardstatement_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS productprecautionarystatements;
         CREATE TABLE productprecautionarystatements (
-            productprecautionarystatements_product_id	integer NOT NULL,
-            productprecautionarystatements_precautionarystatement_id	integer NOT NULL,
+            productprecautionarystatements_product_id	INTEGER NOT NULL,
+            productprecautionarystatements_precautionarystatement_id	INTEGER NOT NULL,
             PRIMARY KEY(productprecautionarystatements_product_id,productprecautionarystatements_precautionarystatement_id),
             FOREIGN KEY(productprecautionarystatements_product_id) REFERENCES product(product_id),
             FOREIGN KEY(productprecautionarystatements_precautionarystatement_id) REFERENCES precautionarystatement(precautionarystatement_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS productsupplierrefs;
         CREATE TABLE productsupplierrefs (
-            productsupplierrefs_product_id	integer NOT NULL,
-            productsupplierrefs_supplierref_id	integer NOT NULL,
+            productsupplierrefs_product_id	INTEGER NOT NULL,
+            productsupplierrefs_supplierref_id	INTEGER NOT NULL,
             PRIMARY KEY(productsupplierrefs_product_id,productsupplierrefs_supplierref_id),
             FOREIGN KEY(productsupplierrefs_product_id) REFERENCES product(product_id),
             FOREIGN KEY(productsupplierrefs_supplierref_id) REFERENCES supplierref(supplierref_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS productsymbols;
         CREATE TABLE productsymbols (
-            productsymbols_product_id	integer NOT NULL,
-            productsymbols_symbol_id	integer NOT NULL,
+            productsymbols_product_id	INTEGER NOT NULL,
+            productsymbols_symbol_id	INTEGER NOT NULL,
             PRIMARY KEY(productsymbols_product_id,productsymbols_symbol_id),
             FOREIGN KEY(productsymbols_product_id) REFERENCES product(product_id),
             FOREIGN KEY(productsymbols_symbol_id) REFERENCES symbol(symbol_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS productsynonyms;
         CREATE TABLE productsynonyms (
-            productsynonyms_product_id	integer NOT NULL,
-            productsynonyms_name_id	integer NOT NULL,
+            productsynonyms_product_id	INTEGER NOT NULL,
+            productsynonyms_name_id	INTEGER NOT NULL,
             PRIMARY KEY(productsynonyms_product_id,productsynonyms_name_id),
             FOREIGN KEY(productsynonyms_product_id) REFERENCES product(product_id),
             FOREIGN KEY(productsynonyms_name_id) REFERENCES name(name_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS producttags;
         CREATE TABLE producttags (
-            producttags_product_id	integer NOT NULL,
-            producttags_tag_id	integer NOT NULL,
+            producttags_product_id	INTEGER NOT NULL,
+            producttags_tag_id	INTEGER NOT NULL,
             PRIMARY KEY(producttags_product_id,producttags_tag_id),
             FOREIGN KEY(producttags_product_id) REFERENCES product(product_id),
             FOREIGN KEY(producttags_tag_id) REFERENCES tag(tag_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS signalword;
         CREATE TABLE signalword (
-            signalword_id	integer,
-            signalword_label	string NOT NULL UNIQUE,
+            signalword_id	INTEGER,
+            signalword_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(signalword_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS storage;
         CREATE TABLE storage (
-            storage_id	integer,
-            storage_creationdate	datetime NOT NULL,
-            storage_modificationdate	datetime NOT NULL,
-            storage_entrydate	datetime,
-            storage_exitdate	datetime,
-            storage_openingdate	datetime,
-            storage_expirationdate	datetime,
-            storage_quantity	float,
-            storage_barecode	text,
-            storage_comment	text,
-            storage_reference	text,
-            storage_batchnumber	text,
-            storage_todestroy	boolean DEFAULT 0,
-            storage_archive	boolean DEFAULT 0,
-            storage_qrcode	blob,
-            storage_concentration	integer,
-            storage_number_of_unit	integer,
-            storage_number_of_bag	integer,
-            storage_number_of_carton	integer,
-            person	integer NOT NULL,
-            product	integer NOT NULL,
-            storelocation	integer NOT NULL,
-            unit_concentration	integer,
-            unit_quantity	integer,
-            supplier	integer,
-            storage	integer,
+            storage_id	INTEGER,
+            storage_creationdate	TEXT NOT NULL,
+            storage_modificationdate	TEXT NOT NULL,
+            storage_entrydate	TEXT,
+            storage_exitdate	TEXT,
+            storage_openingdate	TEXT,
+            storage_expirationdate	TEXT,
+            storage_quantity	REAL,
+            storage_barecode	TEXT,
+            storage_comment	TEXT,
+            storage_reference	TEXT,
+            storage_batchnumber	TEXT,
+            storage_todestroy	INTEGER DEFAULT 0,
+            storage_archive	INTEGER DEFAULT 0,
+            storage_qrcode	BLOB,
+            storage_concentration	REAL,
+            storage_number_of_unit	INTEGER,
+            storage_number_of_bag	INTEGER,
+            storage_number_of_carton	INTEGER,
+            person	INTEGER NOT NULL,
+            product	INTEGER NOT NULL,
+            storelocation	INTEGER NOT NULL,
+            unit_concentration	REAL,
+            unit_quantity	REAL,
+            supplier	INTEGER,
+            storage	INTEGER,
             FOREIGN KEY(unit_concentration) REFERENCES unit(unit_id),
             FOREIGN KEY(storage) REFERENCES storage(storage_id),
             FOREIGN KEY(unit_quantity) REFERENCES unit(unit_id),
@@ -307,63 +323,71 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
             FOREIGN KEY(product) REFERENCES product(product_id),
             FOREIGN KEY(storelocation) REFERENCES storelocation(storelocation_id),
             PRIMARY KEY(storage_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS storelocation;
         CREATE TABLE storelocation (
-            storelocation_id	integer,
-            storelocation_name	string NOT NULL,
-            storelocation_color	string,
-            storelocation_canstore	boolean DEFAULT 0,
-            storelocation_fullpath	string,
-            entity	integer NOT NULL,
-            storelocation	integer,
+            storelocation_id	INTEGER,
+            storelocation_name	TEXT NOT NULL,
+            storelocation_color	TEXT,
+            storelocation_canstore	INTEGER DEFAULT 0,
+            storelocation_fullpath	TEXT,
+            entity	INTEGER NOT NULL,
+            storelocation	INTEGER,
             FOREIGN KEY(storelocation) REFERENCES storelocation(storelocation_id),
             FOREIGN KEY(entity) REFERENCES entity(entity_id),
             PRIMARY KEY(storelocation_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS supplier;
         CREATE TABLE supplier (
-            supplier_id	integer,
-            supplier_label	string NOT NULL,
+            supplier_id	INTEGER,
+            supplier_label	TEXT NOT NULL,
             PRIMARY KEY(supplier_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS supplierref;
         CREATE TABLE supplierref (
-            supplierref_id	integer,
-            supplierref_label	string NOT NULL,
-            supplier	integer,
+            supplierref_id	INTEGER,
+            supplierref_label	TEXT NOT NULL,
+            supplier	INTEGER,
             FOREIGN KEY(supplier) REFERENCES supplier(supplier_id),
             PRIMARY KEY(supplierref_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS symbol;
         CREATE TABLE symbol (
-            symbol_id	integer,
-            symbol_label	string NOT NULL,
-            symbol_image	string,
+            symbol_id	INTEGER,
+            symbol_label	TEXT NOT NULL,
+            symbol_image	TEXT,
             PRIMARY KEY(symbol_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS tag;
         CREATE TABLE tag (
-            tag_id	integer,
-            tag_label	string NOT NULL,
+            tag_id	INTEGER,
+            tag_label	TEXT NOT NULL,
             PRIMARY KEY(tag_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS unit;
         CREATE TABLE unit (
-            unit_id	integer,
-            unit_label	string NOT NULL UNIQUE,
-            unit_multiplier	integer NOT NULL DEFAULT 1,
-            unit_type	string,
-            unit	integer,
+            unit_id	INTEGER,
+            unit_label	TEXT NOT NULL UNIQUE,
+            unit_multiplier	REAL NOT NULL DEFAULT 1,
+            unit_type	TEXT,
+            unit	INTEGER,
             FOREIGN KEY(unit) REFERENCES unit(unit_id),
             PRIMARY KEY(unit_id)
-        );
+        ) STRICT;
+
         DROP TABLE IF EXISTS welcomeannounce;
         CREATE TABLE welcomeannounce (
-            welcomeannounce_id	integer,
-            welcomeannounce_text	string,
+            welcomeannounce_id	INTEGER,
+            welcomeannounce_text	TEXT,
             PRIMARY KEY(welcomeannounce_id)
-        );
+        ) STRICT;
+
         DROP INDEX IF EXISTS idx_casnumber;
         CREATE UNIQUE INDEX idx_casnumber ON casnumber (
             casnumber_label
@@ -387,11 +411,6 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         DROP INDEX IF EXISTS idx_entity;
         CREATE UNIQUE INDEX idx_entity ON entity (
             entity_name
-        );
-        DROP INDEX IF EXISTS idx_entityldapgroups;
-        CREATE UNIQUE INDEX idx_entityldapgroups ON entityldapgroups (
-            entityldapgroups_entity_id,
-            entityldapgroups_ldapgroup
         );
         DROP INDEX IF EXISTS idx_entitypeople;
         CREATE UNIQUE INDEX idx_entitypeople ON entitypeople (
@@ -451,9 +470,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
             producer_label
         );
         DROP INDEX IF EXISTS idx_producerref_label;
-        CREATE UNIQUE INDEX idx_producerref_label ON producerref (
-            producerref_label
-        );
+
         DROP INDEX IF EXISTS idx_product_casnumber;
         CREATE UNIQUE INDEX idx_product_casnumber ON product (
             product_id,
@@ -526,14 +543,12 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
             product
         );
         DROP INDEX IF EXISTS idx_supplierref_label;
-        CREATE UNIQUE INDEX idx_supplierref_label ON supplierref (
-            supplierref_label
-        );
+
         DROP INDEX IF EXISTS idx_tag_label;
         CREATE UNIQUE INDEX idx_tag_label ON tag (
             tag_label
         );
-        ";
+        "#;
 
     info!("- creating database structure");
 
@@ -628,12 +643,14 @@ mod tests {
     }
 
     #[test]
-    fn test_connect() {
+    fn test_init_db() {
         init_logger();
 
-        let db_path = "/home/thbellem/S3Drive/chimitheque-db/storage.db";
-        info!("connecting to {}", db_path);
+        let mut db_connection = Connection::open_in_memory().unwrap();
+        let mayerr_initdb = init_db(&mut db_connection);
 
-        assert!(connect(db_path).is_ok());
+        info!("mayerr_initdb: {:?}", mayerr_initdb);
+
+        assert!(mayerr_initdb.is_ok());
     }
 }
