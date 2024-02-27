@@ -4,9 +4,9 @@ use crate::basicsearch::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct NameStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) name_id: u64,
-    pub(crate) name_label: String,
+    pub match_exact_search: bool,
+    pub name_id: u64,
+    pub name_label: String,
 }
 
 impl Searchable for NameStruct {

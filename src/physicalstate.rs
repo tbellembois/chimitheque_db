@@ -4,9 +4,9 @@ use crate::basicsearch::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct PhysicalstateStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) physicalstate_id: u64,
-    pub(crate) physicalstate_label: String,
+    pub match_exact_search: bool,
+    pub physicalstate_id: u64,
+    pub physicalstate_label: String,
 }
 
 impl Searchable for PhysicalstateStruct {

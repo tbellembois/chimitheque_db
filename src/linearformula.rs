@@ -4,9 +4,9 @@ use crate::basicsearch::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct LinearformulaStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) linearformula_id: u64,
-    pub(crate) linearformula_label: String,
+    pub match_exact_search: bool,
+    pub linearformula_id: u64,
+    pub linearformula_label: String,
 }
 
 impl Searchable for LinearformulaStruct {

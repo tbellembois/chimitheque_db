@@ -4,9 +4,9 @@ use crate::basicsearch::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct EmpiricalformulaStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) empiricalformula_id: u64,
-    pub(crate) empiricalformula_label: String,
+    pub match_exact_search: bool,
+    pub empiricalformula_id: u64,
+    pub empiricalformula_label: String,
 }
 
 impl Searchable for EmpiricalformulaStruct {

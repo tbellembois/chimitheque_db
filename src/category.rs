@@ -4,9 +4,9 @@ use crate::basicsearch::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct CategoryStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) category_id: u64,
-    pub(crate) category_label: String,
+    pub match_exact_search: bool,
+    pub category_id: u64,
+    pub category_label: String,
 }
 
 impl Searchable for CategoryStruct {

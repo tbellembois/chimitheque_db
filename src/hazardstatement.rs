@@ -4,10 +4,10 @@ use crate::basicsearch::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct HazardstatementStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) hazardstatement_id: u64,
-    pub(crate) hazardstatement_label: String,
-    pub(crate) hazardstatement_reference: String,
+    pub match_exact_search: bool,
+    pub hazardstatement_id: u64,
+    pub hazardstatement_label: String,
+    pub hazardstatement_reference: String,
 }
 
 impl Searchable for HazardstatementStruct {

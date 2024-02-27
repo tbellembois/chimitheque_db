@@ -14,9 +14,9 @@ pub enum Producer {
 
 #[derive(Debug, Serialize)]
 pub struct ProducerStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) producer_id: u64,
-    pub(crate) producer_label: String,
+    pub match_exact_search: bool,
+    pub producer_id: u64,
+    pub producer_label: String,
 }
 
 impl From<&Row<'_>> for ProducerStruct {

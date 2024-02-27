@@ -14,9 +14,9 @@ pub enum Supplier {
 
 #[derive(Debug, Serialize)]
 pub struct SupplierStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) supplier_id: u64,
-    pub(crate) supplier_label: String,
+    pub match_exact_search: bool,
+    pub supplier_id: u64,
+    pub supplier_label: String,
 }
 
 impl From<&Row<'_>> for SupplierStruct {

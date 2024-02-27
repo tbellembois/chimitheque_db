@@ -4,9 +4,9 @@ use crate::basicsearch::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct ClassofcompoundStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) classofcompound_id: u64,
-    pub(crate) classofcompound_label: String,
+    pub match_exact_search: bool,
+    pub classofcompound_id: u64,
+    pub classofcompound_label: String,
 }
 
 impl Searchable for ClassofcompoundStruct {

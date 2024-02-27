@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use chimitheque_types::requestfilter::RequestFilter;
 use log::debug;
 use rusqlite::Connection;
+use serde::Serialize;
 
 pub trait Searchable {
     fn new(&self) -> Self;
@@ -22,10 +23,10 @@ pub trait Searchable {
 }
 
 pub fn get_many(
-    item: impl Searchable + Debug + Default,
+    item: impl Searchable + Debug + Default + Serialize,
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<impl Searchable>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<impl Searchable + Serialize>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
     let mut query = format!(
@@ -41,6 +42,14 @@ pub fn get_many(
             item.get_text_field_name(),
             search
         ))
+    }
+
+    if let Some(limit) = filter.limit {
+        query.push_str(&format!(" LIMIT {}", limit))
+    }
+
+    if let Some(offset) = filter.offset {
+        query.push_str(&format!(" OFFSET {}", offset))
     }
 
     let mut stmt = db_connection.prepare(&query)?;

@@ -4,10 +4,10 @@ use crate::basicsearch::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct PrecautionarystatementStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) precautionarystatement_id: u64,
-    pub(crate) precautionarystatement_label: String,
-    pub(crate) precautionarystatement_reference: String,
+    pub match_exact_search: bool,
+    pub precautionarystatement_id: u64,
+    pub precautionarystatement_label: String,
+    pub precautionarystatement_reference: String,
 }
 
 impl Searchable for PrecautionarystatementStruct {

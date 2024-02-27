@@ -4,9 +4,9 @@ use crate::basicsearch::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct CenumberStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) cenumber_id: u64,
-    pub(crate) cenumber_label: String,
+    pub match_exact_search: bool,
+    pub cenumber_id: u64,
+    pub cenumber_label: String,
 }
 
 impl Searchable for CenumberStruct {

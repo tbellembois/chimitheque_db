@@ -4,10 +4,10 @@ use crate::basicsearch::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct SymbolStruct {
-    pub(crate) match_exact_search: bool,
-    pub(crate) symbol_id: u64,
-    pub(crate) symbol_label: String,
-    pub(crate) symbol_image: String,
+    pub match_exact_search: bool,
+    pub symbol_id: u64,
+    pub symbol_label: String,
+    pub symbol_image: String,
 }
 
 impl Searchable for SymbolStruct {
