@@ -13,6 +13,7 @@ pub mod physicalstate;
 pub mod precautionarystatement;
 pub mod producer;
 pub mod producerref;
+pub mod signalword;
 pub mod supplier;
 pub mod supplierref;
 pub mod symbol;
