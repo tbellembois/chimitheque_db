@@ -1,13 +1,12 @@
 use serde::Serialize;
 
-use crate::basicsearch::Searchable;
+use crate::searchable::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct SymbolStruct {
     pub match_exact_search: bool,
     pub symbol_id: u64,
     pub symbol_label: String,
-    pub symbol_image: String,
 }
 
 impl Searchable for SymbolStruct {
@@ -61,7 +60,7 @@ mod tests {
     use log::info;
     use rusqlite::Connection;
 
-    use crate::{basicsearch::get_many, init::init_db};
+    use crate::{init::init_db, searchable::get_many};
 
     use super::*;
 

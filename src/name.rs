@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::basicsearch::Searchable;
+use crate::searchable::Searchable;
 
 #[derive(Debug, Serialize, Default)]
 pub struct NameStruct {
@@ -60,7 +60,7 @@ mod tests {
     use log::info;
     use rusqlite::Connection;
 
-    use crate::{basicsearch::get_many, init::init_db};
+    use crate::{init::init_db, searchable::get_many};
 
     use super::*;
 

@@ -359,7 +359,6 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         CREATE TABLE symbol (
             symbol_id	INTEGER,
             symbol_label	TEXT NOT NULL,
-            symbol_image	TEXT,
             PRIMARY KEY(symbol_id)
         ) STRICT;
 

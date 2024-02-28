@@ -1,4 +1,3 @@
-pub mod basicsearch;
 pub mod casnumber;
 pub mod category;
 pub mod cenumber;
@@ -13,6 +12,7 @@ pub mod physicalstate;
 pub mod precautionarystatement;
 pub mod producer;
 pub mod producerref;
+pub mod searchable;
 pub mod signalword;
 pub mod supplier;
 pub mod supplierref;

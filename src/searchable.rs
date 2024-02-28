@@ -12,6 +12,7 @@ pub trait Searchable {
     fn get_exact_search(&self) -> bool;
 
     fn get_table_name(&self) -> String;
+
     fn get_id_field_name(&self) -> String;
     fn get_text_field_name(&self) -> String;
 
