@@ -1,6 +1,18 @@
+use chimitheque_types::requestfilter::RequestFilter;
+use log::debug;
+use rusqlite::{Connection, Row};
+use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
-use crate::searchable::Searchable;
+#[allow(clippy::enum_variant_names)]
+#[derive(Iden)]
+enum Precautionarystatement {
+    Table,
+    PrecautionarystatementId,
+    PrecautionarystatementLabel,
+    PrecautionarystatementReference,
+}
 
 #[derive(Debug, Serialize, Default)]
 pub struct PrecautionarystatementStruct {
@@ -10,48 +22,78 @@ pub struct PrecautionarystatementStruct {
     pub precautionarystatement_reference: String,
 }
 
-impl Searchable for PrecautionarystatementStruct {
-    fn new(&self) -> Self {
-        PrecautionarystatementStruct {
-            ..Default::default()
+impl From<&Row<'_>> for PrecautionarystatementStruct {
+    fn from(row: &Row) -> Self {
+        Self {
+            match_exact_search: false,
+            precautionarystatement_id: row.get_unwrap("precautionarystatement_id"),
+            precautionarystatement_label: row.get_unwrap("precautionarystatement_label"),
+            precautionarystatement_reference: row.get_unwrap("precautionarystatement_reference"),
         }
     }
+}
 
-    fn set_exact_search(&mut self, match_exact_search: bool) {
-        self.match_exact_search = match_exact_search;
+pub fn get_precautionarystatements(
+    db_connection: &Connection,
+    filter: RequestFilter,
+) -> Result<(Vec<PrecautionarystatementStruct>, usize), Box<dyn std::error::Error>> {
+    debug!("filter:{:?}", filter);
+
+    let (sql, values) = Query::select()
+        .columns([
+            Precautionarystatement::PrecautionarystatementId,
+            Precautionarystatement::PrecautionarystatementLabel,
+            Precautionarystatement::PrecautionarystatementReference,
+        ])
+        .from(Precautionarystatement::Table)
+        .conditions(
+            filter.search.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col(Precautionarystatement::PrecautionarystatementReference)
+                        .like(format!("%{}%", filter.search.clone().unwrap())),
+                );
+            },
+            |_| {},
+        )
+        .order_by(
+            Precautionarystatement::PrecautionarystatementReference,
+            Order::Asc,
+        )
+        .build_rusqlite(SqliteQueryBuilder);
+
+    let mut stmt = db_connection.prepare(sql.as_str())?;
+    let rows = stmt.query_map(&*values.as_params(), |row| {
+        Ok(PrecautionarystatementStruct::from(row))
+    })?;
+
+    // Result statemtents and count.
+    let mut precautionarystatements = Vec::new();
+    let mut count = 0;
+    for maybe_precautionarystatement in rows {
+        let mut precautionarystatement = maybe_precautionarystatement?;
+
+        // Set match_exact_search for statement matching filter.search.
+        if filter.search.is_some()
+            && precautionarystatement
+                .precautionarystatement_reference
+                .eq(&filter.search.clone().unwrap())
+        {
+            precautionarystatement.match_exact_search = true;
+
+            // Inserting the statement at the beginning of the results.
+            precautionarystatements.insert(0, precautionarystatement)
+        } else {
+            // Inserting the statement at the end of the results.
+            precautionarystatements.push(precautionarystatement);
+        }
+
+        count += 1;
     }
 
-    fn get_exact_search(&self) -> bool {
-        self.match_exact_search
-    }
+    debug!("precautionarystatements: {:#?}", precautionarystatements);
 
-    fn get_table_name(&self) -> String {
-        String::from("precautionarystatement")
-    }
-
-    fn get_id_field_name(&self) -> String {
-        String::from("precautionarystatement_id")
-    }
-
-    fn set_id_field(&mut self, id: u64) {
-        self.precautionarystatement_id = id;
-    }
-
-    fn get_text_field_name(&self) -> String {
-        String::from("precautionarystatement_reference")
-    }
-
-    fn set_text_field(&mut self, text: &str) {
-        self.precautionarystatement_reference = text.to_string();
-    }
-
-    fn get_id(&self) -> u64 {
-        self.precautionarystatement_id
-    }
-
-    fn get_text(&self) -> String {
-        self.precautionarystatement_reference.clone()
-    }
+    Ok((precautionarystatements, count))
 }
 
 #[cfg(test)]
@@ -61,7 +103,7 @@ mod tests {
     use log::info;
     use rusqlite::Connection;
 
-    use crate::{init::init_db, searchable::get_many};
+    use crate::init::init_db;
 
     use super::*;
 
@@ -109,35 +151,27 @@ mod tests {
         let db_connection = init_test_db();
 
         info!("testing ok result");
-        assert!(get_many(
-            PrecautionarystatementStruct {
-                ..Default::default()
-            },
-            &db_connection,
-            RequestFilter {
-                ..Default::default()
-            },
-        )
-        .is_ok());
+        let filter = RequestFilter {
+            ..Default::default()
+        };
+        assert!(get_precautionarystatements(&db_connection, filter,).is_ok());
 
         info!("testing filter search");
-        let (precautionarystatements, count) = get_many(
-            PrecautionarystatementStruct {
-                ..Default::default()
-            },
-            &db_connection,
-            RequestFilter {
-                search: Some(String::from("precautionarystatement1-ref")),
-                ..Default::default()
-            },
-        )
-        .unwrap();
+        let filter = RequestFilter {
+            search: Some(String::from("precautionarystatement1-ref")),
+            ..Default::default()
+        };
+        let (precautionarystatements, count) =
+            get_precautionarystatements(&db_connection, filter).unwrap();
 
         // expected number of results.
         assert_eq!(count, 2);
         // expected exact match appears first.
         assert!(precautionarystatements[0]
-            .get_text()
-            .eq("precautionarystatement1-ref"))
+            .precautionarystatement_reference
+            .eq("precautionarystatement1-ref"));
+        assert!(precautionarystatements[0]
+            .precautionarystatement_label
+            .eq("precautionarystatement1"));
     }
 }

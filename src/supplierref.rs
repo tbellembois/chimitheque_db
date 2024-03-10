@@ -7,6 +7,7 @@ use serde::Serialize;
 
 use crate::supplier::{Supplier, SupplierStruct};
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 enum Supplierref {
     Table,
