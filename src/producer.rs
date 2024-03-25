@@ -82,11 +82,9 @@ pub fn get_producers(
 #[cfg(test)]
 mod tests {
 
-    use log::info;
-
-    use crate::init::init_db;
-
     use super::*;
+    use crate::init::init_db;
+    use log::info;
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();

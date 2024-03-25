@@ -1,11 +1,10 @@
+use crate::supplier::{Supplier, SupplierStruct};
 use chimitheque_types::requestfilter::RequestFilter;
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Alias, Expr, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
-
-use crate::supplier::{Supplier, SupplierStruct};
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -117,11 +116,9 @@ pub fn get_supplierrefs(
 #[cfg(test)]
 mod tests {
 
-    use log::info;
-
-    use crate::init::init_db;
-
     use super::*;
+    use crate::init::init_db;
+    use log::info;
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -135,13 +132,13 @@ mod tests {
         let _ = db_connection
             .execute(
                 "INSERT INTO supplier (supplier_id, supplier_label) VALUES (?1, ?2)",
-                [String::from("300"), String::from("FAKE_SUPPLIER_1")],
+                (300, String::from("FAKE_SUPPLIER_1")),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO supplier (supplier_id, supplier_label) VALUES (?1, ?2)",
-                [String::from("301"), String::from("FAKE_SUPPLIER_2")],
+                (301, String::from("FAKE_SUPPLIER_2")),
             )
             .unwrap();
 
@@ -149,50 +146,50 @@ mod tests {
         let _ = db_connection
             .execute(
                 "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
-                [String::from("1_ref1"), String::from("300")],
+                (String::from("1_ref1"), 300),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
-                [String::from("1_ref2"), String::from("300")],
+                (String::from("1_ref2"), 300),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
-                [String::from("1234"), String::from("300")],
+                (String::from("1234"), 300),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
-                [String::from("12"), String::from("300")],
+                (String::from("12"), 300),
             )
             .unwrap();
 
         let _ = db_connection
             .execute(
                 "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
-                [String::from("2_ref1"), String::from("301")],
+                (String::from("2_ref1"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
-                [String::from("2_ref2"), String::from("301")],
+                (String::from("2_ref2"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
-                [String::from("1234"), String::from("301")],
+                (String::from("1234"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
-                [String::from("22"), String::from("301")],
+                (String::from("22"), 301),
             )
             .unwrap();
 

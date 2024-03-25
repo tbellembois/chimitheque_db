@@ -99,13 +99,11 @@ pub fn get_precautionarystatements(
 #[cfg(test)]
 mod tests {
 
+    use super::*;
+    use crate::init::init_db;
     use chimitheque_types::requestfilter::RequestFilter;
     use log::info;
     use rusqlite::Connection;
-
-    use crate::init::init_db;
-
-    use super::*;
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();

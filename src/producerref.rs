@@ -117,11 +117,9 @@ pub fn get_producerrefs(
 #[cfg(test)]
 mod tests {
 
-    use log::info;
-
-    use crate::init::init_db;
-
     use super::*;
+    use crate::init::init_db;
+    use log::info;
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -135,13 +133,13 @@ mod tests {
         let _ = db_connection
             .execute(
                 "INSERT INTO producer (producer_id, producer_label) VALUES (?1, ?2)",
-                [String::from("300"), String::from("FAKE_PRODUCER_1")],
+                (300, String::from("FAKE_PRODUCER_1")),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO producer (producer_id, producer_label) VALUES (?1, ?2)",
-                [String::from("301"), String::from("FAKE_PRODUCER_2")],
+                (301, String::from("FAKE_PRODUCER_2")),
             )
             .unwrap();
 
@@ -149,47 +147,47 @@ mod tests {
         let _ = db_connection
             .execute(
                 "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
-                [String::from("1_ref1"), String::from("300")],
+                (String::from("1_ref1"), 300),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
-                [String::from("1_ref2"), String::from("300")],
+                (String::from("1_ref2"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
-                [String::from("1234"), String::from("300")],
+                (String::from("1234"), 300),
             )
             .unwrap();
         let _ = db_connection.execute(
             "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
-            [String::from("12"), String::from("300")],
+            (String::from("12"), 300),
         );
 
         let _ = db_connection
             .execute(
                 "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
-                [String::from("2_ref1"), String::from("301")],
+                (String::from("2_ref1"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
-                [String::from("2_ref2"), String::from("301")],
+                (String::from("2_ref2"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
                 "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
-                [String::from("1234"), String::from("301")],
+                (String::from("1234"), 301),
             )
             .unwrap();
         let _ = db_connection.execute(
             "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
-            [String::from("22"), String::from("301")],
+            (String::from("22"), 301),
         );
 
         db_connection
