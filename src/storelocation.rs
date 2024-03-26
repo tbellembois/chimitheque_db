@@ -156,7 +156,7 @@ pub fn get_storelocations(
                 .equals((Alias::new("parent"), Alias::new("storelocation_id"))),
         )
         .join_as(
-            JoinType::Join,
+            JoinType::InnerJoin,
             Permission::Table,
             Alias::new("perm"),
             Expr::col((Alias::new("perm"), Alias::new("person")))
@@ -220,6 +220,7 @@ pub fn get_storelocations(
             },
             |_| {},
         )
+        .group_by_col((Storelocation::Table, Storelocation::StorelocationId))
         .build_rusqlite(SqliteQueryBuilder);
 
     let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -382,6 +383,20 @@ mod tests {
             ..Default::default()
         };
         let (_, count) = get_storelocations(&db_connection, filter, 1).unwrap();
-        assert_eq!(count, 5)
+        assert_eq!(count, 5);
+
+        info!("testing permissions filter");
+        let filter = RequestFilter {
+            ..Default::default()
+        };
+        let _ = db_connection.execute("DELETE FROM permission", ());
+        let _ = db_connection
+        .execute(
+            "INSERT INTO permission (person, permission_perm_name, permission_item_name, permission_entity_id) VALUES (?1, ?2, ?3, ?4)",
+            (1, "r", "storages", 200),
+        )
+        .unwrap();
+        let (_, count) = get_storelocations(&db_connection, filter, 1).unwrap();
+        assert_eq!(count, 9);
     }
 }
