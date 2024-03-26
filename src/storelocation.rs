@@ -30,6 +30,7 @@ impl FromStr for Storelocation {
         match s {
             "entity.entity_name" => Ok(Storelocation::Entity),
             "storelocation" => Ok(Storelocation::Storelocation),
+            "storelocation_fullpath" => Ok(Storelocation::StorelocationFullpath),
             _ => Ok(Storelocation::StorelocationName),
         }
     }
@@ -83,6 +84,7 @@ pub fn get_storelocations(
     person_id: u64,
 ) -> Result<(Vec<StorelocationStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
+    debug!("person_id:{:?}", person_id);
 
     let order_by = if let Some(order_by) = filter.order_by {
         (
@@ -216,12 +218,15 @@ pub fn get_storelocations(
         .conditions(
             filter.offset.is_some(),
             |q| {
-                q.limit(filter.offset.unwrap());
+                q.offset(filter.offset.unwrap());
             },
             |_| {},
         )
         .group_by_col((Storelocation::Table, Storelocation::StorelocationId))
         .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("sql: {}", sql.clone().as_str());
+    debug!("values: {:?}", values);
 
     let mut stmt = db_connection.prepare(sql.as_str())?;
     let rows = stmt.query_map(&*values.as_params(), |row| {
