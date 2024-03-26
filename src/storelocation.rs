@@ -27,7 +27,7 @@ impl FromStr for Storelocation {
         match s {
             "entity.entity_name" => Ok(Storelocation::Entity),
             "storelocation" => Ok(Storelocation::Storelocation),
-            _ => Ok(Storelocation::StorelocationFullpath),
+            _ => Ok(Storelocation::StorelocationName),
         }
     }
 }
@@ -46,8 +46,6 @@ pub struct StorelocationStruct {
 
 impl From<&Row<'_>> for StorelocationStruct {
     fn from(row: &Row) -> Self {
-        dbg!(row);
-
         // Test if there is a parent storelocation.
         let maybe_parent_storelocation: Option<u64> = row.get_unwrap("parent_storelocation_id");
 
@@ -61,15 +59,6 @@ impl From<&Row<'_>> for StorelocationStruct {
                 entity_id: row.get_unwrap("entity_id"),
                 entity_name: row.get_unwrap("entity_name"),
             }),
-            // storelocation: Some(Box::new(StorelocationStruct {
-            //     storelocation_id: row.get_unwrap("parent_storelocation_id"),
-            //     storelocation_name: row.get_unwrap("parent_storelocation_name"),
-            //     storelocation_canstore: row.get_unwrap("parent_storelocation_canstore"),
-            //     storelocation_color: row.get_unwrap("parent_storelocation_color"),
-            //     storelocation_fullpath: row.get_unwrap("parent_storelocation_fullpath"),
-            //     entity: None,
-            //     storelocation: None,
-            // })),
             storelocation: maybe_parent_storelocation.map(|_| {
                 Box::new(StorelocationStruct {
                     storelocation_id: row.get_unwrap("parent_storelocation_id"),
@@ -92,9 +81,12 @@ pub fn get_storelocations(
     debug!("filter:{:?}", filter);
 
     let order_by = if let Some(order_by) = filter.order_by {
-        Storelocation::from_str(order_by.as_str())?
+        (
+            Storelocation::Table,
+            Storelocation::from_str(order_by.as_str())?,
+        )
     } else {
-        Storelocation::StorelocationFullpath
+        (Storelocation::Table, Storelocation::StorelocationName)
     };
 
     let order = if filter.order.eq_ignore_ascii_case("desc") {
@@ -172,7 +164,7 @@ pub fn get_storelocations(
         .conditions(
             filter.entity.is_some(),
             |q| {
-                q.and_where(Expr::col(Storelocation::Entity).eq(filter.entity.unwrap()));
+                q.and_where(Expr::col(Entity::EntityId).eq(filter.entity.unwrap()));
             },
             |_| {},
         )
@@ -180,7 +172,7 @@ pub fn get_storelocations(
             filter.store_location_can_store,
             |q| {
                 q.and_where(
-                    Expr::col(Storelocation::StorelocationCanstore)
+                    Expr::col((Storelocation::Table, Storelocation::StorelocationCanstore))
                         .eq(filter.store_location_can_store),
                 );
             },
@@ -188,8 +180,6 @@ pub fn get_storelocations(
         )
         .order_by(order_by, order)
         .build_rusqlite(SqliteQueryBuilder);
-
-    dbg!(sql.clone());
 
     let mut stmt = db_connection.prepare(sql.as_str())?;
     let rows = stmt.query_map(&*values.as_params(), |row| {
@@ -243,18 +233,83 @@ mod tests {
                 (200, String::from("FAKE_ENTITY_1")),
             )
             .unwrap();
+        let _ = db_connection
+            .execute(
+                "INSERT INTO entity (entity_id, entity_name) VALUES (?1, ?2)",
+                (201, String::from("FAKE_ENTITY_2")),
+            )
+            .unwrap();
 
         // insert fake storelocations.
         let _ = db_connection
             .execute(
                 "INSERT INTO storelocation (storelocation_id, storelocation_name, entity) VALUES (?1, ?2, ?3)",
-                (300, String::from("FAKE_STORELOCATION_1"), 200),
+                (300, String::from("FAKE_STORELOCATION_11"), 200),
             )
             .unwrap();
+        let _ = db_connection
+        .execute(
+            "INSERT INTO storelocation (storelocation_id, storelocation_name, entity) VALUES (?1, ?2, ?3)",
+            (301, String::from("FAKE_STORELOCATION_12"), 200),
+        )
+        .unwrap();
+        let _ = db_connection
+        .execute(
+            "INSERT INTO storelocation (storelocation_id, storelocation_name, entity) VALUES (?1, ?2, ?3)",
+            (302, String::from("FAKE_STORELOCATION_21"), 201),
+        )
+        .unwrap();
+        let _ = db_connection
+        .execute(
+            "INSERT INTO storelocation (storelocation_id, storelocation_name, storelocation_canstore, entity) VALUES (?1, ?2, ?3, ?4)",
+            (303, String::from("FAKE_STORELOCATION_22"), true, 201),
+        )
+        .unwrap();
 
+        info!("testing total result");
         let filter = RequestFilter {
             ..Default::default()
         };
-        debug!("{:?}", get_storelocations(&db_connection, filter));
+        let (_, count) = get_storelocations(&db_connection, filter).unwrap();
+        assert_eq!(count, 4);
+
+        info!("testing entity filter");
+        let filter = RequestFilter {
+            entity: Some(200),
+            ..Default::default()
+        };
+        let (storelocations, count) = get_storelocations(&db_connection, filter).unwrap();
+
+        assert_eq!(count, 2);
+        for storelocation in storelocations.iter() {
+            assert!(
+                (storelocation.storelocation_name.eq("FAKE_STORELOCATION_11")
+                    || storelocation.storelocation_name.eq("FAKE_STORELOCATION_12"))
+            )
+        }
+
+        info!("testing storelocation name filter");
+        let filter = RequestFilter {
+            search: Some(String::from("FAKE_STORELOCATION_22")),
+            ..Default::default()
+        };
+        let (storelocations, count) = get_storelocations(&db_connection, filter).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(
+            storelocations[0].storelocation_name,
+            "FAKE_STORELOCATION_22"
+        );
+
+        info!("testing storelocation canstore filter");
+        let filter = RequestFilter {
+            store_location_can_store: true,
+            ..Default::default()
+        };
+        let (storelocations, count) = get_storelocations(&db_connection, filter).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(
+            storelocations[0].storelocation_name,
+            "FAKE_STORELOCATION_22"
+        );
     }
 }
