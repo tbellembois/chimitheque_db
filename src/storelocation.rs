@@ -179,6 +179,20 @@ pub fn get_storelocations(
             |_| {},
         )
         .order_by(order_by, order)
+        .conditions(
+            filter.limit.is_some(),
+            |q| {
+                q.limit(filter.limit.unwrap());
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.offset.is_some(),
+            |q| {
+                q.limit(filter.offset.unwrap());
+            },
+            |_| {},
+        )
         .build_rusqlite(SqliteQueryBuilder);
 
     let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -227,55 +241,57 @@ mod tests {
         init_db(&mut db_connection).unwrap();
 
         // insert fake entities.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO entity (entity_id, entity_name) VALUES (?1, ?2)",
-                (200, String::from("FAKE_ENTITY_1")),
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO entity (entity_id, entity_name) VALUES (?1, ?2)",
-                (201, String::from("FAKE_ENTITY_2")),
-            )
-            .unwrap();
+        for (entity_id, entity_name) in [
+            (200, "FAKE_ENTITY_1"),
+            (201, "FAKE_ENTITY_2"),
+            (202, "FAKE_ENTITY_3"),
+        ]
+        .iter()
+        {
+            let _ = db_connection
+                .execute(
+                    "INSERT INTO entity (entity_id, entity_name) VALUES (?1, ?2)",
+                    (entity_id, entity_name),
+                )
+                .unwrap();
+        }
 
         // insert fake storelocations.
-        let _ = db_connection
+        let mut storelocation_id = 300;
+        for (storelocation_name, storelocaion_canstore, entity) in [
+            ("FAKE_STORELOCATION_11", false, 200),
+            ("FAKE_STORELOCATION_12", false, 200),
+            ("FAKE_STORELOCATION_13", false, 200),
+            ("FAKE_STORELOCATION_14", false, 200),
+            ("FAKE_STORELOCATION_15", false, 200),
+            ("FAKE_STORELOCATION_16", false, 200),
+            ("FAKE_STORELOCATION_17", false, 200),
+            ("FAKE_STORELOCATION_18", false, 200),
+            ("FAKE_STORELOCATION_19", false, 200),
+            ("FAKE_STORELOCATION_21", false, 201),
+            ("FAKE_STORELOCATION_22", true, 201),
+        ]
+        .iter()
+        {
+            let _ = db_connection
             .execute(
-                "INSERT INTO storelocation (storelocation_id, storelocation_name, entity) VALUES (?1, ?2, ?3)",
-                (300, String::from("FAKE_STORELOCATION_11"), 200),
+                "INSERT INTO storelocation (storelocation_id, storelocation_name, storelocation_canstore, entity) VALUES (?1, ?2, ?3, ?4)",
+                (storelocation_id, storelocation_name, storelocaion_canstore, entity),
             )
             .unwrap();
-        let _ = db_connection
-        .execute(
-            "INSERT INTO storelocation (storelocation_id, storelocation_name, entity) VALUES (?1, ?2, ?3)",
-            (301, String::from("FAKE_STORELOCATION_12"), 200),
-        )
-        .unwrap();
-        let _ = db_connection
-        .execute(
-            "INSERT INTO storelocation (storelocation_id, storelocation_name, entity) VALUES (?1, ?2, ?3)",
-            (302, String::from("FAKE_STORELOCATION_21"), 201),
-        )
-        .unwrap();
-        let _ = db_connection
-        .execute(
-            "INSERT INTO storelocation (storelocation_id, storelocation_name, storelocation_canstore, entity) VALUES (?1, ?2, ?3, ?4)",
-            (303, String::from("FAKE_STORELOCATION_22"), true, 201),
-        )
-        .unwrap();
+            storelocation_id += 1;
+        }
 
         info!("testing total result");
         let filter = RequestFilter {
             ..Default::default()
         };
         let (_, count) = get_storelocations(&db_connection, filter).unwrap();
-        assert_eq!(count, 4);
+        assert_eq!(count, 11);
 
         info!("testing entity filter");
         let filter = RequestFilter {
-            entity: Some(200),
+            entity: Some(201),
             ..Default::default()
         };
         let (storelocations, count) = get_storelocations(&db_connection, filter).unwrap();
@@ -283,8 +299,8 @@ mod tests {
         assert_eq!(count, 2);
         for storelocation in storelocations.iter() {
             assert!(
-                (storelocation.storelocation_name.eq("FAKE_STORELOCATION_11")
-                    || storelocation.storelocation_name.eq("FAKE_STORELOCATION_12"))
+                (storelocation.storelocation_name.eq("FAKE_STORELOCATION_21")
+                    || storelocation.storelocation_name.eq("FAKE_STORELOCATION_22"))
             )
         }
 
@@ -311,5 +327,13 @@ mod tests {
             storelocations[0].storelocation_name,
             "FAKE_STORELOCATION_22"
         );
+
+        info!("testing limit");
+        let filter = RequestFilter {
+            limit: Some(5),
+            ..Default::default()
+        };
+        let (_, count) = get_storelocations(&db_connection, filter).unwrap();
+        assert_eq!(count, 5)
     }
 }
