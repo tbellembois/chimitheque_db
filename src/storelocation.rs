@@ -1,4 +1,7 @@
-use crate::entity::{Entity, EntityStruct};
+use crate::{
+    entity::{Entity, EntityStruct},
+    permission::Permission,
+};
 use chimitheque_types::requestfilter::RequestFilter;
 use log::debug;
 use rusqlite::{Connection, Row};
@@ -77,6 +80,7 @@ impl From<&Row<'_>> for StorelocationStruct {
 pub fn get_storelocations(
     db_connection: &Connection,
     filter: RequestFilter,
+    person_id: u64,
 ) -> Result<(Vec<StorelocationStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
@@ -150,6 +154,29 @@ pub fn get_storelocations(
             Alias::new("parent"),
             Expr::col((Storelocation::Table, Storelocation::Storelocation))
                 .equals((Alias::new("parent"), Alias::new("storelocation_id"))),
+        )
+        .join_as(
+            JoinType::Join,
+            Permission::Table,
+            Alias::new("perm"),
+            Expr::col((Alias::new("perm"), Alias::new("person")))
+                .eq(person_id)
+                .and(
+                    Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
+                        .is_in(["all", "storages"]),
+                )
+                .and(
+                    Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
+                        .is_in(["r", "w", "all"]),
+                )
+                .and(
+                    Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                        .equals(Entity::EntityId)
+                        .or(
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                                .eq(-1),
+                        ),
+                ),
         )
         .conditions(
             filter.search.is_some(),
@@ -256,7 +283,28 @@ mod tests {
                 .unwrap();
         }
 
-        // insert fake storelocations.
+        // Insert fake users.
+        let _ = db_connection
+            .execute(
+                "INSERT INTO person (person_id, person_email) VALUES (?1, ?2)",
+                (1, "person1"),
+            )
+            .unwrap();
+        let _ = db_connection
+        .execute(
+            "INSERT INTO personentities (personentities_person_id, personentities_entity_id) VALUES (?1, ?2)",
+            (1, 200),
+        )
+        .unwrap();
+        // set user an admin.
+        let _ = db_connection
+        .execute(
+            "INSERT INTO permission (person, permission_perm_name, permission_item_name, permission_entity_id) VALUES (?1, ?2, ?3, ?4)",
+            (1, "all", "all", -1),
+        )
+        .unwrap();
+
+        // Insert fake storelocations.
         let mut storelocation_id = 300;
         for (storelocation_name, storelocaion_canstore, entity) in [
             ("FAKE_STORELOCATION_11", false, 200),
@@ -286,7 +334,7 @@ mod tests {
         let filter = RequestFilter {
             ..Default::default()
         };
-        let (_, count) = get_storelocations(&db_connection, filter).unwrap();
+        let (_, count) = get_storelocations(&db_connection, filter, 1).unwrap();
         assert_eq!(count, 11);
 
         info!("testing entity filter");
@@ -294,7 +342,7 @@ mod tests {
             entity: Some(201),
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter).unwrap();
+        let (storelocations, count) = get_storelocations(&db_connection, filter, 1).unwrap();
 
         assert_eq!(count, 2);
         for storelocation in storelocations.iter() {
@@ -309,7 +357,7 @@ mod tests {
             search: Some(String::from("FAKE_STORELOCATION_22")),
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter).unwrap();
+        let (storelocations, count) = get_storelocations(&db_connection, filter, 1).unwrap();
         assert_eq!(count, 1);
         assert_eq!(
             storelocations[0].storelocation_name,
@@ -321,7 +369,7 @@ mod tests {
             store_location_can_store: true,
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter).unwrap();
+        let (storelocations, count) = get_storelocations(&db_connection, filter, 1).unwrap();
         assert_eq!(count, 1);
         assert_eq!(
             storelocations[0].storelocation_name,
@@ -333,7 +381,7 @@ mod tests {
             limit: Some(5),
             ..Default::default()
         };
-        let (_, count) = get_storelocations(&db_connection, filter).unwrap();
+        let (_, count) = get_storelocations(&db_connection, filter, 1).unwrap();
         assert_eq!(count, 5)
     }
 }

@@ -9,6 +9,8 @@ pub mod hazardstatement;
 pub mod init;
 pub mod linearformula;
 pub mod name;
+pub mod permission;
+pub mod person;
 pub mod physicalstate;
 pub mod precautionarystatement;
 pub mod producer;
