@@ -5,7 +5,10 @@ use crate::{
 use chimitheque_types::requestfilter::RequestFilter;
 use log::debug;
 use rusqlite::{Connection, Row};
-use sea_query::{Alias, Expr, Iden, JoinType, Order, Query, SqliteQueryBuilder};
+use sea_query::{
+    Alias, Expr, Func, Iden, JoinType, Order, Query, QueryBuilder, QueryStatementBuilder,
+    SqliteQueryBuilder, WithQuery,
+};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 use std::{error::Error, str::FromStr};
@@ -101,48 +104,9 @@ pub fn get_storelocations(
         Order::Asc
     };
 
-    let (sql, values) = Query::select()
-        .columns([Entity::EntityId, Entity::EntityName])
-        .expr(Expr::col((
-            Storelocation::Table,
-            Storelocation::StorelocationId,
-        )))
-        .expr(Expr::col((
-            Storelocation::Table,
-            Storelocation::StorelocationName,
-        )))
-        .expr(Expr::col((
-            Storelocation::Table,
-            Storelocation::StorelocationCanstore,
-        )))
-        .expr(Expr::col((
-            Storelocation::Table,
-            Storelocation::StorelocationColor,
-        )))
-        .expr(Expr::col((
-            Storelocation::Table,
-            Storelocation::StorelocationFullpath,
-        )))
-        .expr_as(
-            Expr::col((Alias::new("parent"), Alias::new("storelocation_id"))),
-            Alias::new("parent_storelocation_id"),
-        )
-        .expr_as(
-            Expr::col((Alias::new("parent"), Alias::new("storelocation_name"))),
-            Alias::new("parent_storelocation_name"),
-        )
-        .expr_as(
-            Expr::col((Alias::new("parent"), Alias::new("storelocation_canstore"))),
-            Alias::new("parent_storelocation_canstore"),
-        )
-        .expr_as(
-            Expr::col((Alias::new("parent"), Alias::new("storelocation_color"))),
-            Alias::new("parent_storelocation_color"),
-        )
-        .expr_as(
-            Expr::col((Alias::new("parent"), Alias::new("storelocation_fullpath"))),
-            Alias::new("parent_storelocation_fullpath"),
-        )
+    // Create common query statement.
+    let mut expression = Query::select();
+    expression
         .from(Storelocation::Table)
         .join(
             JoinType::LeftJoin,
@@ -206,8 +170,62 @@ pub fn get_storelocations(
                 );
             },
             |_| {},
+        );
+
+    // Create count query.
+    let (count_sql, count_values) = expression
+        .clone()
+        .expr(Expr::col((Storelocation::Table, Storelocation::StorelocationId)).count_distinct())
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_values: {:?}", count_values);
+
+    // Create select query.
+    let (select_sql, select_values) = expression
+        .columns([Entity::EntityId, Entity::EntityName])
+        .expr(Expr::col((
+            Storelocation::Table,
+            Storelocation::StorelocationId,
+        )))
+        .expr(Expr::col((
+            Storelocation::Table,
+            Storelocation::StorelocationName,
+        )))
+        .expr(Expr::col((
+            Storelocation::Table,
+            Storelocation::StorelocationCanstore,
+        )))
+        .expr(Expr::col((
+            Storelocation::Table,
+            Storelocation::StorelocationColor,
+        )))
+        .expr(Expr::col((
+            Storelocation::Table,
+            Storelocation::StorelocationFullpath,
+        )))
+        .expr_as(
+            Expr::col((Alias::new("parent"), Alias::new("storelocation_id"))),
+            Alias::new("parent_storelocation_id"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("parent"), Alias::new("storelocation_name"))),
+            Alias::new("parent_storelocation_name"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("parent"), Alias::new("storelocation_canstore"))),
+            Alias::new("parent_storelocation_canstore"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("parent"), Alias::new("storelocation_color"))),
+            Alias::new("parent_storelocation_color"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("parent"), Alias::new("storelocation_fullpath"))),
+            Alias::new("parent_storelocation_fullpath"),
         )
         .order_by(order_by, order)
+        .group_by_col((Storelocation::Table, Storelocation::StorelocationId))
         .conditions(
             filter.limit.is_some(),
             |q| {
@@ -222,25 +240,32 @@ pub fn get_storelocations(
             },
             |_| {},
         )
-        .group_by_col((Storelocation::Table, Storelocation::StorelocationId))
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql: {}", sql.clone().as_str());
-    debug!("values: {:?}", values);
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
 
-    let mut stmt = db_connection.prepare(sql.as_str())?;
-    let rows = stmt.query_map(&*values.as_params(), |row| {
+    // Perform count query.
+    let mut stmt = db_connection.prepare(count_sql.as_str())?;
+    let mut rows = stmt.query(&*count_values.as_params())?;
+    let count: usize = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(select_sql.as_str())?;
+    let rows = stmt.query_map(&*select_values.as_params(), |row| {
         Ok(StorelocationStruct::from(row))
     })?;
 
-    // Result and count.
+    // Build select result.
     let mut storelocations = Vec::new();
-    let mut count = 0;
     for maybe_storelocation in rows {
         let storelocation = maybe_storelocation?;
 
         storelocations.push(storelocation);
-        count += 1;
     }
 
     debug!("storelocations: {:#?}", storelocations);
@@ -387,8 +412,9 @@ mod tests {
             limit: Some(5),
             ..Default::default()
         };
-        let (_, count) = get_storelocations(&db_connection, filter, 1).unwrap();
-        assert_eq!(count, 5);
+        let (storelocations, count) = get_storelocations(&db_connection, filter, 1).unwrap();
+        assert_eq!(count, 11);
+        assert_eq!(storelocations.len(), 5);
 
         info!("testing permissions filter");
         let filter = RequestFilter {
