@@ -30,7 +30,8 @@ pub fn get_many(
 ) -> Result<(Vec<impl Searchable + Serialize>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
-    let mut query = format!(
+    // Select query statement.
+    let mut select_query = format!(
         "SELECT {}, {} FROM {}",
         item.get_id_field_name(),
         item.get_text_field_name(),
@@ -38,7 +39,7 @@ pub fn get_many(
     );
 
     if let Some(search) = filter.search.clone() {
-        query.push_str(&format!(
+        select_query.push_str(&format!(
             " WHERE {} LIKE '%{}%'",
             item.get_text_field_name(),
             search
@@ -46,14 +47,39 @@ pub fn get_many(
     }
 
     if let Some(limit) = filter.limit {
-        query.push_str(&format!(" LIMIT {}", limit))
+        select_query.push_str(&format!(" LIMIT {}", limit))
     }
 
     if let Some(offset) = filter.offset {
-        query.push_str(&format!(" OFFSET {}", offset))
+        select_query.push_str(&format!(" OFFSET {}", offset))
     }
 
-    let mut stmt = db_connection.prepare(&query)?;
+    // Count query statement.
+    let mut count_query = format!(
+        "SELECT COUNT(DISTINCT {}) FROM {}",
+        item.get_id_field_name(),
+        item.get_table_name()
+    );
+
+    if let Some(search) = filter.search.clone() {
+        count_query.push_str(&format!(
+            " WHERE {} LIKE '%{}%'",
+            item.get_text_field_name(),
+            search
+        ))
+    }
+
+    // Perform count query.
+    let mut stmt = db_connection.prepare(count_query.as_str())?;
+    let mut rows = stmt.query(())?;
+    let count: usize = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(&select_query)?;
     let rows = stmt.query_map((), |row| {
         let mut new_item = item.new();
 
@@ -73,9 +99,8 @@ pub fn get_many(
         Ok(new_item)
     })?;
 
-    // Result and count.
+    // Build select result.
     let mut items = Vec::new();
-    let mut count = 0;
 
     for maybe_item in rows {
         let item = maybe_item?;
@@ -85,8 +110,6 @@ pub fn get_many(
         } else {
             items.push(item);
         }
-
-        count += 1;
     }
 
     debug!("items:{:#?}", items);

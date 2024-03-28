@@ -5,10 +5,7 @@ use crate::{
 use chimitheque_types::requestfilter::RequestFilter;
 use log::debug;
 use rusqlite::{Connection, Row};
-use sea_query::{
-    Alias, Expr, Func, Iden, JoinType, Order, Query, QueryBuilder, QueryStatementBuilder,
-    SqliteQueryBuilder, WithQuery,
-};
+use sea_query::{Alias, Expr, Iden, JoinType, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 use std::{error::Error, str::FromStr};
