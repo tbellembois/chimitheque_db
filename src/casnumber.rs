@@ -56,7 +56,10 @@ impl Searchable for CasnumberStruct {
 mod tests {
 
     use super::*;
-    use crate::{init::init_db, searchable::get_many};
+    use crate::{
+        init::init_db,
+        searchable::{get_many, parse},
+    };
     use chimitheque_types::requestfilter::RequestFilter;
     use log::info;
     use rusqlite::Connection;
@@ -132,6 +135,27 @@ mod tests {
         // expected number of results.
         assert_eq!(count, 2);
         // expected exact match appears first.
-        assert!(casnumbers[0].get_text().eq("casnumber1"))
+        assert!(casnumbers[0].get_text().eq("casnumber1"));
+
+        info!("testing parse");
+        let result = parse(
+            CasnumberStruct {
+                ..Default::default()
+            },
+            &db_connection,
+            "casnumber1",
+        )
+        .unwrap();
+        assert_eq!(result.unwrap().get_text(), "casnumber1".to_string());
+
+        let result = parse(
+            CasnumberStruct {
+                ..Default::default()
+            },
+            &db_connection,
+            "does not exist",
+        )
+        .unwrap();
+        assert!(result.is_none());
     }
 }

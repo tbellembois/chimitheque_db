@@ -1,5 +1,5 @@
 use log::info;
-use rusqlite::{Batch, Connection, OpenFlags};
+use rusqlite::{Batch, Connection};
 
 use crate::define::{
     CATEGORIES, CMR_CAS, HAZARD_STATEMENTS, PRECAUTIONARY_STATEMENTS, PRODUCERS, SIGNAL_WORDS,
@@ -7,7 +7,7 @@ use crate::define::{
 };
 
 pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
-    Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+    Connection::open(db_path)
 }
 
 pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
