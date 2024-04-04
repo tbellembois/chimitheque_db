@@ -32,7 +32,7 @@ pub fn parse(
 
     // Select query statement.
     let select_query = format!(
-        "SELECT {}, {} FROM {} WHERE {}=='{}'",
+        "SELECT {}, {} FROM {} WHERE {}=='{}' COLLATE NOCASE",
         item.get_id_field_name(),
         item.get_text_field_name(),
         item.get_table_name(),

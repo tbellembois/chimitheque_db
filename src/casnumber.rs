@@ -157,5 +157,16 @@ mod tests {
         )
         .unwrap();
         assert!(result.is_none());
+
+        info!("testing parse case insensitive");
+        let result = parse(
+            CasnumberStruct {
+                ..Default::default()
+            },
+            &db_connection,
+            "CaSnUmBeR1",
+        )
+        .unwrap();
+        assert_eq!(result.unwrap().get_text(), "casnumber1".to_string());
     }
 }
