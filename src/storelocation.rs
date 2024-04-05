@@ -5,7 +5,10 @@ use crate::{
 use chimitheque_types::requestfilter::RequestFilter;
 use log::debug;
 use rusqlite::{Connection, Row};
-use sea_query::{Alias, Expr, Iden, JoinType, Order, Query, SqliteQueryBuilder};
+use sea_query::{
+    Alias, ColumnRef, Condition, Expr, Iden, IntoColumnRef, IntoIden, JoinType, Order, OrderExpr,
+    Query, SimpleExpr, SqliteQueryBuilder,
+};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 use std::{error::Error, str::FromStr};
@@ -21,19 +24,6 @@ enum Storelocation {
     StorelocationFullpath,
     Entity,
     Storelocation,
-}
-
-impl FromStr for Storelocation {
-    type Err = Box<dyn Error>;
-
-    fn from_str(s: &str) -> Result<Storelocation, Self::Err> {
-        match s {
-            "entity.entity_name" => Ok(Storelocation::Entity),
-            "storelocation" => Ok(Storelocation::Storelocation),
-            "storelocation_fullpath" => Ok(Storelocation::StorelocationFullpath),
-            _ => Ok(Storelocation::StorelocationName),
-        }
-    }
 }
 
 #[derive(Debug, Serialize)]
@@ -86,13 +76,17 @@ pub fn get_storelocations(
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
-    let order_by = if let Some(order_by) = filter.order_by {
-        (
-            Storelocation::Table,
-            Storelocation::from_str(order_by.as_str())?,
-        )
+    let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {
+        match order_by_string.as_str() {
+            "entity.entity_name" => Entity::EntityName.into_column_ref(),
+            "storelocation" => Alias::new("parent_storelocation_fullpath").into_column_ref(),
+            "storelocation_fullpath" => {
+                (Storelocation::Table, Storelocation::StorelocationFullpath).into_column_ref()
+            }
+            _ => (Storelocation::Table, Storelocation::StorelocationFullpath).into_column_ref(),
+        }
     } else {
-        (Storelocation::Table, Storelocation::StorelocationName)
+        (Storelocation::Table, Storelocation::StorelocationFullpath).into_column_ref()
     };
 
     let order = if filter.order.eq_ignore_ascii_case("desc") {
