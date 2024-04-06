@@ -627,6 +627,60 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         )?;
     }
 
+    info!("- adding units");
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (1,'L',1.0,'quantity',NULL)", ())?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (2,'mL',0.001,'quantity',1)", ())?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (3,'µL',1.0e-06,'quantity',1)", ())?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (5,'g',1.0,'quantity',NULL)", ())?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (4,'kg',1000.0,'quantity',5)", ())?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (6,'mg',0.001,'quantity',5)", ())?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (7,'µg',1.0e-06,'quantity',5)", ())?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (8,'m',1.0,'quantity',NULL)", ())?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (9,'dm',10.0,'quantity',8)", ())?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (10,'cm',100.0,'quantity',8)", ())?;
+    tx.execute(
+        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (11,'°K',1.0,'temperature',NULL)",
+        (),
+    )?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (12,'°F',1.0,'temperature',11)", ())?;
+    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (13,'°C',1.0,'temperature',11)", ())?;
+    tx.execute(
+        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (14,'nM',1.0,'concentration',NULL)",
+        (),
+    )?;
+    tx.execute(
+        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (16,'mM',1.0,'concentration',16)",
+        (),
+    )?;
+    tx.execute(
+        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (15,'µM',1.0,'concentration',16)",
+        (),
+    )?;
+    tx.execute(
+        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (20,'g/L',1.0,'concentration',NULL)",
+        (),
+    )?;
+    tx.execute(
+        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (17,'ng/L',1.0,'concentration',20)",
+        (),
+    )?;
+    tx.execute(
+        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (18,'µg/L',1.0,'concentration',20)",
+        (),
+    )?;
+    tx.execute(
+        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (19,'mg/L',1.0,'concentration',20)",
+        (),
+    )?;
+    tx.execute(
+        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (21,'%',1.0,'concentration',NULL)",
+        (),
+    )?;
+    tx.execute(
+        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (22,'X',1.0,'concentration',NULL)",
+        (),
+    )?;
+
     tx.commit()
 }
 

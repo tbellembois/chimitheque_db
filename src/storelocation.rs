@@ -6,12 +6,10 @@ use chimitheque_types::requestfilter::RequestFilter;
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
-    Alias, ColumnRef, Condition, Expr, Iden, IntoColumnRef, IntoIden, JoinType, Order, OrderExpr,
-    Query, SimpleExpr, SqliteQueryBuilder,
+    Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SqliteQueryBuilder,
 };
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
-use std::{error::Error, str::FromStr};
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -356,8 +354,9 @@ mod tests {
         let filter = RequestFilter {
             ..Default::default()
         };
-        let (_, count) = get_storelocations(&db_connection, filter, 1).unwrap();
+        let (storelocations, count) = get_storelocations(&db_connection, filter, 1).unwrap();
         assert_eq!(count, 11);
+        assert_eq!(storelocations.len(), 11);
 
         info!("testing entity filter");
         let filter = RequestFilter {

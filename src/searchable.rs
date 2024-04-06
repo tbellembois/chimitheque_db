@@ -88,6 +88,11 @@ pub fn get_many(
         ))
     }
 
+    select_query.push_str(&format!(
+        " ORDER BY {} COLLATE NOCASE ASC",
+        item.get_text_field_name()
+    ));
+
     if let Some(limit) = filter.limit {
         select_query.push_str(&format!(" LIMIT {}", limit))
     }
@@ -144,8 +149,8 @@ pub fn get_many(
     // Build select result.
     let mut items = Vec::new();
 
-    for maybe_item in rows {
-        let item = maybe_item?;
+    for mayerr_item in rows {
+        let item = mayerr_item?;
 
         if item.get_exact_search() {
             items.insert(0, item)
