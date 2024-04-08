@@ -56,82 +56,23 @@ impl Searchable for CategoryStruct {
 mod tests {
 
     use super::*;
-    use crate::{init::init_db, searchable::get_many};
-    use chimitheque_types::requestfilter::RequestFilter;
-    use log::info;
-    use rusqlite::Connection;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
-        init_db(&mut db_connection).unwrap();
-
-        // insert fake categorys.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO category (category_label) VALUES (?1)",
-                [String::from("category1")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO category (category_label) VALUES (?1)",
-                [String::from("aa category1")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO category (category_label) VALUES (?1)",
-                [String::from("category2")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO category (category_label) VALUES (?1)",
-                [String::from("category3")],
-            )
-            .unwrap();
-
-        db_connection
-    }
+    use crate::searchable::tests::test_searchable;
 
     #[test]
-    fn test_get_categorys() {
-        init_logger();
-
-        let db_connection = init_test_db();
-
-        info!("testing ok result");
-        assert!(get_many(
+    fn test_get_categories() {
+        test_searchable(
             CategoryStruct {
                 ..Default::default()
             },
-            &db_connection,
-            RequestFilter {
-                ..Default::default()
-            },
+            vec![
+                "category1",
+                "aa category1",
+                "bb cAtEgOrY1",
+                "category2",
+                "category3",
+            ],
+            3,
+            "category1",
         )
-        .is_ok());
-
-        info!("testing filter search");
-        let (categorys, count) = get_many(
-            CategoryStruct {
-                ..Default::default()
-            },
-            &db_connection,
-            RequestFilter {
-                search: Some(String::from("category1")),
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 2);
-        // expected exact match appears first.
-        assert!(categorys[0].get_text().eq("category1"))
     }
 }

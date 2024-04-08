@@ -37,7 +37,7 @@ pub fn get_suppliers(
 
     // Create common query statement.
     let mut expression = Query::select();
-    expression.conditions(
+    expression.from(Supplier::Table).conditions(
         filter.search.is_some(),
         |q| {
             q.and_where(
@@ -60,7 +60,6 @@ pub fn get_suppliers(
     // Create select query.
     let (select_sql, select_values) = expression
         .columns([Supplier::SupplierId, Supplier::SupplierLabel])
-        .from(Supplier::Table)
         .order_by(Supplier::SupplierLabel, Order::Asc)
         .conditions(
             filter.limit.is_some(),

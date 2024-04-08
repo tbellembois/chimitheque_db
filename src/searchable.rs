@@ -24,7 +24,7 @@ pub trait Searchable {
 }
 
 pub fn parse(
-    item: impl Searchable + Debug + Default + Serialize,
+    item: &(impl Searchable + Debug + Default + Serialize),
     db_connection: &Connection,
     s: &str,
 ) -> Result<Option<impl Searchable + Serialize>, Box<dyn std::error::Error>> {
@@ -66,7 +66,7 @@ pub fn parse(
 }
 
 pub fn get_many(
-    item: impl Searchable + Debug + Default + Serialize,
+    item: &(impl Searchable + Debug + Default + Serialize),
     db_connection: &Connection,
     filter: RequestFilter,
 ) -> Result<(Vec<impl Searchable + Serialize>, usize), Box<dyn std::error::Error>> {
@@ -163,4 +163,119 @@ pub fn get_many(
     debug!("items:{}", count);
 
     Ok((items, count))
+}
+
+#[cfg(test)]
+pub mod tests {
+
+    use super::*;
+    use crate::{
+        init::init_db,
+        searchable::{get_many, parse},
+    };
+    use chimitheque_types::requestfilter::RequestFilter;
+    use log::info;
+    use rusqlite::Connection;
+
+    fn init_logger() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    pub fn test_searchable(
+        searchable: impl Searchable + Debug + Default + Serialize,
+        fake_searchables: Vec<&str>,
+        test_search_count: usize,
+        test_search_first_result: &str,
+    ) {
+        init_logger();
+
+        let mut db_connection = Connection::open_in_memory().unwrap();
+        init_db(&mut db_connection).unwrap();
+
+        let table_name = searchable.get_table_name();
+        let text_field_name = searchable.get_text_field_name();
+
+        // Insert samples.
+        for fake_searchable in fake_searchables.iter() {
+            let _ = db_connection
+                .execute(
+                    &format!(
+                        "INSERT INTO {} ({}) VALUES (?1)",
+                        table_name, text_field_name
+                    ),
+                    [fake_searchable],
+                )
+                .unwrap();
+        }
+
+        info!("- testing total result for {}", table_name);
+        let (searchables, total_count) = get_many(
+            &searchable,
+            &db_connection,
+            RequestFilter {
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(total_count, searchables.len());
+
+        info!("- testing filter search for {}", table_name);
+        let (searchables, count) = get_many(
+            &searchable,
+            &db_connection,
+            RequestFilter {
+                search: Some(fake_searchables[0].to_owned()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        // expected number of results.
+        assert_eq!(count, test_search_count);
+        // expected exact match appears first.
+        assert!(searchables[0].get_text().eq(test_search_first_result));
+
+        info!("- testing parse for {}", table_name);
+        let searchables = parse(&searchable, &db_connection, fake_searchables[0]).unwrap();
+        assert_eq!(
+            searchables.unwrap().get_text(),
+            fake_searchables[0].to_string()
+        );
+
+        let searchables = parse(&searchable, &db_connection, "does not exist").unwrap();
+        assert!(searchables.is_none());
+
+        info!("- testing parse case insensitive for {}", table_name);
+        let mut randomized_chars: Vec<char> = Vec::new();
+        let mut switch: bool = false;
+        for c in fake_searchables[0].chars() {
+            if switch {
+                randomized_chars.push(c.to_ascii_lowercase());
+            } else {
+                randomized_chars.push(c.to_ascii_uppercase());
+            }
+            switch = !switch;
+        }
+        let randomized_string: String = randomized_chars.iter().collect();
+        info!("-> generated {}", randomized_string);
+
+        let searchables = parse(&searchable, &db_connection, &randomized_string)
+            .unwrap()
+            .unwrap();
+        assert_eq!(searchables.get_text(), fake_searchables[0].to_string());
+        assert!(searchables.get_id() > 0);
+
+        info!("- testing count with limit");
+        let (searchables, count) = get_many(
+            &searchable,
+            &db_connection,
+            RequestFilter {
+                offset: Some(0),
+                limit: Some(5),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(count, total_count);
+        assert_eq!(searchables.len(), 5)
+    }
 }

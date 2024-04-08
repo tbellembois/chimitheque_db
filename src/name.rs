@@ -56,82 +56,17 @@ impl Searchable for NameStruct {
 mod tests {
 
     use super::*;
-    use crate::{init::init_db, searchable::get_many};
-    use chimitheque_types::requestfilter::RequestFilter;
-    use log::info;
-    use rusqlite::Connection;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
-        init_db(&mut db_connection).unwrap();
-
-        // insert fake names.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO name (name_label) VALUES (?1)",
-                [String::from("name1")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO name (name_label) VALUES (?1)",
-                [String::from("aa name1")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO name (name_label) VALUES (?1)",
-                [String::from("name2")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO name (name_label) VALUES (?1)",
-                [String::from("name3")],
-            )
-            .unwrap();
-
-        db_connection
-    }
+    use crate::searchable::tests::test_searchable;
 
     #[test]
     fn test_get_names() {
-        init_logger();
-
-        let db_connection = init_test_db();
-
-        info!("testing ok result");
-        assert!(get_many(
+        test_searchable(
             NameStruct {
                 ..Default::default()
             },
-            &db_connection,
-            RequestFilter {
-                ..Default::default()
-            },
+            vec!["name1", "aa name1", "bb nAmE1", "name2", "name3"],
+            3,
+            "name1",
         )
-        .is_ok());
-
-        info!("testing filter search");
-        let (names, count) = get_many(
-            NameStruct {
-                ..Default::default()
-            },
-            &db_connection,
-            RequestFilter {
-                search: Some(String::from("name1")),
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 2);
-        // expected exact match appears first.
-        assert!(names[0].get_text().eq("name1"))
     }
 }

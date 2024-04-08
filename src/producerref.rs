@@ -130,7 +130,6 @@ pub fn get_producerrefs(
 
     // Build result.
     let mut producerrefs = Vec::new();
-    let mut count = 0;
     for maybe_producerref in rows {
         let mut producerref = maybe_producerref?;
 
@@ -148,8 +147,6 @@ pub fn get_producerrefs(
             // Inserting the producer at the end of the results.
             producerrefs.push(producerref);
         }
-
-        count += 1;
     }
 
     debug!("producerrefs: {:#?}", producerrefs);

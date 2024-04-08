@@ -56,82 +56,17 @@ impl Searchable for SymbolStruct {
 mod tests {
 
     use super::*;
-    use crate::{init::init_db, searchable::get_many};
-    use chimitheque_types::requestfilter::RequestFilter;
-    use log::info;
-    use rusqlite::Connection;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
-        init_db(&mut db_connection).unwrap();
-
-        // insert fake symbols.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO symbol (symbol_label) VALUES (?1)",
-                [String::from("symbol1")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO symbol (symbol_label) VALUES (?1)",
-                [String::from("aa symbol1")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO symbol (symbol_label) VALUES (?1)",
-                [String::from("symbol2")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO symbol (symbol_label) VALUES (?1)",
-                [String::from("symbol3")],
-            )
-            .unwrap();
-
-        db_connection
-    }
+    use crate::searchable::tests::test_searchable;
 
     #[test]
     fn test_get_symbols() {
-        init_logger();
-
-        let db_connection = init_test_db();
-
-        info!("testing ok result");
-        assert!(get_many(
+        test_searchable(
             SymbolStruct {
                 ..Default::default()
             },
-            &db_connection,
-            RequestFilter {
-                ..Default::default()
-            },
+            vec!["symbol1", "aa symbol1", "bb sYmBoL1", "symbol2", "symbol3"],
+            3,
+            "symbol1",
         )
-        .is_ok());
-
-        info!("testing filter search");
-        let (symbols, count) = get_many(
-            SymbolStruct {
-                ..Default::default()
-            },
-            &db_connection,
-            RequestFilter {
-                search: Some(String::from("symbol1")),
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 2);
-        // expected exact match appears first.
-        assert!(symbols[0].get_text().eq("symbol1"))
     }
 }

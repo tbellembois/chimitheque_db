@@ -56,117 +56,23 @@ impl Searchable for CasnumberStruct {
 mod tests {
 
     use super::*;
-    use crate::{
-        init::init_db,
-        searchable::{get_many, parse},
-    };
-    use chimitheque_types::requestfilter::RequestFilter;
-    use log::info;
-    use rusqlite::Connection;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
-        init_db(&mut db_connection).unwrap();
-
-        // insert fake casnumbers.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO casnumber (casnumber_label) VALUES (?1)",
-                [String::from("casnumber1")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO casnumber (casnumber_label) VALUES (?1)",
-                [String::from("aa casnumber1")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO casnumber (casnumber_label) VALUES (?1)",
-                [String::from("casnumber2")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO casnumber (casnumber_label) VALUES (?1)",
-                [String::from("casnumber3")],
-            )
-            .unwrap();
-
-        db_connection
-    }
+    use crate::searchable::tests::test_searchable;
 
     #[test]
     fn test_get_casnumbers() {
-        init_logger();
-
-        let db_connection = init_test_db();
-
-        info!("testing ok result");
-        assert!(get_many(
+        test_searchable(
             CasnumberStruct {
                 ..Default::default()
             },
-            &db_connection,
-            RequestFilter {
-                ..Default::default()
-            },
-        )
-        .is_ok());
-
-        info!("testing filter search");
-        let (casnumbers, count) = get_many(
-            CasnumberStruct {
-                ..Default::default()
-            },
-            &db_connection,
-            RequestFilter {
-                search: Some(String::from("casnumber1")),
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 2);
-        // expected exact match appears first.
-        assert!(casnumbers[0].get_text().eq("casnumber1"));
-
-        info!("testing parse");
-        let result = parse(
-            CasnumberStruct {
-                ..Default::default()
-            },
-            &db_connection,
+            vec![
+                "casnumber1",
+                "aa casnumber1",
+                "bb cAsNuMbEr1",
+                "casnumber2",
+                "casnumber3",
+            ],
+            3,
             "casnumber1",
         )
-        .unwrap();
-        assert_eq!(result.unwrap().get_text(), "casnumber1".to_string());
-
-        let result = parse(
-            CasnumberStruct {
-                ..Default::default()
-            },
-            &db_connection,
-            "does not exist",
-        )
-        .unwrap();
-        assert!(result.is_none());
-
-        info!("testing parse case insensitive");
-        let result = parse(
-            CasnumberStruct {
-                ..Default::default()
-            },
-            &db_connection,
-            "CaSnUmBeR1",
-        )
-        .unwrap();
-        assert_eq!(result.unwrap().get_text(), "casnumber1".to_string());
     }
 }
