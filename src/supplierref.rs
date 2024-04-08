@@ -45,16 +45,9 @@ pub fn get_supplierrefs(
 ) -> Result<(Vec<SupplierrefStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
-    let (sql, values) = Query::select()
-        .columns([Supplierref::SupplierrefId, Supplierref::SupplierrefLabel])
-        .expr_as(
-            Expr::col((Supplier::Table, Supplier::SupplierId)),
-            Alias::new("supplier.supplier_id"),
-        )
-        .expr_as(
-            Expr::col((Supplier::Table, Supplier::SupplierLabel)),
-            Alias::new("supplier.supplier_label"),
-        )
+    // Create common query statement.
+    let mut expression = Query::select();
+    expression
         .from(Supplierref::Table)
         .left_join(
             Supplier::Table,
@@ -77,16 +70,66 @@ pub fn get_supplierrefs(
                 q.and_where(Expr::col(Supplierref::Supplier).eq(filter.supplier.unwrap()));
             },
             |_| {},
-        )
-        .order_by(Supplierref::SupplierrefLabel, Order::Asc)
+        );
+
+    // Create count query.
+    let (count_sql, count_values) = expression
+        .clone()
+        .expr(Expr::col((Supplierref::Table, Supplierref::SupplierrefId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
-    let mut stmt = db_connection.prepare(sql.as_str())?;
-    let rows = stmt.query_map(&*values.as_params(), |row| Ok(SupplierrefStruct::from(row)))?;
+    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_values: {:?}", count_values);
 
-    // Result supliers and count.
+    // Create select query.
+
+    let (select_sql, select_values) = expression
+        .columns([Supplierref::SupplierrefId, Supplierref::SupplierrefLabel])
+        .expr_as(
+            Expr::col((Supplier::Table, Supplier::SupplierId)),
+            Alias::new("supplier.supplier_id"),
+        )
+        .expr_as(
+            Expr::col((Supplier::Table, Supplier::SupplierLabel)),
+            Alias::new("supplier.supplier_label"),
+        )
+        .order_by(Supplierref::SupplierrefLabel, Order::Asc)
+        .conditions(
+            filter.limit.is_some(),
+            |q| {
+                q.limit(filter.limit.unwrap());
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.offset.is_some(),
+            |q| {
+                q.offset(filter.offset.unwrap());
+            },
+            |_| {},
+        )
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
+
+    // Perform count query.
+    let mut stmt = db_connection.prepare(count_sql.as_str())?;
+    let mut rows = stmt.query(&*count_values.as_params())?;
+    let count: usize = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(select_sql.as_str())?;
+    let rows = stmt.query_map(&*select_values.as_params(), |row| {
+        Ok(SupplierrefStruct::from(row))
+    })?;
+
+    // Build result.
     let mut supplierrefs = Vec::new();
-    let mut count = 0;
     for maybe_supplierref in rows {
         let mut supplierref = maybe_supplierref?;
 
@@ -104,8 +147,6 @@ pub fn get_supplierrefs(
             // Inserting the supplier at the end of the results.
             supplierrefs.push(supplierref);
         }
-
-        count += 1;
     }
 
     debug!("supplierrefs: {:#?}", supplierrefs);

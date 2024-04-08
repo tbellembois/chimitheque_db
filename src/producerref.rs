@@ -46,16 +46,9 @@ pub fn get_producerrefs(
 ) -> Result<(Vec<ProducerrefStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
-    let (sql, values) = Query::select()
-        .columns([Producerref::ProducerrefId, Producerref::ProducerrefLabel])
-        .expr_as(
-            Expr::col((Producer::Table, Producer::ProducerId)),
-            Alias::new("producer.producer_id"),
-        )
-        .expr_as(
-            Expr::col((Producer::Table, Producer::ProducerLabel)),
-            Alias::new("producer.producer_label"),
-        )
+    // Create common query statement.
+    let mut expression = Query::select();
+    expression
         .from(Producerref::Table)
         .left_join(
             Producer::Table,
@@ -78,14 +71,64 @@ pub fn get_producerrefs(
                 q.and_where(Expr::col(Producerref::Producer).eq(filter.producer.unwrap()));
             },
             |_| {},
-        )
-        .order_by(Producerref::ProducerrefLabel, Order::Asc)
+        );
+
+    // Create count query.
+    let (count_sql, count_values) = expression
+        .clone()
+        .expr(Expr::col((Producerref::Table, Producerref::ProducerrefId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
-    let mut stmt = db_connection.prepare(sql.as_str())?;
-    let rows = stmt.query_map(&*values.as_params(), |row| Ok(ProducerrefStruct::from(row)))?;
+    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_values: {:?}", count_values);
 
-    // Result supliers and count.
+    // Create select query.
+    let (select_sql, select_values) = expression
+        .columns([Producerref::ProducerrefId, Producerref::ProducerrefLabel])
+        .expr_as(
+            Expr::col((Producer::Table, Producer::ProducerId)),
+            Alias::new("producer.producer_id"),
+        )
+        .expr_as(
+            Expr::col((Producer::Table, Producer::ProducerLabel)),
+            Alias::new("producer.producer_label"),
+        )
+        .order_by(Producerref::ProducerrefLabel, Order::Asc)
+        .conditions(
+            filter.limit.is_some(),
+            |q| {
+                q.limit(filter.limit.unwrap());
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.offset.is_some(),
+            |q| {
+                q.offset(filter.offset.unwrap());
+            },
+            |_| {},
+        )
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
+
+    // Perform count query.
+    let mut stmt = db_connection.prepare(count_sql.as_str())?;
+    let mut rows = stmt.query(&*count_values.as_params())?;
+    let count: usize = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(select_sql.as_str())?;
+    let rows = stmt.query_map(&*select_values.as_params(), |row| {
+        Ok(ProducerrefStruct::from(row))
+    })?;
+
+    // Build result.
     let mut producerrefs = Vec::new();
     let mut count = 0;
     for maybe_producerref in rows {

@@ -39,37 +39,81 @@ pub fn get_precautionarystatements(
 ) -> Result<(Vec<PrecautionarystatementStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
-    let (sql, values) = Query::select()
+    // Create common query statement.
+    let mut expression = Query::select();
+    expression.from(Precautionarystatement::Table).conditions(
+        filter.search.is_some(),
+        |q| {
+            q.and_where(
+                Expr::col(Precautionarystatement::PrecautionarystatementReference)
+                    .like(format!("%{}%", filter.search.clone().unwrap())),
+            );
+        },
+        |_| {},
+    );
+
+    // Create count query.
+    let (count_sql, count_values) = expression
+        .clone()
+        .expr(
+            Expr::col((
+                Precautionarystatement::Table,
+                Precautionarystatement::PrecautionarystatementId,
+            ))
+            .count_distinct(),
+        )
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_values: {:?}", count_values);
+
+    // Create select query.
+    let (select_sql, select_values) = expression
         .columns([
             Precautionarystatement::PrecautionarystatementId,
             Precautionarystatement::PrecautionarystatementLabel,
             Precautionarystatement::PrecautionarystatementReference,
         ])
-        .from(Precautionarystatement::Table)
-        .conditions(
-            filter.search.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col(Precautionarystatement::PrecautionarystatementReference)
-                        .like(format!("%{}%", filter.search.clone().unwrap())),
-                );
-            },
-            |_| {},
-        )
         .order_by(
             Precautionarystatement::PrecautionarystatementReference,
             Order::Asc,
         )
+        .conditions(
+            filter.limit.is_some(),
+            |q| {
+                q.limit(filter.limit.unwrap());
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.offset.is_some(),
+            |q| {
+                q.offset(filter.offset.unwrap());
+            },
+            |_| {},
+        )
         .build_rusqlite(SqliteQueryBuilder);
 
-    let mut stmt = db_connection.prepare(sql.as_str())?;
-    let rows = stmt.query_map(&*values.as_params(), |row| {
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
+
+    // Perform count query.
+    let mut stmt = db_connection.prepare(count_sql.as_str())?;
+    let mut rows = stmt.query(&*count_values.as_params())?;
+    let count: usize = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(select_sql.as_str())?;
+    let rows = stmt.query_map(&*select_values.as_params(), |row| {
         Ok(PrecautionarystatementStruct::from(row))
     })?;
 
-    // Result statemtents and count.
+    // Build result.
     let mut precautionarystatements = Vec::new();
-    let mut count = 0;
     for maybe_precautionarystatement in rows {
         let mut precautionarystatement = maybe_precautionarystatement?;
 
@@ -87,8 +131,6 @@ pub fn get_precautionarystatements(
             // Inserting the statement at the end of the results.
             precautionarystatements.push(precautionarystatement);
         }
-
-        count += 1;
     }
 
     debug!("precautionarystatements: {:#?}", precautionarystatements);

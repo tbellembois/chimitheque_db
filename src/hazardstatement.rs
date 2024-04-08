@@ -39,34 +39,75 @@ pub fn get_hazardstatements(
 ) -> Result<(Vec<HazardstatementStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
-    let (sql, values) = Query::select()
+    // Create common query statement.
+    let mut expression = Query::select();
+    expression.from(Hazardstatement::Table).conditions(
+        filter.search.is_some(),
+        |q| {
+            q.and_where(
+                Expr::col(Hazardstatement::HazardstatementReference)
+                    .like(format!("%{}%", filter.search.clone().unwrap())),
+            );
+        },
+        |_| {},
+    );
+
+    // Create count query.
+    let (count_sql, count_values) = expression
+        .clone()
+        .expr(
+            Expr::col((Hazardstatement::Table, Hazardstatement::HazardstatementId))
+                .count_distinct(),
+        )
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_values: {:?}", count_values);
+
+    // Create select query.
+    let (select_sql, select_values) = expression
         .columns([
             Hazardstatement::HazardstatementId,
             Hazardstatement::HazardstatementLabel,
             Hazardstatement::HazardstatementReference,
         ])
-        .from(Hazardstatement::Table)
+        .order_by(Hazardstatement::HazardstatementReference, Order::Asc)
         .conditions(
-            filter.search.is_some(),
+            filter.limit.is_some(),
             |q| {
-                q.and_where(
-                    Expr::col(Hazardstatement::HazardstatementReference)
-                        .like(format!("%{}%", filter.search.clone().unwrap())),
-                );
+                q.limit(filter.limit.unwrap());
             },
             |_| {},
         )
-        .order_by(Hazardstatement::HazardstatementReference, Order::Asc)
+        .conditions(
+            filter.offset.is_some(),
+            |q| {
+                q.offset(filter.offset.unwrap());
+            },
+            |_| {},
+        )
         .build_rusqlite(SqliteQueryBuilder);
 
-    let mut stmt = db_connection.prepare(sql.as_str())?;
-    let rows = stmt.query_map(&*values.as_params(), |row| {
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
+
+    // Perform count query.
+    let mut stmt = db_connection.prepare(count_sql.as_str())?;
+    let mut rows = stmt.query(&*count_values.as_params())?;
+    let count: usize = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(select_sql.as_str())?;
+    let rows = stmt.query_map(&*select_values.as_params(), |row| {
         Ok(HazardstatementStruct::from(row))
     })?;
 
-    // Result statements and count.
+    // Build result.
     let mut hazardstatements = Vec::new();
-    let mut count = 0;
     for maybe_hazardstatement in rows {
         let mut hazardstatement = maybe_hazardstatement?;
 
@@ -84,8 +125,6 @@ pub fn get_hazardstatements(
             // Inserting the statement at the end of the results.
             hazardstatements.push(hazardstatement);
         }
-
-        count += 1;
     }
 
     debug!("hazardstatements: {:#?}", hazardstatements);

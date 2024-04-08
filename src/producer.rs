@@ -35,28 +35,68 @@ pub fn get_producers(
 ) -> Result<(Vec<ProducerStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
-    let (sql, values) = Query::select()
+    // Create common query statement.
+    let mut expression = Query::select();
+    expression.from(Producer::Table).conditions(
+        filter.search.is_some(),
+        |q| {
+            q.and_where(
+                Expr::col(Producer::ProducerLabel)
+                    .like(format!("%{}%", filter.search.clone().unwrap())),
+            );
+        },
+        |_| {},
+    );
+
+    // Create count query.
+    let (count_sql, count_values) = expression
+        .clone()
+        .expr(Expr::col((Producer::Table, Producer::ProducerId)).count_distinct())
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_values: {:?}", count_values);
+
+    // Create select query.
+    let (select_sql, select_values) = expression
         .columns([Producer::ProducerId, Producer::ProducerLabel])
-        .from(Producer::Table)
+        .order_by(Producer::ProducerLabel, Order::Asc)
         .conditions(
-            filter.search.is_some(),
+            filter.limit.is_some(),
             |q| {
-                q.and_where(
-                    Expr::col(Producer::ProducerLabel)
-                        .like(format!("%{}%", filter.search.clone().unwrap())),
-                );
+                q.limit(filter.limit.unwrap());
             },
             |_| {},
         )
-        .order_by(Producer::ProducerLabel, Order::Asc)
+        .conditions(
+            filter.offset.is_some(),
+            |q| {
+                q.offset(filter.offset.unwrap());
+            },
+            |_| {},
+        )
         .build_rusqlite(SqliteQueryBuilder);
 
-    let mut stmt = db_connection.prepare(sql.as_str())?;
-    let rows = stmt.query_map(&*values.as_params(), |row| Ok(ProducerStruct::from(row)))?;
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
 
-    // Result supliers and count.
+    // Perform count query.
+    let mut stmt = db_connection.prepare(count_sql.as_str())?;
+    let mut rows = stmt.query(&*count_values.as_params())?;
+    let count: usize = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(select_sql.as_str())?;
+    let rows = stmt.query_map(&*select_values.as_params(), |row| {
+        Ok(ProducerStruct::from(row))
+    })?;
+
+    // Build result.
     let mut producers = Vec::new();
-    let mut count = 0;
     for maybe_producer in rows {
         let mut producer = maybe_producer?;
 
@@ -70,8 +110,6 @@ pub fn get_producers(
             // Inserting the producer at the end of the results.
             producers.push(producer);
         }
-
-        count += 1;
     }
 
     debug!("producers: {:#?}", producers);
