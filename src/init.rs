@@ -178,6 +178,9 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         DROP TABLE IF EXISTS product;
         CREATE TABLE product (
             product_id	INTEGER,
+            product_inchi TEXT,
+            product_inchikey TEXT,
+            product_canonical_smiles TEXT,
             product_specificity	TEXT,
             product_msds	TEXT,
             product_restricted	INTEGER DEFAULT 0,
@@ -190,6 +193,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
             product_sheet	TEXT,
             product_concentration	REAL,
             product_temperature	REAL,
+            product_molecularweight REAL,
             casnumber	INTEGER,
             cenumber	INTEGER,
             person	INTEGER NOT NULL,
@@ -200,6 +204,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
             name	INTEGER NOT NULL,
             producerref	INTEGER,
             unit_temperature	INTEGER,
+            unit_molecularweight INTEGER,
             category	INTEGER,
             product_number_per_carton	INTEGER,
             product_number_per_bag	INTEGER,
@@ -212,6 +217,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
             FOREIGN KEY(category) REFERENCES category(category_id),
             PRIMARY KEY(product_id),
             FOREIGN KEY(unit_temperature) REFERENCES unit(unit_id),
+            FOREIGN KEY(unit_molecularweight) REFERENCES unit(unit_id),
             FOREIGN KEY(physicalstate) REFERENCES physicalstate(physicalstate_id),
             FOREIGN KEY(signalword) REFERENCES signalword(signalword_id),
             FOREIGN KEY(name) REFERENCES name(name_id)
