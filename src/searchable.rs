@@ -165,6 +165,24 @@ pub fn get_many(
     Ok((items, count))
 }
 
+pub fn create(
+    item: &impl Searchable,
+    db_connection: &Connection,
+    text: &str,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    db_connection.execute(
+        &format!(
+            "INSERT INTO {} ({}) VALUES (?1)",
+            item.get_table_name(),
+            item.get_text_field_name()
+        ),
+        [text],
+    )?;
+
+    let last_insert_id = db_connection.last_insert_rowid().try_into()?;
+    Ok(last_insert_id)
+}
+
 #[cfg(test)]
 pub mod tests {
 
@@ -264,7 +282,7 @@ pub mod tests {
         assert_eq!(searchables.get_text(), fake_searchables[0].to_string());
         assert!(searchables.get_id() > 0);
 
-        info!("- testing count with limit");
+        info!("- testing count with limit for {}", table_name);
         let (searchables, count) = get_many(
             &searchable,
             &db_connection,
@@ -276,6 +294,13 @@ pub mod tests {
         )
         .unwrap();
         assert_eq!(count, total_count);
-        assert_eq!(searchables.len(), 5)
+        assert_eq!(searchables.len(), 5);
+
+        info!("- testing create for {}", table_name);
+        let mayerr_last_insert_id = create(&searchable, &db_connection, "a non existing item");
+        assert!(mayerr_last_insert_id.unwrap() > 0);
+
+        let mayerr_last_insert_id = create(&searchable, &db_connection, fake_searchables[0]);
+        assert!(mayerr_last_insert_id.is_err());
     }
 }

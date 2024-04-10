@@ -52,7 +52,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         DROP TABLE IF EXISTS category;
         CREATE TABLE category (
             category_id	INTEGER,
-            category_label	TEXT NOT NULL,
+            category_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(category_id)
         ) STRICT;
 
@@ -98,7 +98,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         CREATE TABLE hazardstatement (
             hazardstatement_id	INTEGER,
             hazardstatement_label	TEXT NOT NULL,
-            hazardstatement_reference	TEXT NOT NULL,
+            hazardstatement_reference	TEXT NOT NULL UNIQUE,
             hazardstatement_cmr	TEXT,
             PRIMARY KEY(hazardstatement_id)
         ) STRICT;
@@ -131,7 +131,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         DROP TABLE IF EXISTS person;
         CREATE TABLE person (
             person_id	INTEGER,
-            person_email	TEXT NOT NULL,
+            person_email	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(person_id)
         ) STRICT;
 
@@ -155,14 +155,14 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         CREATE TABLE precautionarystatement (
             precautionarystatement_id	INTEGER,
             precautionarystatement_label	TEXT NOT NULL,
-            precautionarystatement_reference	TEXT NOT NULL,
+            precautionarystatement_reference	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(precautionarystatement_id)
         ) STRICT;
 
         DROP TABLE IF EXISTS producer;
         CREATE TABLE producer (
             producer_id	INTEGER,
-            producer_label	TEXT NOT NULL,
+            producer_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(producer_id)
         ) STRICT;
 
@@ -348,7 +348,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         DROP TABLE IF EXISTS supplier;
         CREATE TABLE supplier (
             supplier_id	INTEGER,
-            supplier_label	TEXT NOT NULL,
+            supplier_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(supplier_id)
         ) STRICT;
 
@@ -364,14 +364,14 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         DROP TABLE IF EXISTS symbol;
         CREATE TABLE symbol (
             symbol_id	INTEGER,
-            symbol_label	TEXT NOT NULL,
+            symbol_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(symbol_id)
         ) STRICT;
 
         DROP TABLE IF EXISTS tag;
         CREATE TABLE tag (
             tag_id	INTEGER,
-            tag_label	TEXT NOT NULL,
+            tag_label	TEXT NOT NULL UNIQUE,
             PRIMARY KEY(tag_id)
         ) STRICT;
 
