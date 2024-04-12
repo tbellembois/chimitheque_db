@@ -1,38 +1,396 @@
 use chimitheque_types::pubchemproduct::PubchemProduct;
+use chimitheque_utils::formula::sort_empirical_formula;
+use log::debug;
 use rusqlite::Connection;
+use sea_query::{Query, SimpleExpr, SqliteQueryBuilder};
+use std::fmt::{Display, Formatter};
 
-use crate::searchable::{create, Searchable};
-use crate::{name::NameStruct, searchable::parse};
+use crate::casnumber::CasnumberStruct;
+use crate::cenumber::CenumberStruct;
+use crate::empiricalformula::EmpiricalformulaStruct;
+use crate::hazardstatement;
+use crate::name::NameStruct;
+use crate::product::{
+    Product, Producthazardstatements, Productprecautionarystatements, Productsymbols,
+};
+use crate::searchable::{self, create, Searchable};
+use crate::signalword::SignalwordStruct;
+use crate::symbol::SymbolStruct;
+use crate::{precautionarystatement, unit};
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ImportPubchemProductError {
+    UnknownSymbol(String),
+    UnknownHazardstatement(String),
+    UnknownPrecautionarystatement(String),
+    UnknownSignalword(String),
+    UnknownMolecularWeightUnit(String),
+    EmptyName,
+}
+
+impl Display for ImportPubchemProductError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match self {
+            ImportPubchemProductError::UnknownSymbol(s) => write!(f, "unknown symbol {s}"),
+            ImportPubchemProductError::UnknownHazardstatement(s) => {
+                write!(f, "unknown hazard statement {s}")
+            }
+            ImportPubchemProductError::UnknownPrecautionarystatement(s) => {
+                write!(f, "unknown precautionary statement {s}")
+            }
+            ImportPubchemProductError::UnknownSignalword(s) => {
+                write!(f, "unknown signal word statement {s}")
+            }
+            ImportPubchemProductError::UnknownMolecularWeightUnit(s) => {
+                write!(f, "unknown molecular weight unit {s}")
+            }
+            ImportPubchemProductError::EmptyName => {
+                write!(f, "empty name")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ImportPubchemProductError {}
 
 pub fn create_product_from_pubchem(
     db_connection: &Connection,
     pubchem_product: PubchemProduct,
+    person_id: u64,
 ) -> Result<u64, Box<dyn std::error::Error>> {
-    // Name.
-    let name_id: Option<u64>;
+    debug!("pubchem_product: {:#?}", pubchem_product);
 
-    if let Some(name) = pubchem_product.name {
-        let maybe_name = parse(
+    // Mandatory name.
+    let name_id: u64;
+
+    if let Some(name_text) = pubchem_product.name {
+        let maybe_name = searchable::parse(
             &NameStruct {
                 ..Default::default()
             },
             db_connection,
-            &name,
+            &name_text,
         )?;
 
         name_id = match maybe_name {
-            Some(name) => Some(name.get_id()),
-            None => Some(create(
+            Some(name) => name.get_id(),
+            None => create(
                 &NameStruct {
                     ..Default::default()
                 },
                 db_connection,
-                &name,
+                &name_text,
+            )?,
+        }
+    } else {
+        return Err(Box::new(ImportPubchemProductError::EmptyName));
+    }
+
+    // List of columns and values to insert in the product table.
+    let mut columns = vec![Product::Name, Product::Person];
+    let mut values = vec![
+        SimpleExpr::Value(name_id.into()),
+        SimpleExpr::Value(person_id.into()),
+    ];
+
+    // Basic fields.
+    if let Some(inchi) = pubchem_product.inchi {
+        columns.push(Product::ProductInchi);
+        values.push(SimpleExpr::Value(inchi.into()));
+    }
+
+    if let Some(inchi_key) = pubchem_product.inchi_key {
+        columns.push(Product::ProductInchikey);
+        values.push(SimpleExpr::Value(inchi_key.into()));
+    }
+
+    if let Some(canonical_smiles) = pubchem_product.canonical_smiles {
+        columns.push(Product::ProductCanonicalSmiles);
+        values.push(SimpleExpr::Value(canonical_smiles.into()));
+    }
+
+    if let Some(molecular_weight) = pubchem_product.molecular_weight {
+        columns.push(Product::ProductMolecularweight);
+        values.push(SimpleExpr::Value(molecular_weight.into()));
+    }
+
+    // Molecular weight unit.
+    if let Some(molecularweight_unit_text) = pubchem_product.molecular_weight_unit {
+        let maybe_molecularweight_unit = unit::parse(db_connection, &molecularweight_unit_text)?;
+
+        let molecularweight_unit_id = match maybe_molecularweight_unit {
+            Some(molecular_weight) => molecular_weight.unit_id,
+            None => {
+                return Err(Box::new(
+                    ImportPubchemProductError::UnknownMolecularWeightUnit(
+                        molecularweight_unit_text.to_string(),
+                    ),
+                ))
+            }
+        };
+
+        columns.push(Product::UnitMolecularweight);
+        values.push(SimpleExpr::Value(molecularweight_unit_id.into()));
+    }
+
+    // Cas number.
+    if let Some(casnumber_text) = pubchem_product.cas {
+        let maybe_casnumber = searchable::parse(
+            &CasnumberStruct {
+                ..Default::default()
+            },
+            db_connection,
+            &casnumber_text,
+        )?;
+
+        let casnumber_id = match maybe_casnumber {
+            Some(casnumber) => Some(casnumber.get_id()),
+            None => Some(create(
+                &CasnumberStruct {
+                    ..Default::default()
+                },
+                db_connection,
+                &casnumber_text,
             )?),
+        };
+
+        columns.push(Product::Casnumber);
+        values.push(SimpleExpr::Value(casnumber_id.into()));
+    }
+
+    // Ec number.
+    if let Some(ecnumber_text) = pubchem_product.ec {
+        let maybe_ecnumber = searchable::parse(
+            &CenumberStruct {
+                ..Default::default()
+            },
+            db_connection,
+            &ecnumber_text,
+        )?;
+
+        let ecnumber_id = match maybe_ecnumber {
+            Some(ecnumber) => Some(ecnumber.get_id()),
+            None => Some(create(
+                &CenumberStruct {
+                    ..Default::default()
+                },
+                db_connection,
+                &ecnumber_text,
+            )?),
+        };
+
+        columns.push(Product::Cenumber);
+        values.push(SimpleExpr::Value(ecnumber_id.into()));
+    }
+
+    // Empirical formula.
+    if let Some(empiricalformula_text) = pubchem_product.molecular_formula {
+        let sorted_empiricalformula = sort_empirical_formula(&empiricalformula_text)?;
+
+        let maybe_empiricalformula = searchable::parse(
+            &EmpiricalformulaStruct {
+                ..Default::default()
+            },
+            db_connection,
+            &sorted_empiricalformula,
+        )?;
+
+        let empiricalformula_id = match maybe_empiricalformula {
+            Some(empiricalformula) => Some(empiricalformula.get_id()),
+            None => Some(create(
+                &EmpiricalformulaStruct {
+                    ..Default::default()
+                },
+                db_connection,
+                &empiricalformula_text,
+            )?),
+        };
+
+        columns.push(Product::Empiricalformula);
+        values.push(SimpleExpr::Value(empiricalformula_id.into()));
+    }
+
+    // Signal word.
+    if let Some(signals_text) = pubchem_product.signal {
+        if let Some(signalword) = signals_text.first() {
+            let maybe_signalword = searchable::parse(
+                &SignalwordStruct {
+                    ..Default::default()
+                },
+                db_connection,
+                signalword,
+            )?;
+
+            let signalword_id = match maybe_signalword {
+                Some(signalword) => signalword.get_id(),
+                None => {
+                    return Err(Box::new(ImportPubchemProductError::UnknownSignalword(
+                        signalword.to_string(),
+                    )))
+                }
+            };
+
+            columns.push(Product::Signalword);
+            values.push(SimpleExpr::Value(signalword_id.into()));
         }
     }
 
-    _ = name_id;
+    // Symbols.
+    let mut symbol_ids: Vec<u64> = Vec::new();
 
-    Ok(15)
+    if let Some(symbols_text) = pubchem_product.symbols {
+        for symbol in symbols_text {
+            let maybe_symbol = searchable::parse(
+                &SymbolStruct {
+                    ..Default::default()
+                },
+                db_connection,
+                &symbol,
+            )?;
+
+            let symbol_id = match maybe_symbol {
+                Some(symbol) => symbol.get_id(),
+                None => return Err(Box::new(ImportPubchemProductError::UnknownSymbol(symbol))),
+            };
+
+            symbol_ids.push(symbol_id);
+        }
+    }
+
+    // Hazard statements.
+    let mut hazardstatement_ids: Vec<u64> = Vec::new();
+
+    if let Some(hazardstatements_text) = pubchem_product.hs {
+        for hazardstatement in hazardstatements_text {
+            let maybe_hazardstatement = hazardstatement::parse(db_connection, &hazardstatement)?;
+
+            let hazardstatement_id = match maybe_hazardstatement {
+                Some(hazardstatement) => hazardstatement.hazardstatement_id,
+                None => {
+                    return Err(Box::new(ImportPubchemProductError::UnknownHazardstatement(
+                        hazardstatement,
+                    )))
+                }
+            };
+
+            hazardstatement_ids.push(hazardstatement_id);
+        }
+    }
+
+    // Precautionary statements.
+    let mut precautionarystatement_ids: Vec<u64> = Vec::new();
+
+    if let Some(precautionarystatements_text) = pubchem_product.ps {
+        for precautionarystatement in precautionarystatements_text {
+            let maybe_precautionarystatement =
+                precautionarystatement::parse(db_connection, &precautionarystatement)?;
+
+            let precautionarystatement_id = match maybe_precautionarystatement {
+                Some(precautionarystatement) => precautionarystatement.precautionarystatement_id,
+                None => {
+                    return Err(Box::new(
+                        ImportPubchemProductError::UnknownPrecautionarystatement(
+                            precautionarystatement,
+                        ),
+                    ))
+                }
+            };
+
+            precautionarystatement_ids.push(precautionarystatement_id);
+        }
+    }
+
+    // Insert product.
+    let sql_query = Query::insert()
+        .into_table(Product::Table)
+        .columns(columns)
+        .values(values)?
+        .to_string(SqliteQueryBuilder);
+
+    _ = db_connection.execute(&sql_query, ())?;
+    let product_id: u64 = db_connection.last_insert_rowid().try_into()?;
+
+    // Insert symbols.
+    for symbol_id in symbol_ids {
+        let sql_query = Query::insert()
+            .into_table(Productsymbols::Table)
+            .columns([
+                Productsymbols::ProductsymbolsProductId,
+                Productsymbols::ProductsymbolsSymbolId,
+            ])
+            .values([product_id.into(), symbol_id.into()])?
+            .to_string(SqliteQueryBuilder);
+
+        _ = db_connection.execute(&sql_query, ())?;
+    }
+
+    // Insert hazard statements.
+    for hazardstatement_id in hazardstatement_ids {
+        let sql_query = Query::insert()
+            .into_table(Producthazardstatements::Table)
+            .columns([
+                Producthazardstatements::ProducthazardstatementsProductId,
+                Producthazardstatements::ProducthazardstatementsHazardstatementId,
+            ])
+            .values([product_id.into(), hazardstatement_id.into()])?
+            .to_string(SqliteQueryBuilder);
+
+        _ = db_connection.execute(&sql_query, ())?;
+    }
+
+    // Insert precautionary statements.
+    for precautionarystatement_id in precautionarystatement_ids {
+        let sql_query = Query::insert()
+            .into_table(Productprecautionarystatements::Table)
+            .columns([
+                Productprecautionarystatements::ProductprecautionarystatementsProductId,
+                Productprecautionarystatements::ProductprecautionarystatementsPrecautionarystatementId,
+            ])
+            .values([product_id.into(), precautionarystatement_id.into()])?
+            .to_string(SqliteQueryBuilder);
+
+        _ = db_connection.execute(&sql_query, ())?;
+    }
+
+    debug!("product_id: {}", product_id);
+
+    Ok(product_id)
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::init::init_db;
+    use log::info;
+
+    fn init_logger() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    fn init_test_db() -> Connection {
+        let mut db_connection = Connection::open_in_memory().unwrap();
+        init_db(&mut db_connection).unwrap();
+
+        db_connection
+    }
+
+    #[test]
+    fn test_create_product_from_pubchem() {
+        init_logger();
+
+        let mut db_connection = init_test_db();
+        init_db(&mut db_connection).unwrap();
+
+        info!("testing create product from pubchem");
+        assert!(create_product_from_pubchem(
+            &db_connection,
+            PubchemProduct {
+                name: Some("aspirin".to_string()),
+                ..Default::default()
+            },
+            1
+        )
+        .is_ok_and(|id| id > 0));
+    }
 }

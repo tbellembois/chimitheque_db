@@ -33,6 +33,45 @@ impl From<&Row<'_>> for HazardstatementStruct {
     }
 }
 
+pub fn parse(
+    db_connection: &Connection,
+    s: &str,
+) -> Result<Option<HazardstatementStruct>, Box<dyn std::error::Error>> {
+    debug!("s:{:?}", s);
+
+    let (select_sql, select_values) = Query::select()
+        .columns([
+            Hazardstatement::HazardstatementId,
+            Hazardstatement::HazardstatementLabel,
+            Hazardstatement::HazardstatementReference,
+        ])
+        .from(Hazardstatement::Table)
+        .cond_where(Expr::col(Hazardstatement::HazardstatementReference).eq(s))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(&select_sql)?;
+    let mayerr_query = stmt.query_row(&*select_values.as_params(), |row| {
+        Ok(Some(HazardstatementStruct {
+            match_exact_search: false,
+            hazardstatement_id: row.get_unwrap(0),
+            hazardstatement_label: row.get_unwrap(1),
+            hazardstatement_reference: row.get_unwrap(2),
+        }))
+    });
+
+    match mayerr_query {
+        Ok(hazardstatement) => Ok(hazardstatement),
+        Err(e) => match e {
+            rusqlite::Error::QueryReturnedNoRows => Ok(None),
+            _ => Err(Box::new(e)),
+        },
+    }
+}
+
 pub fn get_hazardstatements(
     db_connection: &Connection,
     filter: RequestFilter,
@@ -176,6 +215,18 @@ mod tests {
             .unwrap();
 
         db_connection
+    }
+
+    #[test]
+    fn test_parse_hazardstatement() {
+        init_logger();
+
+        let mut db_connection = init_test_db();
+        init_db(&mut db_connection).unwrap();
+
+        info!("testing parse");
+        assert!(parse(&db_connection, "EUH209A").is_ok_and(|u| u.is_some()));
+        assert!(parse(&db_connection, "not exist").is_ok_and(|u| u.is_none()));
     }
 
     #[test]

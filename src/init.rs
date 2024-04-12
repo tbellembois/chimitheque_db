@@ -687,6 +687,12 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         (),
     )?;
 
+    info!("- adding chimitheque admin");
+    tx.execute(
+        "INSERT INTO person (person_id, person_email) VALUES (1, 'admin@chimitheque.fr')",
+        (),
+    )?;
+
     tx.commit()
 }
 

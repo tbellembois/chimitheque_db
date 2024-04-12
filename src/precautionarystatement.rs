@@ -33,6 +33,45 @@ impl From<&Row<'_>> for PrecautionarystatementStruct {
     }
 }
 
+pub fn parse(
+    db_connection: &Connection,
+    s: &str,
+) -> Result<Option<PrecautionarystatementStruct>, Box<dyn std::error::Error>> {
+    debug!("s:{:?}", s);
+
+    let (select_sql, select_values) = Query::select()
+        .columns([
+            Precautionarystatement::PrecautionarystatementId,
+            Precautionarystatement::PrecautionarystatementLabel,
+            Precautionarystatement::PrecautionarystatementReference,
+        ])
+        .from(Precautionarystatement::Table)
+        .cond_where(Expr::col(Precautionarystatement::PrecautionarystatementReference).eq(s))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(&select_sql)?;
+    let mayerr_query = stmt.query_row(&*select_values.as_params(), |row| {
+        Ok(Some(PrecautionarystatementStruct {
+            match_exact_search: false,
+            precautionarystatement_id: row.get_unwrap(0),
+            precautionarystatement_label: row.get_unwrap(1),
+            precautionarystatement_reference: row.get_unwrap(2),
+        }))
+    });
+
+    match mayerr_query {
+        Ok(precautionarystatement) => Ok(precautionarystatement),
+        Err(e) => match e {
+            rusqlite::Error::QueryReturnedNoRows => Ok(None),
+            _ => Err(Box::new(e)),
+        },
+    }
+}
+
 pub fn get_precautionarystatements(
     db_connection: &Connection,
     filter: RequestFilter,
@@ -182,6 +221,18 @@ mod tests {
             .unwrap();
 
         db_connection
+    }
+
+    #[test]
+    fn test_parse_precautionarystatement() {
+        init_logger();
+
+        let mut db_connection = init_test_db();
+        init_db(&mut db_connection).unwrap();
+
+        info!("testing parse");
+        assert!(parse(&db_connection, "P322").is_ok_and(|u| u.is_some()));
+        assert!(parse(&db_connection, "not exist").is_ok_and(|u| u.is_none()));
     }
 
     #[test]

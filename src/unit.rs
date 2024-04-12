@@ -55,7 +55,7 @@ enum Unit {
 
 #[derive(Debug, Serialize)]
 pub struct UnitStruct {
-    unit_id: u64,
+    pub unit_id: u64,
     unit_label: String,
     unit_multiplier: f64,
     unit_type: UnitType,
@@ -89,6 +89,63 @@ impl TryFrom<&Row<'_>> for UnitStruct {
                 })
             }),
         })
+    }
+}
+
+pub fn parse(
+    db_connection: &Connection,
+    s: &str,
+) -> Result<Option<UnitStruct>, Box<dyn std::error::Error>> {
+    debug!("s:{:?}", s);
+
+    let (select_sql, select_values) = Query::select()
+        .expr(Expr::col((Unit::Table, Unit::UnitId)))
+        .expr(Expr::col((Unit::Table, Unit::UnitLabel)))
+        .expr(Expr::col((Unit::Table, Unit::UnitMultiplier)))
+        .expr(Expr::col((Unit::Table, Unit::UnitType)))
+        .expr_as(
+            Expr::col((Alias::new("parent"), Alias::new("unit_id"))),
+            Alias::new("parent_unit_id"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("parent"), Alias::new("unit_label"))),
+            Alias::new("parent_unit_label"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("parent"), Alias::new("unit_multiplier"))),
+            Alias::new("parent_unit_multiplier"),
+        )
+        .from(Unit::Table)
+        .join_as(
+            JoinType::LeftJoin,
+            Unit::Table,
+            Alias::new("parent"),
+            Expr::col((Unit::Table, Unit::Unit))
+                .equals((Alias::new("parent"), Alias::new("unit_id"))),
+        )
+        .cond_where(Expr::col((Unit::Table, Unit::UnitLabel)).eq(s))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(&select_sql)?;
+    let mayerr_query = stmt.query_row(&*select_values.as_params(), |row| {
+        Ok({
+            match UnitStruct::try_from(row) {
+                Ok(unit) => unit,
+                Err(e) => return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(e))),
+            }
+        })
+    });
+
+    match mayerr_query {
+        Ok(unit) => Ok(Some(unit)),
+        Err(e) => match e {
+            rusqlite::Error::QueryReturnedNoRows => Ok(None),
+            _ => Err(Box::new(e)),
+        },
     }
 }
 
@@ -209,6 +266,18 @@ mod tests {
         init_db(&mut db_connection).unwrap();
 
         db_connection
+    }
+
+    #[test]
+    fn test_parse_unit() {
+        init_logger();
+
+        let mut db_connection = init_test_db();
+        init_db(&mut db_connection).unwrap();
+
+        info!("testing parse");
+        assert!(parse(&db_connection, "mL").is_ok_and(|u| u.is_some()));
+        assert!(parse(&db_connection, "not exist").is_ok_and(|u| u.is_none()));
     }
 
     #[test]
