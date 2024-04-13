@@ -307,20 +307,20 @@ mod tests {
         let _ = db_connection
             .execute(
                 "INSERT INTO person (person_id, person_email) VALUES (?1, ?2)",
-                (1, "person1"),
+                (2, "person1"),
             )
             .unwrap();
         let _ = db_connection
         .execute(
             "INSERT INTO personentities (personentities_person_id, personentities_entity_id) VALUES (?1, ?2)",
-            (1, 200),
+            (2, 200),
         )
         .unwrap();
         // set user an admin.
         let _ = db_connection
         .execute(
             "INSERT INTO permission (person, permission_perm_name, permission_item_name, permission_entity_id) VALUES (?1, ?2, ?3, ?4)",
-            (1, "all", "all", -1),
+            (2, "all", "all", -1),
         )
         .unwrap();
 
@@ -354,7 +354,7 @@ mod tests {
         let filter = RequestFilter {
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter, 1).unwrap();
+        let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 11);
         assert_eq!(storelocations.len(), 11);
 
@@ -363,7 +363,7 @@ mod tests {
             entity: Some(201),
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter, 1).unwrap();
+        let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
 
         assert_eq!(count, 2);
         for storelocation in storelocations.iter() {
@@ -378,7 +378,7 @@ mod tests {
             search: Some(String::from("FAKE_STORELOCATION_22")),
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter, 1).unwrap();
+        let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 1);
         assert_eq!(
             storelocations[0].storelocation_name,
@@ -390,7 +390,7 @@ mod tests {
             store_location_can_store: true,
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter, 1).unwrap();
+        let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 1);
         assert_eq!(
             storelocations[0].storelocation_name,
@@ -402,7 +402,7 @@ mod tests {
             limit: Some(5),
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter, 1).unwrap();
+        let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 11);
         assert_eq!(storelocations.len(), 5);
 
@@ -414,10 +414,10 @@ mod tests {
         let _ = db_connection
         .execute(
             "INSERT INTO permission (person, permission_perm_name, permission_item_name, permission_entity_id) VALUES (?1, ?2, ?3, ?4)",
-            (1, "r", "storages", 200),
+            (2, "r", "storages", 200),
         )
         .unwrap();
-        let (_, count) = get_storelocations(&db_connection, filter, 1).unwrap();
+        let (_, count) = get_storelocations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 9);
     }
 }

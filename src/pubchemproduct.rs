@@ -39,7 +39,7 @@ impl Display for ImportPubchemProductError {
                 write!(f, "unknown precautionary statement {s}")
             }
             ImportPubchemProductError::UnknownSignalword(s) => {
-                write!(f, "unknown signal word statement {s}")
+                write!(f, "unknown signal word {s}")
             }
             ImportPubchemProductError::UnknownMolecularWeightUnit(s) => {
                 write!(f, "unknown molecular weight unit {s}")
@@ -112,6 +112,11 @@ pub fn create_product_from_pubchem(
     if let Some(molecular_weight) = pubchem_product.molecular_weight {
         columns.push(Product::ProductMolecularweight);
         values.push(SimpleExpr::Value(molecular_weight.into()));
+    }
+
+    if let Some(twodpicture) = pubchem_product.twodpicture {
+        columns.push(Product::ProductTwodformula);
+        values.push(SimpleExpr::Value(twodpicture.into()));
     }
 
     // Molecular weight unit.
@@ -360,6 +365,8 @@ pub fn create_product_from_pubchem(
 #[cfg(test)]
 mod tests {
 
+    use std::vec;
+
     use super::*;
     use crate::init::init_db;
     use log::info;
@@ -392,5 +399,83 @@ mod tests {
             1
         )
         .is_ok_and(|id| id > 0));
+
+        assert!(create_product_from_pubchem(
+            &db_connection,
+            PubchemProduct {
+                ..Default::default()
+            },
+            1
+        )
+        .is_err_and(|e| e.to_string().eq("empty name")));
+
+        assert!(create_product_from_pubchem(
+            &db_connection,
+            PubchemProduct {
+                name: Some("aspirin".to_string()),
+                hs: Some(vec!["foo".to_string()]),
+                ..Default::default()
+            },
+            1
+        )
+        .is_err_and(|e| e.to_string().eq("unknown hazard statement foo")));
+
+        assert!(create_product_from_pubchem(
+            &db_connection,
+            PubchemProduct {
+                name: Some("aspirin".to_string()),
+                ps: Some(vec!["foo".to_string()]),
+                ..Default::default()
+            },
+            1
+        )
+        .is_err_and(|e| e.to_string().eq("unknown precautionary statement foo")));
+
+        assert!(create_product_from_pubchem(
+            &db_connection,
+            PubchemProduct {
+                name: Some("aspirin".to_string()),
+                signal: Some(vec!["foo".to_string()]),
+                ..Default::default()
+            },
+            1
+        )
+        .is_err_and(|e| e.to_string().eq("unknown signal word foo")));
+
+        assert!(create_product_from_pubchem(
+            &db_connection,
+            PubchemProduct {
+                name: Some("aspirin".to_string()),
+                molecular_weight_unit: Some("foo".to_string()),
+                ..Default::default()
+            },
+            1
+        )
+        .is_err_and(|e| e.to_string().eq("unknown molecular weight unit foo")));
+
+        assert!(create_product_from_pubchem(
+            &db_connection,
+            PubchemProduct {
+                name: Some("aspirin".to_string()),
+                iupac_name: Some("iupac_name".to_string()),
+                inchi: Some("inchi".to_string()),
+                inchi_key: Some("inchi_key".to_string()),
+                canonical_smiles: Some("canonical_smiles".to_string()),
+                molecular_formula: Some("molecular_formula".to_string()),
+                cas: Some("cas".to_string()),
+                ec: Some("ec".to_string()),
+                molecular_weight: Some("1.5".to_string()),
+                molecular_weight_unit: Some("g/mol".to_string()),
+                boiling_point: Some("boiling_point".to_string()),
+                synonyms: Some(vec!["foo".to_string(), "bar".to_string()]),
+                symbols: Some(vec!["SGH01".to_string(), "SGH02".to_string()]),
+                signal: Some(vec!["danger".to_string()]),
+                hs: Some(vec!["EUH209A".to_string(), "EUH209".to_string()]),
+                ps: Some(vec!["P390".to_string(), "P261".to_string()]),
+                twodpicture: Some("twodpicture".to_string()),
+            },
+            1,
+        )
+        .is_ok());
     }
 }

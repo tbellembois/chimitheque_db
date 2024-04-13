@@ -292,7 +292,7 @@ mod tests {
             ..Default::default()
         };
         let (units, count) = get_units(&db_connection, filter).unwrap();
-        assert_eq!(count, 22);
-        assert_eq!(units.len(), 22);
+        assert_eq!(count, 23);
+        assert_eq!(units.len(), 23);
     }
 }

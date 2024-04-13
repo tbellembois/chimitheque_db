@@ -693,6 +693,11 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         (),
     )?;
 
+    tx.execute(
+        "INSERT INTO unit (unit_label, unit_multiplier, unit_type) VALUES ('g/mol', 1, 'molecularweight');",
+        (),
+    )?;
+
     tx.commit()
 }
 
