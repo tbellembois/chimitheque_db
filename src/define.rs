@@ -160,7 +160,7 @@ pub const PRODUCERS: [&str; 38] = [
 pub const SIGNAL_WORDS: [&str; 2] = ["danger", "warning"];
 
 pub const SYMBOLS: [&str; 9] = [
-    "SGH01", "SGH02", "SGH03", "SGH04", "SGH05", "SGH06", "SGH07", "SGH08", "SGH09",
+    "GHS01", "GHS02", "GHS03", "GHS04", "GHS05", "GHS06", "GHS07", "GHS08", "GHS09",
 ];
 
 pub const PRECAUTIONARY_STATEMENTS: [(&str, &str); 137] = [
