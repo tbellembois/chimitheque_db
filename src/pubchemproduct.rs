@@ -468,7 +468,7 @@ mod tests {
                 molecular_weight_unit: Some("g/mol".to_string()),
                 boiling_point: Some("boiling_point".to_string()),
                 synonyms: Some(vec!["foo".to_string(), "bar".to_string()]),
-                symbols: Some(vec!["SGH01".to_string(), "SGH02".to_string()]),
+                symbols: Some(vec!["GHS01".to_string(), "GHS02".to_string()]),
                 signal: Some(vec!["danger".to_string()]),
                 hs: Some(vec!["EUH209A".to_string(), "EUH209".to_string()]),
                 ps: Some(vec!["P390".to_string(), "P261".to_string()]),
