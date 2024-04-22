@@ -1,4 +1,6 @@
 use chimitheque_types::pubchemproduct::PubchemProduct;
+use chimitheque_utils::casnumber::is_cas_number;
+use chimitheque_utils::cenumber::is_ce_number;
 use chimitheque_utils::formula::sort_empirical_formula;
 use log::debug;
 use rusqlite::Connection;
@@ -25,6 +27,8 @@ pub enum ImportPubchemProductError {
     UnknownPrecautionarystatement(String),
     UnknownSignalword(String),
     UnknownMolecularWeightUnit(String),
+    InvalidCasnumber(String),
+    InvalidEcnumber(String),
     EmptyName,
 }
 
@@ -43,6 +47,12 @@ impl Display for ImportPubchemProductError {
             }
             ImportPubchemProductError::UnknownMolecularWeightUnit(s) => {
                 write!(f, "unknown molecular weight unit {s}")
+            }
+            ImportPubchemProductError::InvalidCasnumber(s) => {
+                write!(f, "invalid cas number {s}")
+            }
+            ImportPubchemProductError::InvalidEcnumber(s) => {
+                write!(f, "invalid ec number {s}")
             }
             ImportPubchemProductError::EmptyName => {
                 write!(f, "empty name")
@@ -79,7 +89,7 @@ pub fn create_product_from_pubchem(
                     ..Default::default()
                 },
                 db_connection,
-                &name_text,
+                &name_text.to_uppercase(),
             )?,
         }
     } else {
@@ -128,7 +138,7 @@ pub fn create_product_from_pubchem(
             None => {
                 return Err(Box::new(
                     ImportPubchemProductError::UnknownMolecularWeightUnit(
-                        molecularweight_unit_text.to_string(),
+                        molecularweight_unit_text,
                     ),
                 ))
             }
@@ -140,6 +150,12 @@ pub fn create_product_from_pubchem(
 
     // Cas number.
     if let Some(casnumber_text) = pubchem_product.cas {
+        if !is_cas_number(&casnumber_text)? {
+            return Err(Box::new(ImportPubchemProductError::InvalidCasnumber(
+                casnumber_text,
+            )));
+        };
+
         let maybe_casnumber = searchable::parse(
             &CasnumberStruct {
                 ..Default::default()
@@ -165,6 +181,12 @@ pub fn create_product_from_pubchem(
 
     // Ec number.
     if let Some(ecnumber_text) = pubchem_product.ec {
+        if !is_ce_number(&ecnumber_text)? {
+            return Err(Box::new(ImportPubchemProductError::InvalidEcnumber(
+                ecnumber_text,
+            )));
+        };
+
         let maybe_ecnumber = searchable::parse(
             &CenumberStruct {
                 ..Default::default()
