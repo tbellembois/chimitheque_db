@@ -17,6 +17,17 @@ enum UnitType {
     MolecularWeight,
 }
 
+impl Display for UnitType {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match self {
+            UnitType::Quantity => write!(f, "quantity"),
+            UnitType::Concentration => write!(f, "concentration"),
+            UnitType::Temperature => write!(f, "temperature"),
+            UnitType::MolecularWeight => write!(f, "molecular_weight"),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseUnitTypeError;
 
@@ -209,6 +220,13 @@ pub fn get_units(
             ((Unit::Table, Unit::UnitLabel), Order::Asc),
         ])
         .conditions(
+            filter.unit_type.is_some(),
+            |q| {
+                q.and_where(Expr::col((Unit::Table, Unit::UnitType)).eq(filter.unit_type.unwrap()));
+            },
+            |_| {},
+        )
+        .conditions(
             filter.limit.is_some(),
             |q| {
                 q.limit(filter.limit.unwrap());
@@ -294,5 +312,14 @@ mod tests {
         let (units, count) = get_units(&db_connection, filter).unwrap();
         assert_eq!(count, 23);
         assert_eq!(units.len(), 23);
+
+        info!("testing filter");
+        let filter = RequestFilter {
+            unit_type: Some(UnitType::Quantity.to_string()),
+            ..Default::default()
+        };
+        let (units, count) = get_units(&db_connection, filter).unwrap();
+        assert_eq!(count, 23);
+        assert_eq!(units.len(), 10);
     }
 }
