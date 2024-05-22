@@ -334,8 +334,12 @@ pub fn create_product_from_pubchem(
         .values(values)?
         .to_string(SqliteQueryBuilder);
 
+    debug!("insert_sql: {}", sql_query.clone().as_str());
+
     _ = db_connection.execute(&sql_query, ())?;
     let product_id: u64 = db_connection.last_insert_rowid().try_into()?;
+
+    debug!("product_id: {}", product_id);
 
     // Insert symbols.
     for symbol_id in symbol_ids {
@@ -484,8 +488,8 @@ mod tests {
                 inchi_key: Some("inchi_key".to_string()),
                 canonical_smiles: Some("canonical_smiles".to_string()),
                 molecular_formula: Some("molecular_formula".to_string()),
-                cas: Some("cas".to_string()),
-                ec: Some("ec".to_string()),
+                cas: Some("100-00-5".to_string()),
+                ec: Some("214-480-6".to_string()),
                 molecular_weight: Some("1.5".to_string()),
                 molecular_weight_unit: Some("g/mol".to_string()),
                 boiling_point: Some("boiling_point".to_string()),

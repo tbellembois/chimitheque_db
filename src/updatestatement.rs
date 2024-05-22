@@ -53,7 +53,6 @@ mod tests {
         let mut db_connection = Connection::open_in_memory().unwrap();
         init_db(&mut db_connection).unwrap();
 
-        dbg!(update_ghs_statements(&db_connection));
-        // assert!(update_ghs_statements(&db_connection).is_ok());
+        assert!(update_ghs_statements(&db_connection).is_ok());
     }
 }
