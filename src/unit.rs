@@ -1,57 +1,14 @@
-use chimitheque_types::requestfilter::RequestFilter;
+use chimitheque_types::{
+    requestfilter::RequestFilter,
+    unit::Unit as UnitStruct,
+    unittype::{ParseUnitTypeError, UnitType},
+};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Alias, Expr, Iden, JoinType, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
-use std::{
-    fmt::{Display, Formatter},
-    str::FromStr,
-};
-
-#[derive(Debug, Serialize, Clone)]
-enum UnitType {
-    Quantity,
-    Concentration,
-    Temperature,
-    MolecularWeight,
-}
-
-impl Display for UnitType {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        match self {
-            UnitType::Quantity => write!(f, "quantity"),
-            UnitType::Concentration => write!(f, "concentration"),
-            UnitType::Temperature => write!(f, "temperature"),
-            UnitType::MolecularWeight => write!(f, "molecular_weight"),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct ParseUnitTypeError;
-
-impl Display for ParseUnitTypeError {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        write!(f, "wrong unit type")
-    }
-}
-
-impl std::error::Error for ParseUnitTypeError {}
-
-impl FromStr for UnitType {
-    type Err = ParseUnitTypeError;
-
-    fn from_str(input: &str) -> Result<UnitType, Self::Err> {
-        match input {
-            "quantity" => Ok(UnitType::Quantity),
-            "concentration" => Ok(UnitType::Concentration),
-            "temperature" => Ok(UnitType::Temperature),
-            "molecularweight" => Ok(UnitType::MolecularWeight),
-            _ => Err(ParseUnitTypeError),
-        }
-    }
-}
+use std::str::FromStr;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -65,16 +22,9 @@ enum Unit {
 }
 
 #[derive(Debug, Serialize)]
-pub struct UnitStruct {
-    pub unit_id: u64,
-    unit_label: String,
-    unit_multiplier: f64,
-    unit_type: UnitType,
+pub struct UnitWrapper(pub UnitStruct);
 
-    unit: Option<Box<UnitStruct>>,
-}
-
-impl TryFrom<&Row<'_>> for UnitStruct {
+impl TryFrom<&Row<'_>> for UnitWrapper {
     type Error = ParseUnitTypeError;
 
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
@@ -85,21 +35,23 @@ impl TryFrom<&Row<'_>> for UnitStruct {
         let maybe_parent_unit: Option<u64> = row.get_unwrap("parent_unit_id");
 
         // We assume that the unit_type is the same for the parent.
-        Ok(Self {
-            unit_id: row.get_unwrap("unit_id"),
-            unit_label: row.get_unwrap("unit_label"),
-            unit_multiplier: row.get_unwrap("unit_multiplier"),
-            unit_type: unit_type.clone(),
-            unit: maybe_parent_unit.map(|_| {
-                Box::new(UnitStruct {
-                    unit_id: row.get_unwrap("parent_unit_id"),
-                    unit_label: row.get_unwrap("parent_unit_label"),
-                    unit_multiplier: row.get_unwrap("parent_unit_multiplier"),
-                    unit_type,
-                    unit: None,
-                })
-            }),
-        })
+        Ok(Self({
+            UnitStruct {
+                unit_id: row.get_unwrap("unit_id"),
+                unit_label: row.get_unwrap("unit_label"),
+                unit_multiplier: row.get_unwrap("unit_multiplier"),
+                unit_type: unit_type.clone(),
+                unit: maybe_parent_unit.map(|_| {
+                    Box::new(UnitStruct {
+                        unit_id: row.get_unwrap("parent_unit_id"),
+                        unit_label: row.get_unwrap("parent_unit_label"),
+                        unit_multiplier: row.get_unwrap("parent_unit_multiplier"),
+                        unit_type,
+                        unit: None,
+                    })
+                }),
+            }
+        }))
     }
 }
 
@@ -144,8 +96,8 @@ pub fn parse(
     let mut stmt = db_connection.prepare(&select_sql)?;
     let mayerr_query = stmt.query_row(&*select_values.as_params(), |row| {
         Ok({
-            match UnitStruct::try_from(row) {
-                Ok(unit) => unit,
+            match UnitWrapper::try_from(row) {
+                Ok(unit) => unit.0,
                 Err(e) => return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(e))),
             }
         })
@@ -259,8 +211,8 @@ pub fn get_units(
     let mut units = Vec::new();
     let mut rows = stmt.query(&*select_values.as_params())?;
     while let Some(row) = rows.next()? {
-        let unit = UnitStruct::try_from(row)?;
-        units.push(unit);
+        let unit = UnitWrapper::try_from(row)?;
+        units.push(unit.0);
     }
 
     debug!("units: {:#?}", units);

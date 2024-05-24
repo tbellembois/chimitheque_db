@@ -1,4 +1,4 @@
-use chimitheque_types::requestfilter::RequestFilter;
+use chimitheque_types::{producer::Producer as ProducerStruct, requestfilter::RequestFilter};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
@@ -13,19 +13,15 @@ pub enum Producer {
 }
 
 #[derive(Debug, Serialize)]
-pub struct ProducerStruct {
-    pub match_exact_search: bool,
-    pub producer_id: u64,
-    pub producer_label: String,
-}
+pub struct ProducerWrapper(pub ProducerStruct);
 
-impl From<&Row<'_>> for ProducerStruct {
+impl From<&Row<'_>> for ProducerWrapper {
     fn from(row: &Row) -> Self {
-        Self {
+        Self(ProducerStruct {
             producer_id: row.get_unwrap("producer_id"),
             producer_label: row.get_unwrap("producer_label"),
             match_exact_search: false,
-        }
+        })
     }
 }
 
@@ -92,7 +88,7 @@ pub fn get_producers(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(ProducerStruct::from(row))
+        Ok(ProducerWrapper::from(row).0)
     })?;
 
     // Build result.

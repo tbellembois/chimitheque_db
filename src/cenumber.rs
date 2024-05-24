@@ -1,26 +1,23 @@
 use crate::searchable::Searchable;
+use chimitheque_types::cenumber::Cenumber;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Default)]
-pub struct CenumberStruct {
-    pub match_exact_search: bool,
-    pub cenumber_id: u64,
-    pub cenumber_label: String,
-}
+pub struct CenumberWrapper(pub Cenumber);
 
-impl Searchable for CenumberStruct {
+impl Searchable for CenumberWrapper {
     fn new(&self) -> Self {
-        CenumberStruct {
+        CenumberWrapper {
             ..Default::default()
         }
     }
 
     fn set_exact_search(&mut self, match_exact_search: bool) {
-        self.match_exact_search = match_exact_search;
+        self.0.match_exact_search = match_exact_search;
     }
 
     fn get_exact_search(&self) -> bool {
-        self.match_exact_search
+        self.0.match_exact_search
     }
 
     fn get_table_name(&self) -> String {
@@ -32,7 +29,7 @@ impl Searchable for CenumberStruct {
     }
 
     fn set_id_field(&mut self, id: u64) {
-        self.cenumber_id = id;
+        self.0.cenumber_id = id;
     }
 
     fn get_text_field_name(&self) -> String {
@@ -40,15 +37,15 @@ impl Searchable for CenumberStruct {
     }
 
     fn set_text_field(&mut self, text: &str) {
-        self.cenumber_label = text.to_string();
+        self.0.cenumber_label = text.to_string();
     }
 
     fn get_id(&self) -> u64 {
-        self.cenumber_id
+        self.0.cenumber_id
     }
 
     fn get_text(&self) -> String {
-        self.cenumber_label.clone()
+        self.0.cenumber_label.clone()
     }
 }
 
@@ -61,7 +58,7 @@ mod tests {
     #[test]
     fn test_get_cenumbers() {
         test_searchable(
-            CenumberStruct {
+            CenumberWrapper {
                 ..Default::default()
             },
             vec![

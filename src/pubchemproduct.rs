@@ -7,17 +7,17 @@ use rusqlite::Connection;
 use sea_query::{Query, SimpleExpr, SqliteQueryBuilder};
 use std::fmt::{Display, Formatter};
 
-use crate::casnumber::CasnumberStruct;
-use crate::cenumber::CenumberStruct;
-use crate::empiricalformula::EmpiricalformulaStruct;
+use crate::casnumber::CasnumberWrapper;
+use crate::cenumber::CenumberWrapper;
+use crate::empiricalformula::EmpiricalformulaWrapper;
 use crate::hazardstatement;
-use crate::name::NameStruct;
+use crate::name::NameWrapper;
 use crate::product::{
     Product, Producthazardstatements, Productprecautionarystatements, Productsymbols,
 };
 use crate::searchable::{self, create, Searchable};
-use crate::signalword::SignalwordStruct;
-use crate::symbol::SymbolStruct;
+use crate::signalword::SignalwordWrapper;
+use crate::symbol::SymbolWrapper;
 use crate::{precautionarystatement, unit};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -75,7 +75,7 @@ pub fn create_product_from_pubchem(
 
     if let Some(name_text) = pubchem_product.name {
         let maybe_name = searchable::parse(
-            &NameStruct {
+            &NameWrapper {
                 ..Default::default()
             },
             db_connection,
@@ -85,7 +85,7 @@ pub fn create_product_from_pubchem(
         name_id = match maybe_name {
             Some(name) => name.get_id(),
             None => create(
-                &NameStruct {
+                &NameWrapper {
                     ..Default::default()
                 },
                 db_connection,
@@ -157,7 +157,7 @@ pub fn create_product_from_pubchem(
         };
 
         let maybe_casnumber = searchable::parse(
-            &CasnumberStruct {
+            &CasnumberWrapper {
                 ..Default::default()
             },
             db_connection,
@@ -167,7 +167,7 @@ pub fn create_product_from_pubchem(
         let casnumber_id = match maybe_casnumber {
             Some(casnumber) => Some(casnumber.get_id()),
             None => Some(create(
-                &CasnumberStruct {
+                &CasnumberWrapper {
                     ..Default::default()
                 },
                 db_connection,
@@ -188,7 +188,7 @@ pub fn create_product_from_pubchem(
         };
 
         let maybe_ecnumber = searchable::parse(
-            &CenumberStruct {
+            &CenumberWrapper {
                 ..Default::default()
             },
             db_connection,
@@ -198,7 +198,7 @@ pub fn create_product_from_pubchem(
         let ecnumber_id = match maybe_ecnumber {
             Some(ecnumber) => Some(ecnumber.get_id()),
             None => Some(create(
-                &CenumberStruct {
+                &CenumberWrapper {
                     ..Default::default()
                 },
                 db_connection,
@@ -215,7 +215,7 @@ pub fn create_product_from_pubchem(
         let sorted_empiricalformula = sort_empirical_formula(&empiricalformula_text)?;
 
         let maybe_empiricalformula = searchable::parse(
-            &EmpiricalformulaStruct {
+            &EmpiricalformulaWrapper {
                 ..Default::default()
             },
             db_connection,
@@ -225,7 +225,7 @@ pub fn create_product_from_pubchem(
         let empiricalformula_id = match maybe_empiricalformula {
             Some(empiricalformula) => Some(empiricalformula.get_id()),
             None => Some(create(
-                &EmpiricalformulaStruct {
+                &EmpiricalformulaWrapper {
                     ..Default::default()
                 },
                 db_connection,
@@ -241,7 +241,7 @@ pub fn create_product_from_pubchem(
     if let Some(signals_text) = pubchem_product.signal {
         if let Some(signalword) = signals_text.first() {
             let maybe_signalword = searchable::parse(
-                &SignalwordStruct {
+                &SignalwordWrapper {
                     ..Default::default()
                 },
                 db_connection,
@@ -268,7 +268,7 @@ pub fn create_product_from_pubchem(
     if let Some(symbols_text) = pubchem_product.symbols {
         for symbol in symbols_text {
             let maybe_symbol = searchable::parse(
-                &SymbolStruct {
+                &SymbolWrapper {
                     ..Default::default()
                 },
                 db_connection,

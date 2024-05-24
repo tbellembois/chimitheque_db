@@ -1,4 +1,6 @@
-use chimitheque_types::requestfilter::RequestFilter;
+use chimitheque_types::{
+    hazardstatement::Hazardstatement as HazardstatementStruct, requestfilter::RequestFilter,
+};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
@@ -15,21 +17,18 @@ enum Hazardstatement {
 }
 
 #[derive(Debug, Serialize, Default)]
-pub struct HazardstatementStruct {
-    pub match_exact_search: bool,
-    pub hazardstatement_id: u64,
-    pub hazardstatement_label: String,
-    pub hazardstatement_reference: String,
-}
+pub struct HazardstatementWrapper(pub HazardstatementStruct);
 
-impl From<&Row<'_>> for HazardstatementStruct {
+impl From<&Row<'_>> for HazardstatementWrapper {
     fn from(row: &Row) -> Self {
-        Self {
-            match_exact_search: false,
-            hazardstatement_id: row.get_unwrap("hazardstatement_id"),
-            hazardstatement_label: row.get_unwrap("hazardstatement_label"),
-            hazardstatement_reference: row.get_unwrap("hazardstatement_reference"),
-        }
+        Self({
+            HazardstatementStruct {
+                match_exact_search: false,
+                hazardstatement_id: row.get_unwrap("hazardstatement_id"),
+                hazardstatement_label: row.get_unwrap("hazardstatement_label"),
+                hazardstatement_reference: row.get_unwrap("hazardstatement_reference"),
+            }
+        })
     }
 }
 
@@ -75,7 +74,7 @@ pub fn parse(
 pub fn get_hazardstatements(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<HazardstatementStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<HazardstatementWrapper>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
@@ -142,7 +141,7 @@ pub fn get_hazardstatements(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(HazardstatementStruct::from(row))
+        Ok(HazardstatementWrapper::from(row))
     })?;
 
     // Build result.
@@ -153,10 +152,11 @@ pub fn get_hazardstatements(
         // Set match_exact_search for statement matching filter.search.
         if filter.search.is_some()
             && hazardstatement
+                .0
                 .hazardstatement_reference
                 .eq(&filter.search.clone().unwrap())
         {
-            hazardstatement.match_exact_search = true;
+            hazardstatement.0.match_exact_search = true;
 
             // Inserting the statement at the beginning of the results.
             hazardstatements.insert(0, hazardstatement)
@@ -252,9 +252,11 @@ mod tests {
         assert_eq!(count, 2);
         // expected exact match appears first.
         assert!(hazardstatements[0]
+            .0
             .hazardstatement_reference
             .eq("hazardstatement1-ref"));
         assert!(hazardstatements[0]
+            .0
             .hazardstatement_label
             .eq("hazardstatement1"));
     }

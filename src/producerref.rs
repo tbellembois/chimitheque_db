@@ -1,11 +1,14 @@
-use chimitheque_types::requestfilter::RequestFilter;
+use chimitheque_types::producer::Producer as ProducerStruct;
+use chimitheque_types::{
+    producerref::Producerref as ProducerrefStruct, requestfilter::RequestFilter,
+};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Alias, Expr, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
-use crate::producer::{Producer, ProducerStruct};
+use crate::producer::Producer;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -17,26 +20,22 @@ enum Producerref {
 }
 
 #[derive(Debug, Serialize)]
-pub struct ProducerrefStruct {
-    match_exact_search: bool,
-    producerref_id: u64,
-    producerref_label: String,
+pub struct ProducerrefWrapper(ProducerrefStruct);
 
-    producer: ProducerStruct,
-}
-
-impl From<&Row<'_>> for ProducerrefStruct {
+impl From<&Row<'_>> for ProducerrefWrapper {
     fn from(row: &Row) -> Self {
-        Self {
-            match_exact_search: false,
-            producerref_id: row.get_unwrap("producerref_id"),
-            producerref_label: row.get_unwrap("producerref_label"),
-            producer: ProducerStruct {
+        Self({
+            ProducerrefStruct {
                 match_exact_search: false,
-                producer_id: row.get_unwrap("producer.producer_id"),
-                producer_label: row.get_unwrap("producer.producer_label"),
-            },
-        }
+                producerref_id: row.get_unwrap("producerref_id"),
+                producerref_label: row.get_unwrap("producerref_label"),
+                producer: ProducerStruct {
+                    match_exact_search: false,
+                    producer_id: row.get_unwrap("producer.producer_id"),
+                    producer_label: row.get_unwrap("producer.producer_label"),
+                },
+            }
+        })
     }
 }
 
@@ -125,7 +124,7 @@ pub fn get_producerrefs(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(ProducerrefStruct::from(row))
+        Ok(ProducerrefWrapper::from(row).0)
     })?;
 
     // Build result.

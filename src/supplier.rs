@@ -1,4 +1,4 @@
-use chimitheque_types::requestfilter::RequestFilter;
+use chimitheque_types::{requestfilter::RequestFilter, supplier::Supplier as SupplierStruct};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
@@ -13,19 +13,17 @@ pub enum Supplier {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SupplierStruct {
-    pub match_exact_search: bool,
-    pub supplier_id: u64,
-    pub supplier_label: String,
-}
+pub struct SupplierWrapper(pub SupplierStruct);
 
-impl From<&Row<'_>> for SupplierStruct {
+impl From<&Row<'_>> for SupplierWrapper {
     fn from(row: &Row) -> Self {
-        Self {
-            supplier_id: row.get_unwrap("supplier_id"),
-            supplier_label: row.get_unwrap("supplier_label"),
-            match_exact_search: false,
-        }
+        Self({
+            SupplierStruct {
+                supplier_id: row.get_unwrap("supplier_id"),
+                supplier_label: row.get_unwrap("supplier_label"),
+                match_exact_search: false,
+            }
+        })
     }
 }
 
@@ -92,7 +90,7 @@ pub fn get_suppliers(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(SupplierStruct::from(row))
+        Ok(SupplierWrapper::from(row).0)
     })?;
 
     // Build result.

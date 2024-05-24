@@ -1,26 +1,23 @@
 use crate::searchable::Searchable;
+use chimitheque_types::physicalstate::Physicalstate;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Default)]
-pub struct PhysicalstateStruct {
-    pub match_exact_search: bool,
-    pub physicalstate_id: u64,
-    pub physicalstate_label: String,
-}
+pub struct PhysicalstateWrapper(pub Physicalstate);
 
-impl Searchable for PhysicalstateStruct {
+impl Searchable for PhysicalstateWrapper {
     fn new(&self) -> Self {
-        PhysicalstateStruct {
+        PhysicalstateWrapper {
             ..Default::default()
         }
     }
 
     fn set_exact_search(&mut self, match_exact_search: bool) {
-        self.match_exact_search = match_exact_search;
+        self.0.match_exact_search = match_exact_search;
     }
 
     fn get_exact_search(&self) -> bool {
-        self.match_exact_search
+        self.0.match_exact_search
     }
 
     fn get_table_name(&self) -> String {
@@ -32,7 +29,7 @@ impl Searchable for PhysicalstateStruct {
     }
 
     fn set_id_field(&mut self, id: u64) {
-        self.physicalstate_id = id;
+        self.0.physicalstate_id = id;
     }
 
     fn get_text_field_name(&self) -> String {
@@ -40,15 +37,15 @@ impl Searchable for PhysicalstateStruct {
     }
 
     fn set_text_field(&mut self, text: &str) {
-        self.physicalstate_label = text.to_string();
+        self.0.physicalstate_label = text.to_string();
     }
 
     fn get_id(&self) -> u64 {
-        self.physicalstate_id
+        self.0.physicalstate_id
     }
 
     fn get_text(&self) -> String {
-        self.physicalstate_label.clone()
+        self.0.physicalstate_label.clone()
     }
 }
 
@@ -61,7 +58,7 @@ mod tests {
     #[test]
     fn test_get_physicalstates() {
         test_searchable(
-            PhysicalstateStruct {
+            PhysicalstateWrapper {
                 ..Default::default()
             },
             vec![

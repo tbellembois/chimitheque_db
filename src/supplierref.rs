@@ -1,10 +1,14 @@
-use crate::supplier::{Supplier, SupplierStruct};
-use chimitheque_types::requestfilter::RequestFilter;
+use chimitheque_types::{
+    requestfilter::RequestFilter, supplier::Supplier as SupplierStruct,
+    supplierref::Supplierref as SupplierrefStruct,
+};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Alias, Expr, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
+
+use crate::supplier::Supplier;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -16,26 +20,22 @@ enum Supplierref {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SupplierrefStruct {
-    match_exact_search: bool,
-    supplierref_id: u64,
-    supplierref_label: String,
+pub struct SupplierrefWrapper(pub SupplierrefStruct);
 
-    supplier: SupplierStruct,
-}
-
-impl From<&Row<'_>> for SupplierrefStruct {
+impl From<&Row<'_>> for SupplierrefWrapper {
     fn from(row: &Row) -> Self {
-        Self {
-            match_exact_search: false,
-            supplierref_id: row.get_unwrap("supplierref_id"),
-            supplierref_label: row.get_unwrap("supplierref_label"),
-            supplier: SupplierStruct {
+        Self({
+            SupplierrefStruct {
                 match_exact_search: false,
-                supplier_id: row.get_unwrap("supplier.supplier_id"),
-                supplier_label: row.get_unwrap("supplier.supplier_label"),
-            },
-        }
+                supplierref_id: row.get_unwrap("supplierref_id"),
+                supplierref_label: row.get_unwrap("supplierref_label"),
+                supplier: SupplierStruct {
+                    match_exact_search: false,
+                    supplier_id: row.get_unwrap("supplier.supplier_id"),
+                    supplier_label: row.get_unwrap("supplier.supplier_label"),
+                },
+            }
+        })
     }
 }
 
@@ -125,7 +125,7 @@ pub fn get_supplierrefs(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(SupplierrefStruct::from(row))
+        Ok(SupplierrefWrapper::from(row).0)
     })?;
 
     // Build result.

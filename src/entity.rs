@@ -1,3 +1,4 @@
+use chimitheque_types::entity::Entity as EntityStruct;
 use sea_query::Iden;
 use serde::Serialize;
 
@@ -10,7 +11,4 @@ pub enum Entity {
 }
 
 #[derive(Debug, Serialize)]
-pub struct EntityStruct {
-    pub(crate) entity_id: u64,
-    pub(crate) entity_name: String,
-}
+pub struct EntityWrapper(pub EntityStruct);

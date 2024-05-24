@@ -1,4 +1,7 @@
-use chimitheque_types::requestfilter::RequestFilter;
+use chimitheque_types::{
+    precautionarystatement::Precautionarystatement as PrecautionarystatementStruct,
+    requestfilter::RequestFilter,
+};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
@@ -15,21 +18,19 @@ enum Precautionarystatement {
 }
 
 #[derive(Debug, Serialize, Default)]
-pub struct PrecautionarystatementStruct {
-    pub match_exact_search: bool,
-    pub precautionarystatement_id: u64,
-    pub precautionarystatement_label: String,
-    pub precautionarystatement_reference: String,
-}
+pub struct PrecautionarystatementWrapper(pub PrecautionarystatementStruct);
 
-impl From<&Row<'_>> for PrecautionarystatementStruct {
+impl From<&Row<'_>> for PrecautionarystatementWrapper {
     fn from(row: &Row) -> Self {
-        Self {
-            match_exact_search: false,
-            precautionarystatement_id: row.get_unwrap("precautionarystatement_id"),
-            precautionarystatement_label: row.get_unwrap("precautionarystatement_label"),
-            precautionarystatement_reference: row.get_unwrap("precautionarystatement_reference"),
-        }
+        Self({
+            PrecautionarystatementStruct {
+                match_exact_search: false,
+                precautionarystatement_id: row.get_unwrap("precautionarystatement_id"),
+                precautionarystatement_label: row.get_unwrap("precautionarystatement_label"),
+                precautionarystatement_reference: row
+                    .get_unwrap("precautionarystatement_reference"),
+            }
+        })
     }
 }
 
@@ -75,7 +76,7 @@ pub fn parse(
 pub fn get_precautionarystatements(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<PrecautionarystatementStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<PrecautionarystatementWrapper>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
@@ -148,7 +149,7 @@ pub fn get_precautionarystatements(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(PrecautionarystatementStruct::from(row))
+        Ok(PrecautionarystatementWrapper::from(row))
     })?;
 
     // Build result.
@@ -159,10 +160,11 @@ pub fn get_precautionarystatements(
         // Set match_exact_search for statement matching filter.search.
         if filter.search.is_some()
             && precautionarystatement
+                .0
                 .precautionarystatement_reference
                 .eq(&filter.search.clone().unwrap())
         {
-            precautionarystatement.match_exact_search = true;
+            precautionarystatement.0.match_exact_search = true;
 
             // Inserting the statement at the beginning of the results.
             precautionarystatements.insert(0, precautionarystatement)
@@ -259,9 +261,11 @@ mod tests {
         assert_eq!(count, 2);
         // expected exact match appears first.
         assert!(precautionarystatements[0]
+            .0
             .precautionarystatement_reference
             .eq("precautionarystatement1-ref"));
         assert!(precautionarystatements[0]
+            .0
             .precautionarystatement_label
             .eq("precautionarystatement1"));
     }

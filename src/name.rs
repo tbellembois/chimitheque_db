@@ -1,26 +1,23 @@
 use crate::searchable::Searchable;
+use chimitheque_types::name::Name;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Default)]
-pub struct NameStruct {
-    pub match_exact_search: bool,
-    pub name_id: u64,
-    pub name_label: String,
-}
+pub struct NameWrapper(pub Name);
 
-impl Searchable for NameStruct {
+impl Searchable for NameWrapper {
     fn new(&self) -> Self {
-        NameStruct {
+        NameWrapper {
             ..Default::default()
         }
     }
 
     fn set_exact_search(&mut self, match_exact_search: bool) {
-        self.match_exact_search = match_exact_search;
+        self.0.match_exact_search = match_exact_search;
     }
 
     fn get_exact_search(&self) -> bool {
-        self.match_exact_search
+        self.0.match_exact_search
     }
 
     fn get_table_name(&self) -> String {
@@ -32,7 +29,7 @@ impl Searchable for NameStruct {
     }
 
     fn set_id_field(&mut self, id: u64) {
-        self.name_id = id;
+        self.0.name_id = id;
     }
 
     fn get_text_field_name(&self) -> String {
@@ -40,15 +37,15 @@ impl Searchable for NameStruct {
     }
 
     fn set_text_field(&mut self, text: &str) {
-        self.name_label = text.to_string();
+        self.0.name_label = text.to_string();
     }
 
     fn get_id(&self) -> u64 {
-        self.name_id
+        self.0.name_id
     }
 
     fn get_text(&self) -> String {
-        self.name_label.clone()
+        self.0.name_label.clone()
     }
 }
 
@@ -61,7 +58,7 @@ mod tests {
     #[test]
     fn test_get_names() {
         test_searchable(
-            NameStruct {
+            NameWrapper {
                 ..Default::default()
             },
             vec!["name1", "aa name1", "bb nAmE1", "name2", "name3"],

@@ -1,26 +1,23 @@
 use crate::searchable::Searchable;
+use chimitheque_types::empiricalformula::Empiricalformula;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Default)]
-pub struct EmpiricalformulaStruct {
-    pub match_exact_search: bool,
-    pub empiricalformula_id: u64,
-    pub empiricalformula_label: String,
-}
+pub struct EmpiricalformulaWrapper(pub Empiricalformula);
 
-impl Searchable for EmpiricalformulaStruct {
+impl Searchable for EmpiricalformulaWrapper {
     fn new(&self) -> Self {
-        EmpiricalformulaStruct {
+        EmpiricalformulaWrapper {
             ..Default::default()
         }
     }
 
     fn set_exact_search(&mut self, match_exact_search: bool) {
-        self.match_exact_search = match_exact_search;
+        self.0.match_exact_search = match_exact_search;
     }
 
     fn get_exact_search(&self) -> bool {
-        self.match_exact_search
+        self.0.match_exact_search
     }
 
     fn get_table_name(&self) -> String {
@@ -32,7 +29,7 @@ impl Searchable for EmpiricalformulaStruct {
     }
 
     fn set_id_field(&mut self, id: u64) {
-        self.empiricalformula_id = id;
+        self.0.empiricalformula_id = id;
     }
 
     fn get_text_field_name(&self) -> String {
@@ -40,15 +37,15 @@ impl Searchable for EmpiricalformulaStruct {
     }
 
     fn set_text_field(&mut self, text: &str) {
-        self.empiricalformula_label = text.to_string();
+        self.0.empiricalformula_label = text.to_string();
     }
 
     fn get_id(&self) -> u64 {
-        self.empiricalformula_id
+        self.0.empiricalformula_id
     }
 
     fn get_text(&self) -> String {
-        self.empiricalformula_label.clone()
+        self.0.empiricalformula_label.clone()
     }
 }
 
@@ -61,7 +58,7 @@ mod tests {
     #[test]
     fn test_get_empiricalformulas() {
         test_searchable(
-            EmpiricalformulaStruct {
+            EmpiricalformulaWrapper {
                 ..Default::default()
             },
             vec![

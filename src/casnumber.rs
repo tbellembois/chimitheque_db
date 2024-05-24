@@ -1,26 +1,23 @@
 use crate::searchable::Searchable;
+use chimitheque_types::casnumber::Casnumber;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Default)]
-pub struct CasnumberStruct {
-    pub match_exact_search: bool,
-    pub casnumber_id: u64,
-    pub casnumber_label: String,
-}
+pub struct CasnumberWrapper(pub Casnumber);
 
-impl Searchable for CasnumberStruct {
+impl Searchable for CasnumberWrapper {
     fn new(&self) -> Self {
-        CasnumberStruct {
+        CasnumberWrapper {
             ..Default::default()
         }
     }
 
     fn set_exact_search(&mut self, match_exact_search: bool) {
-        self.match_exact_search = match_exact_search;
+        self.0.match_exact_search = match_exact_search;
     }
 
     fn get_exact_search(&self) -> bool {
-        self.match_exact_search
+        self.0.match_exact_search
     }
 
     fn get_table_name(&self) -> String {
@@ -32,7 +29,7 @@ impl Searchable for CasnumberStruct {
     }
 
     fn set_id_field(&mut self, id: u64) {
-        self.casnumber_id = id;
+        self.0.casnumber_id = id;
     }
 
     fn get_text_field_name(&self) -> String {
@@ -40,15 +37,15 @@ impl Searchable for CasnumberStruct {
     }
 
     fn set_text_field(&mut self, text: &str) {
-        self.casnumber_label = text.to_string();
+        self.0.casnumber_label = text.to_string();
     }
 
     fn get_id(&self) -> u64 {
-        self.casnumber_id
+        self.0.casnumber_id
     }
 
     fn get_text(&self) -> String {
-        self.casnumber_label.clone()
+        self.0.casnumber_label.clone()
     }
 }
 
@@ -61,7 +58,7 @@ mod tests {
     #[test]
     fn test_get_casnumbers() {
         test_searchable(
-            CasnumberStruct {
+            CasnumberWrapper {
                 ..Default::default()
             },
             vec![

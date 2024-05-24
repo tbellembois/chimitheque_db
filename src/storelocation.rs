@@ -1,8 +1,11 @@
 use crate::{
-    entity::{Entity, EntityStruct},
+    entity::{Entity, EntityWrapper},
     permission::Permission,
 };
-use chimitheque_types::requestfilter::RequestFilter;
+use chimitheque_types::{
+    entity::Entity as EntityStruct, requestfilter::RequestFilter,
+    storelocation::Storelocation as StorelocationStruct,
+};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
@@ -25,44 +28,37 @@ enum Storelocation {
 }
 
 #[derive(Debug, Serialize)]
-pub struct StorelocationStruct {
-    storelocation_id: u64,
-    storelocation_name: String,
-    storelocation_canstore: bool,
-    storelocation_color: Option<String>,
-    storelocation_fullpath: Option<String>,
+pub struct StorelocationWrapper(pub StorelocationStruct);
 
-    entity: Option<EntityStruct>,
-    storelocation: Option<Box<StorelocationStruct>>,
-}
-
-impl From<&Row<'_>> for StorelocationStruct {
+impl From<&Row<'_>> for StorelocationWrapper {
     fn from(row: &Row) -> Self {
         // Test if there is a parent storelocation.
         let maybe_parent_storelocation: Option<u64> = row.get_unwrap("parent_storelocation_id");
 
-        Self {
-            storelocation_id: row.get_unwrap("storelocation_id"),
-            storelocation_name: row.get_unwrap("storelocation_name"),
-            storelocation_canstore: row.get_unwrap("storelocation_canstore"),
-            storelocation_color: row.get_unwrap("storelocation_color"),
-            storelocation_fullpath: row.get_unwrap("storelocation_fullpath"),
-            entity: Some(EntityStruct {
-                entity_id: row.get_unwrap("entity_id"),
-                entity_name: row.get_unwrap("entity_name"),
-            }),
-            storelocation: maybe_parent_storelocation.map(|_| {
-                Box::new(StorelocationStruct {
-                    storelocation_id: row.get_unwrap("parent_storelocation_id"),
-                    storelocation_name: row.get_unwrap("parent_storelocation_name"),
-                    storelocation_canstore: row.get_unwrap("parent_storelocation_canstore"),
-                    storelocation_color: row.get_unwrap("parent_storelocation_color"),
-                    storelocation_fullpath: row.get_unwrap("parent_storelocation_fullpath"),
-                    entity: None,
-                    storelocation: None,
-                })
-            }),
-        }
+        Self({
+            StorelocationStruct {
+                storelocation_id: row.get_unwrap("storelocation_id"),
+                storelocation_name: row.get_unwrap("storelocation_name"),
+                storelocation_canstore: row.get_unwrap("storelocation_canstore"),
+                storelocation_color: row.get_unwrap("storelocation_color"),
+                storelocation_fullpath: row.get_unwrap("storelocation_fullpath"),
+                entity: Some(EntityStruct {
+                    entity_id: row.get_unwrap("entity_id"),
+                    entity_name: row.get_unwrap("entity_name"),
+                }),
+                storelocation: maybe_parent_storelocation.map(|_| {
+                    Box::new(StorelocationStruct {
+                        storelocation_id: row.get_unwrap("parent_storelocation_id"),
+                        storelocation_name: row.get_unwrap("parent_storelocation_name"),
+                        storelocation_canstore: row.get_unwrap("parent_storelocation_canstore"),
+                        storelocation_color: row.get_unwrap("parent_storelocation_color"),
+                        storelocation_fullpath: row.get_unwrap("parent_storelocation_fullpath"),
+                        entity: None,
+                        storelocation: None,
+                    })
+                }),
+            }
+        })
     }
 }
 
@@ -70,7 +66,7 @@ pub fn get_storelocations(
     db_connection: &Connection,
     filter: RequestFilter,
     person_id: u64,
-) -> Result<(Vec<StorelocationStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<StorelocationWrapper>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
@@ -246,7 +242,7 @@ pub fn get_storelocations(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(StorelocationStruct::from(row))
+        Ok(StorelocationWrapper::from(row))
     })?;
 
     // Build select result.
@@ -368,8 +364,14 @@ mod tests {
         assert_eq!(count, 2);
         for storelocation in storelocations.iter() {
             assert!(
-                (storelocation.storelocation_name.eq("FAKE_STORELOCATION_21")
-                    || storelocation.storelocation_name.eq("FAKE_STORELOCATION_22"))
+                (storelocation
+                    .0
+                    .storelocation_name
+                    .eq("FAKE_STORELOCATION_21")
+                    || storelocation
+                        .0
+                        .storelocation_name
+                        .eq("FAKE_STORELOCATION_22"))
             )
         }
 
@@ -381,7 +383,7 @@ mod tests {
         let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 1);
         assert_eq!(
-            storelocations[0].storelocation_name,
+            storelocations[0].0.storelocation_name,
             "FAKE_STORELOCATION_22"
         );
 
@@ -393,7 +395,7 @@ mod tests {
         let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 1);
         assert_eq!(
-            storelocations[0].storelocation_name,
+            storelocations[0].0.storelocation_name,
             "FAKE_STORELOCATION_22"
         );
 
