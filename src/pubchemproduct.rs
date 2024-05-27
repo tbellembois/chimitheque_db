@@ -1,12 +1,3 @@
-use chimitheque_types::pubchemproduct::PubchemProduct;
-use chimitheque_utils::casnumber::is_cas_number;
-use chimitheque_utils::cenumber::is_ce_number;
-use chimitheque_utils::formula::sort_empirical_formula;
-use log::debug;
-use rusqlite::Connection;
-use sea_query::{Query, SimpleExpr, SqliteQueryBuilder};
-use std::fmt::{Display, Formatter};
-
 use crate::casnumber::CasnumberWrapper;
 use crate::cenumber::CenumberWrapper;
 use crate::empiricalformula::EmpiricalformulaWrapper;
@@ -15,10 +6,27 @@ use crate::name::NameWrapper;
 use crate::product::{
     Product, Producthazardstatements, Productprecautionarystatements, Productsymbols,
 };
-use crate::searchable::{self, create, Searchable};
+use crate::searchable::create;
+use crate::searchable::parse;
 use crate::signalword::SignalwordWrapper;
 use crate::symbol::SymbolWrapper;
 use crate::{precautionarystatement, unit};
+use chimitheque_traits::searchable;
+use chimitheque_traits::searchable::Searchable;
+use chimitheque_types::casnumber::Casnumber;
+use chimitheque_types::cenumber::Cenumber;
+use chimitheque_types::empiricalformula::Empiricalformula;
+use chimitheque_types::name::Name;
+use chimitheque_types::pubchemproduct::PubchemProduct;
+use chimitheque_types::signalword::Signalword;
+use chimitheque_types::symbol::Symbol;
+use chimitheque_utils::casnumber::is_cas_number;
+use chimitheque_utils::cenumber::is_ce_number;
+use chimitheque_utils::formula::sort_empirical_formula;
+use log::debug;
+use rusqlite::Connection;
+use sea_query::{Query, SimpleExpr, SqliteQueryBuilder};
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ImportPubchemProductError {
@@ -74,8 +82,8 @@ pub fn create_product_from_pubchem(
     let name_id: u64;
 
     if let Some(name_text) = pubchem_product.name {
-        let maybe_name = searchable::parse(
-            &NameWrapper {
+        let maybe_name = parse(
+            &Name {
                 ..Default::default()
             },
             db_connection,
@@ -85,7 +93,7 @@ pub fn create_product_from_pubchem(
         name_id = match maybe_name {
             Some(name) => name.get_id(),
             None => create(
-                &NameWrapper {
+                &Name {
                     ..Default::default()
                 },
                 db_connection,
@@ -156,8 +164,8 @@ pub fn create_product_from_pubchem(
             )));
         };
 
-        let maybe_casnumber = searchable::parse(
-            &CasnumberWrapper {
+        let maybe_casnumber = parse(
+            &Casnumber {
                 ..Default::default()
             },
             db_connection,
@@ -167,7 +175,7 @@ pub fn create_product_from_pubchem(
         let casnumber_id = match maybe_casnumber {
             Some(casnumber) => Some(casnumber.get_id()),
             None => Some(create(
-                &CasnumberWrapper {
+                &Casnumber {
                     ..Default::default()
                 },
                 db_connection,
@@ -187,8 +195,8 @@ pub fn create_product_from_pubchem(
             )));
         };
 
-        let maybe_ecnumber = searchable::parse(
-            &CenumberWrapper {
+        let maybe_ecnumber = parse(
+            &Cenumber {
                 ..Default::default()
             },
             db_connection,
@@ -198,7 +206,7 @@ pub fn create_product_from_pubchem(
         let ecnumber_id = match maybe_ecnumber {
             Some(ecnumber) => Some(ecnumber.get_id()),
             None => Some(create(
-                &CenumberWrapper {
+                &Cenumber {
                     ..Default::default()
                 },
                 db_connection,
@@ -214,8 +222,8 @@ pub fn create_product_from_pubchem(
     if let Some(empiricalformula_text) = pubchem_product.molecular_formula {
         let sorted_empiricalformula = sort_empirical_formula(&empiricalformula_text)?;
 
-        let maybe_empiricalformula = searchable::parse(
-            &EmpiricalformulaWrapper {
+        let maybe_empiricalformula = parse(
+            &Empiricalformula {
                 ..Default::default()
             },
             db_connection,
@@ -225,7 +233,7 @@ pub fn create_product_from_pubchem(
         let empiricalformula_id = match maybe_empiricalformula {
             Some(empiricalformula) => Some(empiricalformula.get_id()),
             None => Some(create(
-                &EmpiricalformulaWrapper {
+                &Empiricalformula {
                     ..Default::default()
                 },
                 db_connection,
@@ -240,8 +248,8 @@ pub fn create_product_from_pubchem(
     // Signal word.
     if let Some(signals_text) = pubchem_product.signal {
         if let Some(signalword) = signals_text.first() {
-            let maybe_signalword = searchable::parse(
-                &SignalwordWrapper {
+            let maybe_signalword = parse(
+                &Signalword {
                     ..Default::default()
                 },
                 db_connection,
@@ -267,8 +275,8 @@ pub fn create_product_from_pubchem(
 
     if let Some(symbols_text) = pubchem_product.symbols {
         for symbol in symbols_text {
-            let maybe_symbol = searchable::parse(
-                &SymbolWrapper {
+            let maybe_symbol = parse(
+                &Symbol {
                     ..Default::default()
                 },
                 db_connection,

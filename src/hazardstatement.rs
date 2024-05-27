@@ -74,7 +74,7 @@ pub fn parse(
 pub fn get_hazardstatements(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<HazardstatementWrapper>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<HazardstatementStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
@@ -159,10 +159,10 @@ pub fn get_hazardstatements(
             hazardstatement.0.match_exact_search = true;
 
             // Inserting the statement at the beginning of the results.
-            hazardstatements.insert(0, hazardstatement)
+            hazardstatements.insert(0, hazardstatement.0)
         } else {
             // Inserting the statement at the end of the results.
-            hazardstatements.push(hazardstatement);
+            hazardstatements.push(hazardstatement.0);
         }
     }
 
@@ -252,11 +252,9 @@ mod tests {
         assert_eq!(count, 2);
         // expected exact match appears first.
         assert!(hazardstatements[0]
-            .0
             .hazardstatement_reference
             .eq("hazardstatement1-ref"));
         assert!(hazardstatements[0]
-            .0
             .hazardstatement_label
             .eq("hazardstatement1"));
     }

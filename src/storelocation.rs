@@ -66,7 +66,7 @@ pub fn get_storelocations(
     db_connection: &Connection,
     filter: RequestFilter,
     person_id: u64,
-) -> Result<(Vec<StorelocationWrapper>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<StorelocationStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
@@ -242,7 +242,7 @@ pub fn get_storelocations(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(StorelocationWrapper::from(row))
+        Ok(StorelocationWrapper::from(row).0)
     })?;
 
     // Build select result.
@@ -364,14 +364,8 @@ mod tests {
         assert_eq!(count, 2);
         for storelocation in storelocations.iter() {
             assert!(
-                (storelocation
-                    .0
-                    .storelocation_name
-                    .eq("FAKE_STORELOCATION_21")
-                    || storelocation
-                        .0
-                        .storelocation_name
-                        .eq("FAKE_STORELOCATION_22"))
+                (storelocation.storelocation_name.eq("FAKE_STORELOCATION_21")
+                    || storelocation.storelocation_name.eq("FAKE_STORELOCATION_22"))
             )
         }
 
@@ -383,7 +377,7 @@ mod tests {
         let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 1);
         assert_eq!(
-            storelocations[0].0.storelocation_name,
+            storelocations[0].storelocation_name,
             "FAKE_STORELOCATION_22"
         );
 
@@ -395,7 +389,7 @@ mod tests {
         let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 1);
         assert_eq!(
-            storelocations[0].0.storelocation_name,
+            storelocations[0].storelocation_name,
             "FAKE_STORELOCATION_22"
         );
 

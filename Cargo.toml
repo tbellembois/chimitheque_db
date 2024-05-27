@@ -14,4 +14,5 @@ sea-query-rusqlite = "0.6.0-rc.1"
 serde = { version = "1", features = ["derive"] }
 chimitheque_types = { path = "../chimitheque_types" }
 chimitheque_utils = { path = "../chimitheque_utils" }
+chimitheque_traits = { path = "../chimitheque_traits" }
 regex = "1.10.4"
