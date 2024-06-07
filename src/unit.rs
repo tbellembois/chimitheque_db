@@ -12,7 +12,7 @@ use std::str::FromStr;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-enum Unit {
+pub enum Unit {
     Table,
     UnitId,
     UnitLabel,

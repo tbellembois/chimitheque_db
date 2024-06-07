@@ -1,3 +1,5 @@
+use std::fs;
+
 use log::info;
 use rusqlite::{Batch, Connection};
 
@@ -8,6 +10,20 @@ use crate::define::{
 
 pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
     Connection::open(db_path)
+}
+
+pub fn insert_fake_values(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
+    let sql = fs::read_to_string("./src/resources/storage_fake.sql")
+        .expect("Can not read storage_fake.sql file.");
+
+    info!("adding fake database values");
+
+    let mut batch = Batch::new(db_connection, &sql);
+    while let Some(mut stmt) = batch.next()? {
+        stmt.execute([])?;
+    }
+
+    Ok(())
 }
 
 pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
@@ -555,7 +571,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         );
         "#;
 
-    info!("- creating database structure");
+    info!("creating database structure");
 
     let mut batch = Batch::new(db_connection, sql);
     while let Some(mut stmt) = batch.next()? {

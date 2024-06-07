@@ -1,8 +1,17 @@
-use chimitheque_types::category::Category;
+use chimitheque_types::category::Category as CategoryStruct;
+use sea_query::Iden;
 use serde::Serialize;
 
+#[allow(clippy::enum_variant_names)]
+#[derive(Iden)]
+pub enum Category {
+    Table,
+    CategoryId,
+    CategoryLabel,
+}
+
 #[derive(Debug, Serialize, Default)]
-pub struct CategoryWrapper(pub Category);
+pub struct CategoryWrapper(pub CategoryStruct);
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +22,7 @@ mod tests {
     #[test]
     fn test_get_categories() {
         test_searchable(
-            Category {
+            CategoryStruct {
                 ..Default::default()
             },
             vec![

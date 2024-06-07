@@ -9,7 +9,7 @@ use serde::Serialize;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-enum Hazardstatement {
+pub enum Hazardstatement {
     Table,
     HazardstatementId,
     HazardstatementLabel,

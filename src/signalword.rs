@@ -1,8 +1,17 @@
-use chimitheque_types::signalword::Signalword;
+use chimitheque_types::signalword::Signalword as SignalwordStruct;
+use sea_query::Iden;
 use serde::Serialize;
 
+#[allow(clippy::enum_variant_names)]
+#[derive(Iden)]
+pub enum Signalword {
+    Table,
+    SignalwordId,
+    SignalwordLabel,
+}
+
 #[derive(Debug, Serialize, Default)]
-pub struct SignalwordWrapper(pub Signalword);
+pub struct SignalwordWrapper(pub SignalwordStruct);
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +22,7 @@ mod tests {
     #[test]
     fn test_get_signalwords() {
         test_searchable(
-            Signalword {
+            SignalwordStruct {
                 ..Default::default()
             },
             vec![

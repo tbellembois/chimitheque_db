@@ -1,8 +1,18 @@
-use chimitheque_types::casnumber::Casnumber;
+use chimitheque_types::casnumber::Casnumber as CasnumberStruct;
+use sea_query::Iden;
 use serde::Serialize;
 
+#[allow(clippy::enum_variant_names)]
+#[derive(Iden)]
+pub enum Casnumber {
+    Table,
+    CasnumberId,
+    CasnumberLabel,
+    CasnumberCmr,
+}
+
 #[derive(Debug, Serialize, Default)]
-pub struct CasnumberWrapper(pub Casnumber);
+pub struct CasnumberWrapper(pub CasnumberStruct);
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +23,7 @@ mod tests {
     #[test]
     fn test_get_casnumbers() {
         test_searchable(
-            Casnumber {
+            CasnumberStruct {
                 ..Default::default()
             },
             vec![

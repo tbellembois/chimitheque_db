@@ -12,7 +12,7 @@ use crate::producer::Producer;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-enum Producerref {
+pub enum Producerref {
     Table,
     ProducerrefId,
     ProducerrefLabel,

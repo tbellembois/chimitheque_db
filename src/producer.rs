@@ -5,6 +5,7 @@ use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Producer {
     Table,

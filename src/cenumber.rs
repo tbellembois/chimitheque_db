@@ -1,8 +1,17 @@
-use chimitheque_types::cenumber::Cenumber;
+use chimitheque_types::cenumber::Cenumber as CenumberStruct;
+use sea_query::Iden;
 use serde::Serialize;
 
+#[allow(clippy::enum_variant_names)]
+#[derive(Iden)]
+pub enum Cenumber {
+    Table,
+    CenumberId,
+    CenumberLabel,
+}
+
 #[derive(Debug, Serialize, Default)]
-pub struct CenumberWrapper(pub Cenumber);
+pub struct CenumberWrapper(pub CenumberStruct);
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +22,7 @@ mod tests {
     #[test]
     fn test_get_cenumbers() {
         test_searchable(
-            Cenumber {
+            CenumberStruct {
                 ..Default::default()
             },
             vec![

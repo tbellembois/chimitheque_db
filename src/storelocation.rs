@@ -1,7 +1,4 @@
-use crate::{
-    entity::{Entity, EntityWrapper},
-    permission::Permission,
-};
+use crate::{entity::Entity, permission::Permission};
 use chimitheque_types::{
     entity::Entity as EntityStruct, requestfilter::RequestFilter,
     storelocation::Storelocation as StorelocationStruct,
@@ -283,7 +280,7 @@ mod tests {
         let mut db_connection = init_test_db();
         init_db(&mut db_connection).unwrap();
 
-        // insert fake entities.
+        // Insert fake entities.
         for (entity_id, entity_name) in [
             (200, "FAKE_ENTITY_1"),
             (201, "FAKE_ENTITY_2"),
@@ -312,7 +309,7 @@ mod tests {
             (2, 200),
         )
         .unwrap();
-        // set user an admin.
+        // Set user an admin.
         let _ = db_connection
         .execute(
             "INSERT INTO permission (person, permission_perm_name, permission_item_name, permission_entity_id) VALUES (?1, ?2, ?3, ?4)",

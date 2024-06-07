@@ -10,7 +10,7 @@ use serde::Serialize;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-enum Precautionarystatement {
+pub enum Precautionarystatement {
     Table,
     PrecautionarystatementId,
     PrecautionarystatementLabel,

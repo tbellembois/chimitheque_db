@@ -1,8 +1,17 @@
-use chimitheque_types::empiricalformula::Empiricalformula;
+use chimitheque_types::empiricalformula::Empiricalformula as EmpiricalformulaStruct;
+use sea_query::Iden;
 use serde::Serialize;
 
+#[allow(clippy::enum_variant_names)]
+#[derive(Iden)]
+pub enum Empiricalformula {
+    Table,
+    EmpiricalformulaId,
+    EmpiricalformulaLabel,
+}
+
 #[derive(Debug, Serialize, Default)]
-pub struct EmpiricalformulaWrapper(pub Empiricalformula);
+pub struct EmpiricalformulaWrapper(pub EmpiricalformulaStruct);
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +22,7 @@ mod tests {
     #[test]
     fn test_get_empiricalformulas() {
         test_searchable(
-            Empiricalformula {
+            EmpiricalformulaStruct {
                 ..Default::default()
             },
             vec![

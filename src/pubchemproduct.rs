@@ -1,17 +1,10 @@
-use crate::casnumber::CasnumberWrapper;
-use crate::cenumber::CenumberWrapper;
-use crate::empiricalformula::EmpiricalformulaWrapper;
 use crate::hazardstatement;
-use crate::name::NameWrapper;
 use crate::product::{
     Product, Producthazardstatements, Productprecautionarystatements, Productsymbols,
 };
 use crate::searchable::create;
 use crate::searchable::parse;
-use crate::signalword::SignalwordWrapper;
-use crate::symbol::SymbolWrapper;
 use crate::{precautionarystatement, unit};
-use chimitheque_traits::searchable;
 use chimitheque_traits::searchable::Searchable;
 use chimitheque_types::casnumber::Casnumber;
 use chimitheque_types::cenumber::Cenumber;

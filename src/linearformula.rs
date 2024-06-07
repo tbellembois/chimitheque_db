@@ -1,8 +1,17 @@
-use chimitheque_types::linearformula::Linearformula;
+use chimitheque_types::linearformula::Linearformula as LinearformulaStruct;
+use sea_query::Iden;
 use serde::Serialize;
 
+#[allow(clippy::enum_variant_names)]
+#[derive(Iden)]
+pub enum Linearformula {
+    Table,
+    LinearformulaId,
+    LinearformulaLabel,
+}
+
 #[derive(Debug, Serialize, Default)]
-pub struct LinearformulaWrapper(pub Linearformula);
+pub struct LinearformulaWrapper(pub LinearformulaStruct);
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +22,7 @@ mod tests {
     #[test]
     fn test_get_linearformulas() {
         test_searchable(
-            Linearformula {
+            LinearformulaStruct {
                 ..Default::default()
             },
             vec![
