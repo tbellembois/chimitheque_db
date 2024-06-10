@@ -134,11 +134,6 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             unit_molecularweight_type = Default::default();
         }
 
-        // let maybe_parent_unit_temperature: Option<u64> =
-        //     row.get_unwrap("parent_unit_temperature_unit_id");
-        // let maybe_parent_unit_melecularweight: Option<u64> =
-        //     row.get_unwrap("parent_unit_molecularweight_unit_id");
-
         Ok(Self(ProductStruct {
             product_id: row.get_unwrap("product_id"),
             name: NameStruct {
@@ -224,9 +219,9 @@ pub fn get_products(
 
     let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {
         match order_by_string.as_str() {
-            "name" => Product::Name.into_column_ref(),
+            "name" => (Name::Table, Name::NameLabel).into_column_ref(),
             "empirical_formula" => Product::Empiricalformula.into_column_ref(),
-            "cas_number" => Product::Casnumber.into_column_ref(),
+            "cas_number" => (Casnumber::Table, Casnumber::CasnumberLabel).into_column_ref(),
             _ => (Product::Table, Product::ProductId).into_column_ref(),
         }
     } else {
@@ -349,13 +344,6 @@ pub fn get_products(
             Expr::col((Product::Table, Product::UnitTemperature))
                 .equals((Alias::new("unit_temperature"), Unit::UnitId)),
         )
-        // .join_as(
-        //     JoinType::LeftJoin,
-        //     Unit::Table,
-        //     Alias::new("parent_unit_temperature"),
-        //     Expr::col(Alias::new("unit_temperature"))
-        //         .equals((Alias::new("parent_unit_temperature"), Alias::new("unit_id"))),
-        // )
         //
         // unit molecular weight
         //
@@ -366,15 +354,6 @@ pub fn get_products(
             Expr::col((Product::Table, Product::UnitMolecularweight))
                 .equals((Alias::new("unit_molecularweight"), Unit::UnitId)),
         )
-        // .join_as(
-        //     JoinType::LeftJoin,
-        //     Unit::Table,
-        //     Alias::new("parent_unit_molecularweight"),
-        //     Expr::col(Alias::new("unit_molecularweight")).equals((
-        //         Alias::new("parent_unit_molecularweight"),
-        //         Alias::new("unit_id"),
-        //     )),
-        // )
         //
         // hazard statements
         //
@@ -398,6 +377,33 @@ pub fn get_products(
                 Productprecautionarystatements::ProductprecautionarystatementsProductId,
             ))
             .equals((Product::Table, Product::ProductId)),
+        )
+        //
+        // filters
+        //
+        .conditions(
+            filter.custom_name_part_of.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((Name::Table, Name::NameLabel))
+                        .like(format!("%{}%", filter.custom_name_part_of.clone().unwrap())),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.cas_number.is_some(),
+            |q| {
+                q.and_where(Expr::col(Product::Casnumber).eq(filter.cas_number.unwrap()));
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.name.is_some(),
+            |q| {
+                q.and_where(Expr::col(Product::Name).eq(filter.name.unwrap()));
+            },
+            |_| {},
         );
 
     // Create count query.
@@ -513,17 +519,6 @@ pub fn get_products(
             Expr::col((Alias::new("unit_molecularweight"), Alias::new("unit_type"))),
             Alias::new("unit_molecularweight_unit_type"),
         )
-        // .expr_as(
-        //     Expr::col((Alias::new("parent_unit_temperature"), Alias::new("unit_id"))),
-        //     Alias::new("parent_unit_temperature_unit_id"),
-        // )
-        // .expr_as(
-        //     Expr::col((
-        //         Alias::new("parent_unit_molecularweight"),
-        //         Alias::new("unit_id"),
-        //     )),
-        //     Alias::new("parent_unit_molecularweight_unit_id"),
-        // )
         .order_by(order_by, order)
         .group_by_col((Product::Table, Product::ProductId))
         .conditions(
@@ -596,6 +591,7 @@ mod tests {
 
         info!("testing total result");
         let filter = RequestFilter {
+            order_by: Some("name".to_string()),
             ..Default::default()
         };
         get_products(&db_connection, filter, 2).unwrap();
