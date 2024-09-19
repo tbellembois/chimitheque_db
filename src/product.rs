@@ -39,30 +39,30 @@ pub enum Product {
     ProductInchi,
     ProductInchikey,
     ProductCanonicalSmiles,
-    ProductMolecularweight,
+    ProductMolecularWeight,
     ProductSpecificity,
     ProductMsds,
     ProductRestricted,
     ProductRadioactive,
-    ProductTwodformula,
-    ProductThreedformula,
-    ProductDisposalcomment,
+    ProductTwodFormula,
+    ProductThreedFormula,
+    ProductDisposalComment,
     ProductRemark,
     ProductTemperature,
     ProductSheet,
     ProductNumberPerCarton,
     ProductNumberPerBag,
-    Empiricalformula,
-    Linearformula,
-    Physicalstate,
-    Signalword,
+    EmpiricalFormula,
+    LinearFormula,
+    PhysicalState,
+    SignalWord,
     Category,
     Name,
-    Casnumber,
-    Cenumber,
-    UnitMolecularweight,
+    CasNumber,
+    CeNumber,
+    UnitMolecularWeight,
     UnitTemperature,
-    Producerref,
+    ProducerRef,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -200,6 +200,30 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
                 unit_type: unit_molecularweight_type,
                 unit: Default::default(),
             }),
+
+            product_inchi: row.get_unwrap("product_inchi"),
+            product_inchikey: row.get_unwrap("product_inchikey"),
+            product_canonical_smiles: row.get_unwrap("product_canonical_smiles"),
+            product_specificity: row.get_unwrap("product_specificity"),
+            product_msds: row.get_unwrap("product_msds"),
+            product_restricted: row.get_unwrap("product_restricted"),
+            product_radioactive: row.get_unwrap("product_radioactive"),
+            product_twod_formula: row.get_unwrap("product_twod_formula"),
+            product_threed_formula: row.get_unwrap("product_threed_formula"),
+            product_disposal_comment: row.get_unwrap("product_disposal_comment"),
+            product_remark: row.get_unwrap("product_remark"),
+            product_molecula_weight: row.get_unwrap("product_molecular_weight"),
+            product_temperature: row.get_unwrap("product_temperature"),
+            product_sheet: row.get_unwrap("product_sheet"),
+            product_number_per_carton: row.get_unwrap("product_number_per_carton"),
+            product_number_per_bag: row.get_unwrap("product_number_per_bag"),
+            // classes_of_compound: todo!(),
+            // synonyms: todo!(),
+            // symbols: todo!(),
+            // hazard_statements: todo!(),
+            // precautionary_statements: todo!(),
+            // supplier_refs: todo!(),
+            // tags: todo!(),
             ..Default::default()
         }))
     }
@@ -216,7 +240,7 @@ pub fn get_products(
     let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {
         match order_by_string.as_str() {
             "name" => (Name::Table, Name::NameLabel).into_column_ref(),
-            "empirical_formula" => Product::Empiricalformula.into_column_ref(),
+            "empirical_formula" => Product::EmpiricalFormula.into_column_ref(),
             "cas_number" => (Casnumber::Table, Casnumber::CasnumberLabel).into_column_ref(),
             _ => (Product::Table, Product::ProductId).into_column_ref(),
         }
@@ -256,7 +280,7 @@ pub fn get_products(
         .join(
             JoinType::LeftJoin,
             Casnumber::Table,
-            Expr::col((Product::Table, Product::Casnumber))
+            Expr::col((Product::Table, Product::CasNumber))
                 .equals((Casnumber::Table, Casnumber::CasnumberId)),
         )
         //
@@ -265,7 +289,7 @@ pub fn get_products(
         .join(
             JoinType::LeftJoin,
             Cenumber::Table,
-            Expr::col((Product::Table, Product::Cenumber))
+            Expr::col((Product::Table, Product::CeNumber))
                 .equals((Cenumber::Table, Cenumber::CenumberId)),
         )
         //
@@ -274,7 +298,7 @@ pub fn get_products(
         .join(
             JoinType::LeftJoin,
             Empiricalformula::Table,
-            Expr::col((Product::Table, Product::Empiricalformula)).equals((
+            Expr::col((Product::Table, Product::EmpiricalFormula)).equals((
                 Empiricalformula::Table,
                 Empiricalformula::EmpiricalformulaId,
             )),
@@ -285,7 +309,7 @@ pub fn get_products(
         .join(
             JoinType::LeftJoin,
             Linearformula::Table,
-            Expr::col((Product::Table, Product::Linearformula))
+            Expr::col((Product::Table, Product::LinearFormula))
                 .equals((Linearformula::Table, Linearformula::LinearformulaId)),
         )
         //
@@ -294,7 +318,7 @@ pub fn get_products(
         .join(
             JoinType::LeftJoin,
             Physicalstate::Table,
-            Expr::col((Product::Table, Product::Physicalstate))
+            Expr::col((Product::Table, Product::PhysicalState))
                 .equals((Physicalstate::Table, Physicalstate::PhysicalstateId)),
         )
         //
@@ -303,7 +327,7 @@ pub fn get_products(
         .join(
             JoinType::LeftJoin,
             Signalword::Table,
-            Expr::col((Product::Table, Product::Signalword))
+            Expr::col((Product::Table, Product::SignalWord))
                 .equals((Signalword::Table, Signalword::SignalwordId)),
         )
         //
@@ -321,7 +345,7 @@ pub fn get_products(
         .join(
             JoinType::LeftJoin,
             Producerref::Table,
-            Expr::col((Product::Table, Product::Producerref))
+            Expr::col((Product::Table, Product::ProducerRef))
                 .equals((Producerref::Table, Producerref::ProducerrefId)),
         )
         .join(
@@ -347,7 +371,7 @@ pub fn get_products(
             JoinType::LeftJoin,
             Unit::Table,
             Alias::new("unit_molecularweight"),
-            Expr::col((Product::Table, Product::UnitMolecularweight))
+            Expr::col((Product::Table, Product::UnitMolecularWeight))
                 .equals((Alias::new("unit_molecularweight"), Unit::UnitId)),
         )
         //
@@ -390,7 +414,7 @@ pub fn get_products(
         .conditions(
             filter.cas_number.is_some(),
             |q| {
-                q.and_where(Expr::col(Product::Casnumber).eq(filter.cas_number.unwrap()));
+                q.and_where(Expr::col(Product::CasNumber).eq(filter.cas_number.unwrap()));
             },
             |_| {},
         )
@@ -418,16 +442,16 @@ pub fn get_products(
             Product::ProductInchi,
             Product::ProductInchikey,
             Product::ProductCanonicalSmiles,
-            Product::ProductMolecularweight,
+            Product::ProductMolecularWeight,
             Product::ProductSpecificity,
             Product::ProductMsds,
             Product::ProductRestricted,
             Product::ProductRadioactive,
-            Product::ProductTwodformula,
-            Product::ProductThreedformula,
-            Product::ProductDisposalcomment,
+            Product::ProductTwodFormula,
+            Product::ProductThreedFormula,
+            Product::ProductDisposalComment,
             Product::ProductRemark,
-            Product::ProductMolecularweight,
+            Product::ProductMolecularWeight,
             Product::ProductTemperature,
             Product::ProductSheet,
             Product::ProductNumberPerBag,
@@ -589,6 +613,17 @@ mod tests {
             order_by: Some("name".to_string()),
             ..Default::default()
         };
-        get_products(&db_connection, filter, 2).unwrap();
+        let products: Vec<chimitheque_types::product::Product>;
+        let count: usize;
+        (products, count) = get_products(&db_connection, filter, 2).unwrap();
+
+        assert!(count > 0);
+
+        for product in products.iter() {
+            if product.product_id.eq(&5973) {
+                info!("product:{:?}", product);
+                assert!(product.empirical_formula.is_some())
+            }
+        }
     }
 }

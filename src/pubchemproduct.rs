@@ -121,12 +121,12 @@ pub fn create_product_from_pubchem(
     }
 
     if let Some(molecular_weight) = pubchem_product.molecular_weight {
-        columns.push(Product::ProductMolecularweight);
+        columns.push(Product::ProductMolecularWeight);
         values.push(SimpleExpr::Value(molecular_weight.into()));
     }
 
     if let Some(twodpicture) = pubchem_product.twodpicture {
-        columns.push(Product::ProductTwodformula);
+        columns.push(Product::ProductTwodFormula);
         values.push(SimpleExpr::Value(twodpicture.into()));
     }
 
@@ -145,7 +145,7 @@ pub fn create_product_from_pubchem(
             }
         };
 
-        columns.push(Product::UnitMolecularweight);
+        columns.push(Product::UnitMolecularWeight);
         values.push(SimpleExpr::Value(molecularweight_unit_id.into()));
     }
 
@@ -176,7 +176,7 @@ pub fn create_product_from_pubchem(
             )?),
         };
 
-        columns.push(Product::Casnumber);
+        columns.push(Product::CasNumber);
         values.push(SimpleExpr::Value(casnumber_id.into()));
     }
 
@@ -207,7 +207,7 @@ pub fn create_product_from_pubchem(
             )?),
         };
 
-        columns.push(Product::Cenumber);
+        columns.push(Product::CeNumber);
         values.push(SimpleExpr::Value(ecnumber_id.into()));
     }
 
@@ -234,7 +234,7 @@ pub fn create_product_from_pubchem(
             )?),
         };
 
-        columns.push(Product::Empiricalformula);
+        columns.push(Product::EmpiricalFormula);
         values.push(SimpleExpr::Value(empiricalformula_id.into()));
     }
 
@@ -258,7 +258,7 @@ pub fn create_product_from_pubchem(
                 }
             };
 
-            columns.push(Product::Signalword);
+            columns.push(Product::SignalWord);
             values.push(SimpleExpr::Value(signalword_id.into()));
         }
     }
