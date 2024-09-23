@@ -210,8 +210,8 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
             product_concentration	REAL,
             product_temperature	REAL,
             product_molecular_weight REAL,
-            casnumber	INTEGER,
-            cenumber	INTEGER,
+            cas_number	INTEGER,
+            ce_number	INTEGER,
             person	INTEGER NOT NULL,
             empirical_formula	INTEGER,
             linear_formula	INTEGER,
@@ -220,7 +220,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
             name	INTEGER NOT NULL,
             producer_ref	INTEGER,
             unit_temperature	INTEGER,
-            unit_molecularweight INTEGER,
+            unit_molecular_weight INTEGER,
             category	INTEGER,
             product_number_per_carton	INTEGER,
             product_number_per_bag	INTEGER,
@@ -233,7 +233,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
             FOREIGN KEY(category) REFERENCES category(category_id),
             PRIMARY KEY(product_id),
             FOREIGN KEY(unit_temperature) REFERENCES unit(unit_id),
-            FOREIGN KEY(unit_molecularweight) REFERENCES unit(unit_id),
+            FOREIGN KEY(unit_molecular_weight) REFERENCES unit(unit_id),
             FOREIGN KEY(physical_state) REFERENCES physicalstate(physicalstate_id),
             FOREIGN KEY(signal_word) REFERENCES signalword(signalword_id),
             FOREIGN KEY(name) REFERENCES name(name_id)
@@ -495,17 +495,17 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         DROP INDEX IF EXISTS idx_product_casnumber;
         CREATE UNIQUE INDEX idx_product_casnumber ON product (
             product_id,
-            casnumber
+            cas_number
         );
         DROP INDEX IF EXISTS idx_product_cenumber;
         CREATE UNIQUE INDEX idx_product_cenumber ON product (
             product_id,
-            cenumber
+            ce_number
         );
         DROP INDEX IF EXISTS idx_product_empiricalformula;
         CREATE UNIQUE INDEX idx_product_empiricalformula ON product (
             product_id,
-            empiricalformula
+            empirical_formula
         );
         DROP INDEX IF EXISTS idx_product_name;
         CREATE UNIQUE INDEX idx_product_name ON product (

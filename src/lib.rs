@@ -16,6 +16,7 @@ pub mod precautionarystatement;
 pub mod producer;
 pub mod producerref;
 pub mod product;
+pub mod productsynonyms;
 pub mod pubchemproduct;
 pub mod searchable;
 pub mod signalword;

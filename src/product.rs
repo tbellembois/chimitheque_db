@@ -1,8 +1,17 @@
 use crate::{
-    casnumber::Casnumber, category::Category, cenumber::Cenumber,
-    empiricalformula::Empiricalformula, linearformula::Linearformula, name::Name, person::Person,
-    physicalstate::Physicalstate, producer::Producer, producerref::Producerref,
-    signalword::Signalword, unit::Unit,
+    casnumber::Casnumber,
+    category::Category,
+    cenumber::Cenumber,
+    empiricalformula::Empiricalformula,
+    linearformula::Linearformula,
+    name::Name,
+    person::Person,
+    physicalstate::Physicalstate,
+    producer::Producer,
+    producerref::Producerref,
+    productsynonyms::{Productsynonyms, ProductsynonymsWrapper},
+    signalword::Signalword,
+    unit::Unit,
 };
 use chimitheque_types::{
     casnumber::Casnumber as CasnumberStruct,
@@ -217,17 +226,77 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             product_sheet: row.get_unwrap("product_sheet"),
             product_number_per_carton: row.get_unwrap("product_number_per_carton"),
             product_number_per_bag: row.get_unwrap("product_number_per_bag"),
-            // classes_of_compound: todo!(),
-            // synonyms: todo!(),
-            // symbols: todo!(),
-            // hazard_statements: todo!(),
-            // precautionary_statements: todo!(),
-            // supplier_refs: todo!(),
-            // tags: todo!(),
             ..Default::default()
         }))
     }
 }
+
+fn populate_classes_of_compound(
+    db_connection: &Connection,
+    products: &mut Vec<ProductStruct>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for product in products.iter_mut() {
+        let product_id = product.product_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .columns([
+                Productsynonyms::ProductsynonymsProductId,
+                Productsynonyms::ProductsynonymsNameId,
+            ])
+            .column(Name::NameLabel)
+            .from(Productsynonyms::Table)
+            //
+            // name
+            //
+            .join(
+                JoinType::LeftJoin,
+                Name::Table,
+                Expr::col((
+                    Productsynonyms::Table,
+                    Productsynonyms::ProductsynonymsNameId,
+                ))
+                .equals((Name::Table, Name::NameId)),
+            )
+            .and_where(Expr::col(Productsynonyms::ProductsynonymsProductId).eq(product_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(sql.as_str())?;
+        let rows = stmt.query_map(&*values.as_params(), |row| {
+            Ok(ProductsynonymsWrapper::from(row))
+        })?;
+
+        // Populate product synonyms.
+        let mut synonyms: Vec<chimitheque_types::name::Name> = vec![];
+        for row in rows {
+            let product_synonym_wrapper = row?;
+            synonyms.push(chimitheque_types::name::Name {
+                match_exact_search: false,
+                name_id: product_synonym_wrapper.0.productsynonyms_product_id,
+                name_label: product_synonym_wrapper.0.productsynonyms_name_label,
+            });
+        }
+
+        if !synonyms.is_empty() {
+            product.synonyms = Some(synonyms);
+        } else {
+            product.synonyms = None;
+        }
+    }
+
+    Ok(())
+}
+
+fn populate_synonyms() {}
+fn populate_symbols() {}
+fn populate_hazard_statements() {}
+fn populate_precautionary_statements() {}
+fn populate_supplier_refs() {}
+fn populate_tags() {}
 
 pub fn get_products(
     db_connection: &Connection,
@@ -576,6 +645,8 @@ pub fn get_products(
         let product = ProductWrapper::try_from(row)?;
         products.push(product.0);
     }
+
+    populate_classes_of_compound(db_connection, &mut products)?;
 
     debug!("products: {:#?}", products);
 
