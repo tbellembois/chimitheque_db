@@ -1,8 +1,17 @@
-use chimitheque_types::classofcompound::Classofcompound;
+use chimitheque_types::classofcompound::Classofcompound as ClassofcompoundStruct;
+use sea_query::Iden;
 use serde::Serialize;
 
+#[allow(clippy::enum_variant_names)]
+#[derive(Iden)]
+pub enum Classofcompound {
+    Table,
+    ClassofcompoundId,
+    ClassofcompoundLabel,
+}
+
 #[derive(Debug, Serialize, Default)]
-pub struct ClassofcompoundWrapper(pub Classofcompound);
+pub struct ClassofcompoundWrapper(pub ClassofcompoundStruct);
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +22,7 @@ mod tests {
     #[test]
     fn test_get_classesofcompound() {
         test_searchable(
-            Classofcompound {
+            ClassofcompoundStruct {
                 ..Default::default()
             },
             vec![
