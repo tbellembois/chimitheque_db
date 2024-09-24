@@ -14,6 +14,7 @@ pub enum Hazardstatement {
     HazardstatementId,
     HazardstatementLabel,
     HazardstatementReference,
+    HazardstatementCmr,
 }
 
 #[derive(Debug, Serialize, Default)]
@@ -27,6 +28,7 @@ impl From<&Row<'_>> for HazardstatementWrapper {
                 hazardstatement_id: row.get_unwrap("hazardstatement_id"),
                 hazardstatement_label: row.get_unwrap("hazardstatement_label"),
                 hazardstatement_reference: row.get_unwrap("hazardstatement_reference"),
+                hazardstatement_cmr: row.get_unwrap("hazardstatement_cmr"),
             }
         })
     }
@@ -43,6 +45,7 @@ pub fn parse(
             Hazardstatement::HazardstatementId,
             Hazardstatement::HazardstatementLabel,
             Hazardstatement::HazardstatementReference,
+            Hazardstatement::HazardstatementCmr,
         ])
         .from(Hazardstatement::Table)
         .cond_where(Expr::col(Hazardstatement::HazardstatementReference).eq(s))
@@ -59,6 +62,7 @@ pub fn parse(
             hazardstatement_id: row.get_unwrap(0),
             hazardstatement_label: row.get_unwrap(1),
             hazardstatement_reference: row.get_unwrap(2),
+            hazardstatement_cmr: row.get_unwrap(3),
         }))
     });
 
@@ -108,6 +112,7 @@ pub fn get_hazardstatements(
             Hazardstatement::HazardstatementId,
             Hazardstatement::HazardstatementLabel,
             Hazardstatement::HazardstatementReference,
+            Hazardstatement::HazardstatementCmr,
         ])
         .order_by(Hazardstatement::HazardstatementReference, Order::Asc)
         .conditions(

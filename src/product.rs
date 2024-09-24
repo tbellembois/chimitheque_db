@@ -4,6 +4,7 @@ use crate::{
     cenumber::Cenumber,
     classofcompound::Classofcompound,
     empiricalformula::Empiricalformula,
+    hazardstatement::Hazardstatement,
     linearformula::Linearformula,
     name::Name,
     person::Person,
@@ -11,6 +12,7 @@ use crate::{
     producer::Producer,
     producerref::Producerref,
     productclassofcompound::{Productclassofcompound, ProductclassofcompoundWrapper},
+    producthazardstatements::ProducthazardstatementsWrapper,
     productsymbols::ProductsymbolsWrapper,
     productsynonyms::{Productsynonyms, ProductsynonymsWrapper},
     signalword::Signalword,
@@ -22,6 +24,7 @@ use chimitheque_types::{
     category::Category as CategoryStruct,
     cenumber::Cenumber as CenumberStruct,
     empiricalformula::Empiricalformula as EmpiricalformulaStruct,
+    hazardstatement::Hazardstatement as HazardstatementStruct,
     linearformula::Linearformula as LinearformulaStruct,
     name::Name as NameStruct,
     person::Person as PersonStruct,
@@ -422,7 +425,81 @@ fn populate_symbols(
     Ok(())
 }
 
-fn populate_hazard_statements() {}
+fn populate_hazard_statements(
+    db_connection: &Connection,
+    products: &mut Vec<ProductStruct>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for product in products.iter_mut() {
+        let product_id = product.product_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .columns([
+                Producthazardstatements::ProducthazardstatementsProductId,
+                Producthazardstatements::ProducthazardstatementsHazardstatementId,
+            ])
+            .column(Hazardstatement::HazardstatementLabel)
+            .column(Hazardstatement::HazardstatementReference)
+            .column(Hazardstatement::HazardstatementCmr)
+            .from(Producthazardstatements::Table)
+            //
+            // name
+            //
+            .join(
+                JoinType::LeftJoin,
+                Hazardstatement::Table,
+                Expr::col((
+                    Producthazardstatements::Table,
+                    Producthazardstatements::ProducthazardstatementsHazardstatementId,
+                ))
+                .equals((Hazardstatement::Table, Hazardstatement::HazardstatementId)),
+            )
+            .and_where(
+                Expr::col(Producthazardstatements::ProducthazardstatementsProductId).eq(product_id),
+            )
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(sql.as_str())?;
+        let rows = stmt.query_map(&*values.as_params(), |row| {
+            Ok(ProducthazardstatementsWrapper::from(row))
+        })?;
+
+        // Populate product symbols.
+        let mut hazard_statements: Vec<chimitheque_types::hazardstatement::Hazardstatement> =
+            vec![];
+        for row in rows {
+            let product_hazardstatements_wrapper = row?;
+            hazard_statements.push(chimitheque_types::hazardstatement::Hazardstatement {
+                match_exact_search: false,
+                hazardstatement_id: product_hazardstatements_wrapper
+                    .0
+                    .producthazardstatements_product_id,
+                hazardstatement_label: product_hazardstatements_wrapper
+                    .0
+                    .producthazardstatements_hazardstatement_label,
+                hazardstatement_reference: product_hazardstatements_wrapper
+                    .0
+                    .producthazardstatements_hazardstatement_reference,
+                hazardstatement_cmr: product_hazardstatements_wrapper
+                    .0
+                    .producthazardstatements_hazardstatement_cmr,
+            });
+        }
+
+        if !hazard_statements.is_empty() {
+            product.hazard_statements = Some(hazard_statements);
+        } else {
+            product.hazard_statements = None;
+        }
+    }
+
+    Ok(())
+}
+
 fn populate_precautionary_statements() {}
 fn populate_supplier_refs() {}
 fn populate_tags() {}
@@ -778,6 +855,7 @@ pub fn get_products(
     populate_synonyms(db_connection, &mut products)?;
     populate_classes_of_compound(db_connection, &mut products)?;
     populate_symbols(db_connection, &mut products)?;
+    populate_hazard_statements(db_connection, &mut products)?;
 
     debug!("products: {:#?}", products);
 
