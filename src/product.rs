@@ -13,11 +13,16 @@ use crate::{
     producer::Producer,
     producerref::Producerref,
     productclassofcompound::{Productclassofcompound, ProductclassofcompoundWrapper},
-    producthazardstatements::ProducthazardstatementsWrapper,
-    productprecautionarystatements::ProductprecautionarystatementsWrapper,
-    productsymbols::ProductsymbolsWrapper,
+    producthazardstatements::{Producthazardstatements, ProducthazardstatementsWrapper},
+    productprecautionarystatements::{
+        Productprecautionarystatements, ProductprecautionarystatementsWrapper,
+    },
+    productsupplierrefs::{Productsupplierrefs, ProductsupplierrefsWrapper},
+    productsymbols::{Productsymbols, ProductsymbolsWrapper},
     productsynonyms::{Productsynonyms, ProductsynonymsWrapper},
     signalword::Signalword,
+    supplier::Supplier,
+    supplierref::Supplierref,
     symbol::Symbol,
     unit::Unit,
 };
@@ -34,6 +39,7 @@ use chimitheque_types::{
     producer::Producer as ProducerStruct,
     producerref::Producerref as ProducerrefStruct,
     product::Product as ProductStruct,
+    productsupplierrefs::Productsupplierrefs as ProductsupplierrefsStruct,
     requestfilter::RequestFilter,
     signalword::Signalword as SignalwordStruct,
     unit::Unit as UnitStruct,
@@ -81,30 +87,6 @@ pub enum Product {
     UnitMolecularWeight,
     UnitTemperature,
     ProducerRef,
-}
-
-#[allow(clippy::enum_variant_names)]
-#[derive(Iden)]
-pub enum Producthazardstatements {
-    Table,
-    ProducthazardstatementsProductId,
-    ProducthazardstatementsHazardstatementId,
-}
-
-#[allow(clippy::enum_variant_names)]
-#[derive(Iden)]
-pub enum Productprecautionarystatements {
-    Table,
-    ProductprecautionarystatementsProductId,
-    ProductprecautionarystatementsPrecautionarystatementId,
-}
-
-#[allow(clippy::enum_variant_names)]
-#[derive(Iden)]
-pub enum Productsymbols {
-    Table,
-    ProductsymbolsProductId,
-    ProductsymbolsSymbolId,
 }
 
 #[derive(Debug, Serialize)]
@@ -285,7 +267,7 @@ fn populate_synonyms(
             let product_synonym_wrapper = row?;
             synonyms.push(chimitheque_types::name::Name {
                 match_exact_search: false,
-                name_id: product_synonym_wrapper.0.productsynonyms_product_id,
+                name_id: product_synonym_wrapper.0.productsynonyms_name_id,
                 name_label: product_synonym_wrapper.0.productsynonyms_name_label,
             });
         }
@@ -316,7 +298,7 @@ fn populate_classes_of_compound(
             .column(Classofcompound::ClassofcompoundLabel)
             .from(Productclassofcompound::Table)
             //
-            // name
+            // classofcompounds
             //
             .join(
                 JoinType::LeftJoin,
@@ -350,7 +332,7 @@ fn populate_classes_of_compound(
                 match_exact_search: false,
                 classofcompound_id: product_class_of_compound_wrapper
                     .0
-                    .productclassofcompound_product_id,
+                    .productclassofcompound_classofcompound_id,
                 classofcompound_label: product_class_of_compound_wrapper
                     .0
                     .productclassofcompound_classofcompound_label,
@@ -383,7 +365,7 @@ fn populate_symbols(
             .column(Symbol::SymbolLabel)
             .from(Productsymbols::Table)
             //
-            // name
+            // symbols
             //
             .join(
                 JoinType::LeftJoin,
@@ -412,7 +394,7 @@ fn populate_symbols(
             let product_symbols_wrapper = row?;
             symbols.push(chimitheque_types::symbol::Symbol {
                 match_exact_search: false,
-                symbol_id: product_symbols_wrapper.0.productsymbols_product_id,
+                symbol_id: product_symbols_wrapper.0.productsymbols_symbol_id,
                 symbol_label: product_symbols_wrapper.0.productsymbols_symbol_label,
             });
         }
@@ -445,7 +427,7 @@ fn populate_hazard_statements(
             .column(Hazardstatement::HazardstatementCmr)
             .from(Producthazardstatements::Table)
             //
-            // name
+            // hazardstatement
             //
             .join(
                 JoinType::LeftJoin,
@@ -479,7 +461,7 @@ fn populate_hazard_statements(
                 match_exact_search: false,
                 hazardstatement_id: product_hazardstatements_wrapper
                     .0
-                    .producthazardstatements_product_id,
+                    .producthazardstatements_hazardstatement_id,
                 hazardstatement_label: product_hazardstatements_wrapper
                     .0
                     .producthazardstatements_hazardstatement_label,
@@ -519,7 +501,7 @@ fn populate_precautionary_statements(
             .column(Precautionarystatement::PrecautionarystatementReference)
             .from(Productprecautionarystatements::Table)
             //
-            // name
+            // precautionarystatement
             //
             .join(
                 JoinType::LeftJoin,
@@ -544,7 +526,7 @@ fn populate_precautionary_statements(
             Ok(ProductprecautionarystatementsWrapper::from(row))
         })?;
 
-        // Populate product symbols.
+        // Populate product precautionary statements.
         let mut precautionary_statements: Vec<
             chimitheque_types::precautionarystatement::Precautionarystatement,
         > = vec![];
@@ -555,7 +537,7 @@ fn populate_precautionary_statements(
                     match_exact_search: false,
                     precautionarystatement_id: product_precautionarystatements_wrapper
                         .0
-                        .productprecautionarystatements_product_id,
+                        .productprecautionarystatements_precautionarystatement_id,
                     precautionarystatement_label: product_precautionarystatements_wrapper
                         .0
                         .productprecautionarystatements_precautionarystatement_label,
@@ -576,7 +558,89 @@ fn populate_precautionary_statements(
     Ok(())
 }
 
-fn populate_supplier_refs() {}
+fn populate_supplier_refs(
+    db_connection: &Connection,
+    products: &mut Vec<ProductStruct>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for product in products.iter_mut() {
+        let product_id = product.product_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .columns([
+                Productsupplierrefs::ProductsupplierrefsProductId,
+                Productsupplierrefs::ProductsupplierrefsSupplierrefId,
+            ])
+            .columns([Supplierref::SupplierrefId, Supplierref::SupplierrefLabel])
+            .columns([Supplier::SupplierId, Supplier::SupplierLabel])
+            .from(Productsupplierrefs::Table)
+            //
+            // supplierref
+            //
+            .join(
+                JoinType::LeftJoin,
+                Supplierref::Table,
+                Expr::col((
+                    Productsupplierrefs::Table,
+                    Productsupplierrefs::ProductsupplierrefsSupplierrefId,
+                ))
+                .equals((Supplierref::Table, Supplierref::SupplierrefId)),
+            )
+            //
+            // supplier
+            //
+            .join(
+                JoinType::LeftJoin,
+                Supplier::Table,
+                Expr::col((Supplierref::Table, Supplierref::Supplier))
+                    .equals((Supplier::Table, Supplier::SupplierId)),
+            )
+            .and_where(Expr::col(Productsupplierrefs::ProductsupplierrefsProductId).eq(product_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(sql.as_str())?;
+        let rows = stmt.query_map(&*values.as_params(), |row| {
+            Ok(ProductsupplierrefsWrapper::from(row))
+        })?;
+
+        // Populate product supplier refs.
+        let mut supplier_refs: Vec<chimitheque_types::supplierref::Supplierref> = vec![];
+        for row in rows {
+            let product_supplierrefs_wrapper = row?;
+            supplier_refs.push(chimitheque_types::supplierref::Supplierref {
+                match_exact_search: false,
+                supplierref_id: product_supplierrefs_wrapper
+                    .0
+                    .productsupplierrefs_supplierref_id,
+                supplierref_label: product_supplierrefs_wrapper
+                    .0
+                    .productsupplierrefs_supplierref_label,
+                supplier: chimitheque_types::supplier::Supplier {
+                    match_exact_search: false,
+                    supplier_id: product_supplierrefs_wrapper
+                        .0
+                        .productsupplierrefs_supplier_id,
+                    supplier_label: product_supplierrefs_wrapper
+                        .0
+                        .productsupplierrefs_supplier_label,
+                },
+            });
+        }
+
+        if !supplier_refs.is_empty() {
+            product.supplier_refs = Some(supplier_refs);
+        } else {
+            product.supplier_refs = None;
+        }
+    }
+
+    Ok(())
+}
+
 fn populate_tags() {}
 
 pub fn get_products(

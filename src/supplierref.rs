@@ -12,7 +12,7 @@ use crate::supplier::Supplier;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-enum Supplierref {
+pub enum Supplierref {
     Table,
     SupplierrefId,
     SupplierrefLabel,
@@ -31,8 +31,8 @@ impl From<&Row<'_>> for SupplierrefWrapper {
                 supplierref_label: row.get_unwrap("supplierref_label"),
                 supplier: SupplierStruct {
                     match_exact_search: false,
-                    supplier_id: row.get_unwrap("supplier.supplier_id"),
-                    supplier_label: row.get_unwrap("supplier.supplier_label"),
+                    supplier_id: row.get_unwrap("supplier_id"),
+                    supplier_label: row.get_unwrap("supplier_label"),
                 },
             }
         })

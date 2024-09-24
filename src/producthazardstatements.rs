@@ -6,10 +6,10 @@ use serde::Serialize;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-pub enum Productsynonyms {
+pub enum Producthazardstatements {
     Table,
-    ProductsynonymsProductId,
-    ProductsynonymsNameId,
+    ProducthazardstatementsProductId,
+    ProducthazardstatementsHazardstatementId,
 }
 
 #[derive(Debug, Serialize, Default)]

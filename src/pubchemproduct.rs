@@ -1,7 +1,8 @@
 use crate::hazardstatement;
-use crate::product::{
-    Product, Producthazardstatements, Productprecautionarystatements, Productsymbols,
-};
+use crate::product::Product;
+use crate::producthazardstatements::Producthazardstatements;
+use crate::productprecautionarystatements::Productprecautionarystatements;
+use crate::productsymbols::Productsymbols;
 use crate::searchable::create;
 use crate::searchable::parse;
 use crate::{precautionarystatement, unit};

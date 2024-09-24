@@ -8,7 +8,7 @@ use serde::Serialize;
 pub enum Productsymbols {
     Table,
     ProductsymbolsProductId,
-    ProductsymbolsNameId,
+    ProductsymbolsSymbolId,
 }
 
 #[derive(Debug, Serialize, Default)]
