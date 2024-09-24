@@ -9,10 +9,12 @@ use crate::{
     name::Name,
     person::Person,
     physicalstate::Physicalstate,
+    precautionarystatement::Precautionarystatement,
     producer::Producer,
     producerref::Producerref,
     productclassofcompound::{Productclassofcompound, ProductclassofcompoundWrapper},
     producthazardstatements::ProducthazardstatementsWrapper,
+    productprecautionarystatements::ProductprecautionarystatementsWrapper,
     productsymbols::ProductsymbolsWrapper,
     productsynonyms::{Productsynonyms, ProductsynonymsWrapper},
     signalword::Signalword,
@@ -468,7 +470,7 @@ fn populate_hazard_statements(
             Ok(ProducthazardstatementsWrapper::from(row))
         })?;
 
-        // Populate product symbols.
+        // Populate product hazard statements.
         let mut hazard_statements: Vec<chimitheque_types::hazardstatement::Hazardstatement> =
             vec![];
         for row in rows {
@@ -500,7 +502,80 @@ fn populate_hazard_statements(
     Ok(())
 }
 
-fn populate_precautionary_statements() {}
+fn populate_precautionary_statements(
+    db_connection: &Connection,
+    products: &mut Vec<ProductStruct>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for product in products.iter_mut() {
+        let product_id = product.product_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .columns([
+                Productprecautionarystatements::ProductprecautionarystatementsProductId,
+                Productprecautionarystatements::ProductprecautionarystatementsPrecautionarystatementId,
+            ])
+            .column(Precautionarystatement::PrecautionarystatementLabel)
+            .column(Precautionarystatement::PrecautionarystatementReference)
+            .from(Productprecautionarystatements::Table)
+            //
+            // name
+            //
+            .join(
+                JoinType::LeftJoin,
+                Precautionarystatement::Table,
+                Expr::col((
+                    Productprecautionarystatements::Table,
+                    Productprecautionarystatements::ProductprecautionarystatementsPrecautionarystatementId,
+                ))
+                .equals((Precautionarystatement::Table, Precautionarystatement::PrecautionarystatementId)),
+            )
+            .and_where(
+                Expr::col(Productprecautionarystatements::ProductprecautionarystatementsProductId).eq(product_id),
+            )
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(sql.as_str())?;
+        let rows = stmt.query_map(&*values.as_params(), |row| {
+            Ok(ProductprecautionarystatementsWrapper::from(row))
+        })?;
+
+        // Populate product symbols.
+        let mut precautionary_statements: Vec<
+            chimitheque_types::precautionarystatement::Precautionarystatement,
+        > = vec![];
+        for row in rows {
+            let product_precautionarystatements_wrapper = row?;
+            precautionary_statements.push(
+                chimitheque_types::precautionarystatement::Precautionarystatement {
+                    match_exact_search: false,
+                    precautionarystatement_id: product_precautionarystatements_wrapper
+                        .0
+                        .productprecautionarystatements_product_id,
+                    precautionarystatement_label: product_precautionarystatements_wrapper
+                        .0
+                        .productprecautionarystatements_precautionarystatement_label,
+                    precautionarystatement_reference: product_precautionarystatements_wrapper
+                        .0
+                        .productprecautionarystatements_precautionarystatement_reference,
+                },
+            );
+        }
+
+        if !precautionary_statements.is_empty() {
+            product.precautionary_statements = Some(precautionary_statements);
+        } else {
+            product.precautionary_statements = None;
+        }
+    }
+
+    Ok(())
+}
+
 fn populate_supplier_refs() {}
 fn populate_tags() {}
 
@@ -856,6 +931,7 @@ pub fn get_products(
     populate_classes_of_compound(db_connection, &mut products)?;
     populate_symbols(db_connection, &mut products)?;
     populate_hazard_statements(db_connection, &mut products)?;
+    populate_precautionary_statements(db_connection, &mut products)?;
 
     debug!("products: {:#?}", products);
 
