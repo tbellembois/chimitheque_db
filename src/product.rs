@@ -11,8 +11,10 @@ use crate::{
     producer::Producer,
     producerref::Producerref,
     productclassofcompound::{Productclassofcompound, ProductclassofcompoundWrapper},
+    productsymbols::ProductsymbolsWrapper,
     productsynonyms::{Productsynonyms, ProductsynonymsWrapper},
     signalword::Signalword,
+    symbol::Symbol,
     unit::Unit,
 };
 use chimitheque_types::{
@@ -334,7 +336,7 @@ fn populate_classes_of_compound(
             Ok(ProductclassofcompoundWrapper::from(row))
         })?;
 
-        // Populate product synonyms.
+        // Populate product classes of compound.
         let mut classes_of_compound: Vec<chimitheque_types::classofcompound::Classofcompound> =
             vec![];
         for row in rows {
@@ -360,7 +362,66 @@ fn populate_classes_of_compound(
     Ok(())
 }
 
-fn populate_symbols() {}
+fn populate_symbols(
+    db_connection: &Connection,
+    products: &mut Vec<ProductStruct>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for product in products.iter_mut() {
+        let product_id = product.product_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .columns([
+                Productsymbols::ProductsymbolsProductId,
+                Productsymbols::ProductsymbolsSymbolId,
+            ])
+            .column(Symbol::SymbolLabel)
+            .from(Productsymbols::Table)
+            //
+            // name
+            //
+            .join(
+                JoinType::LeftJoin,
+                Symbol::Table,
+                Expr::col((
+                    Productsymbols::Table,
+                    Productsymbols::ProductsymbolsSymbolId,
+                ))
+                .equals((Symbol::Table, Symbol::SymbolId)),
+            )
+            .and_where(Expr::col(Productsymbols::ProductsymbolsProductId).eq(product_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(sql.as_str())?;
+        let rows = stmt.query_map(&*values.as_params(), |row| {
+            Ok(ProductsymbolsWrapper::from(row))
+        })?;
+
+        // Populate product symbols.
+        let mut symbols: Vec<chimitheque_types::symbol::Symbol> = vec![];
+        for row in rows {
+            let product_symbols_wrapper = row?;
+            symbols.push(chimitheque_types::symbol::Symbol {
+                match_exact_search: false,
+                symbol_id: product_symbols_wrapper.0.productsymbols_product_id,
+                symbol_label: product_symbols_wrapper.0.productsymbols_symbol_label,
+            });
+        }
+
+        if !symbols.is_empty() {
+            product.symbols = Some(symbols);
+        } else {
+            product.symbols = None;
+        }
+    }
+
+    Ok(())
+}
+
 fn populate_hazard_statements() {}
 fn populate_precautionary_statements() {}
 fn populate_supplier_refs() {}
@@ -716,6 +777,7 @@ pub fn get_products(
 
     populate_synonyms(db_connection, &mut products)?;
     populate_classes_of_compound(db_connection, &mut products)?;
+    populate_symbols(db_connection, &mut products)?;
 
     debug!("products: {:#?}", products);
 
