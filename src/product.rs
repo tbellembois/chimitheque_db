@@ -20,10 +20,12 @@ use crate::{
     productsupplierrefs::{Productsupplierrefs, ProductsupplierrefsWrapper},
     productsymbols::{Productsymbols, ProductsymbolsWrapper},
     productsynonyms::{Productsynonyms, ProductsynonymsWrapper},
+    producttags::{Producttags, ProducttagsWrapper},
     signalword::Signalword,
     supplier::Supplier,
     supplierref::Supplierref,
     symbol::Symbol,
+    tag::Tag,
     unit::Unit,
 };
 use chimitheque_types::{
@@ -42,6 +44,7 @@ use chimitheque_types::{
     productsupplierrefs::Productsupplierrefs as ProductsupplierrefsStruct,
     requestfilter::RequestFilter,
     signalword::Signalword as SignalwordStruct,
+    tag::Tag as TagStruct,
     unit::Unit as UnitStruct,
     unittype::{ParseUnitTypeError, UnitType},
 };
@@ -641,7 +644,62 @@ fn populate_supplier_refs(
     Ok(())
 }
 
-fn populate_tags() {}
+fn populate_tags(
+    db_connection: &Connection,
+    products: &mut Vec<ProductStruct>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for product in products.iter_mut() {
+        let product_id = product.product_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .columns([
+                Producttags::ProducttagsProductId,
+                Producttags::ProducttagsTagId,
+            ])
+            .column(Tag::TagLabel)
+            .from(Producttags::Table)
+            //
+            // tags
+            //
+            .join(
+                JoinType::LeftJoin,
+                Tag::Table,
+                Expr::col((Producttags::Table, Producttags::ProducttagsTagId))
+                    .equals((Tag::Table, Tag::TagId)),
+            )
+            .and_where(Expr::col(Producttags::ProducttagsProductId).eq(product_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(sql.as_str())?;
+        let rows = stmt.query_map(&*values.as_params(), |row| {
+            Ok(ProducttagsWrapper::from(row))
+        })?;
+
+        // Populate product tags.
+        let mut tags: Vec<chimitheque_types::tag::Tag> = vec![];
+        for row in rows {
+            let product_tags_wrapper = row?;
+            tags.push(chimitheque_types::tag::Tag {
+                match_exact_search: false,
+                tag_id: product_tags_wrapper.0.producttags_tag_id,
+                tag_label: product_tags_wrapper.0.producttags_tag_label,
+            });
+        }
+
+        if !tags.is_empty() {
+            product.tags = Some(tags);
+        } else {
+            product.tags = None;
+        }
+    }
+
+    Ok(())
+}
 
 pub fn get_products(
     db_connection: &Connection,
@@ -996,6 +1054,8 @@ pub fn get_products(
     populate_symbols(db_connection, &mut products)?;
     populate_hazard_statements(db_connection, &mut products)?;
     populate_precautionary_statements(db_connection, &mut products)?;
+    populate_supplier_refs(db_connection, &mut products)?;
+    populate_tags(db_connection, &mut products)?;
 
     debug!("products: {:#?}", products);
 

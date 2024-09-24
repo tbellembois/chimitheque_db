@@ -1,8 +1,17 @@
-use chimitheque_types::tag::Tag;
+use chimitheque_types::tag::Tag as TagStruct;
+use sea_query::Iden;
 use serde::Serialize;
 
+#[allow(clippy::enum_variant_names)]
+#[derive(Iden)]
+pub enum Tag {
+    Table,
+    TagId,
+    TagLabel,
+}
+
 #[derive(Debug, Serialize, Default)]
-pub struct TagWrapper(pub Tag);
+pub struct TagWrapper(pub TagStruct);
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +22,7 @@ mod tests {
     #[test]
     fn test_get_tags() {
         test_searchable(
-            Tag {
+            TagStruct {
                 ..Default::default()
             },
             vec!["tag1", "aa tag1", "bb tAg1", "tag2", "tag3"],

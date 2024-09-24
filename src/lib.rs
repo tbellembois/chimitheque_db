@@ -22,6 +22,7 @@ pub mod productprecautionarystatements;
 pub mod productsupplierrefs;
 pub mod productsymbols;
 pub mod productsynonyms;
+pub mod producttags;
 pub mod pubchemproduct;
 pub mod searchable;
 pub mod signalword;
