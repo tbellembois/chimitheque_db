@@ -9,7 +9,7 @@ use serde::Serialize;
 pub enum Producthazardstatements {
     Table,
     ProducthazardstatementsProductId,
-    ProducthazardstatementsHazardstatementId,
+    ProducthazardstatementsHazardStatementId,
 }
 
 #[derive(Debug, Serialize, Default)]
@@ -23,13 +23,14 @@ impl From<&Row<'_>> for ProducthazardstatementsWrapper {
             ProducthazardstatementsStruct {
                 producthazardstatements_product_id: row
                     .get_unwrap("producthazardstatements_product_id"),
-                producthazardstatements_hazardstatement_id: row
-                    .get_unwrap("producthazardstatements_hazardstatement_id"),
-                producthazardstatements_hazardstatement_label: row
-                    .get_unwrap("hazardstatement_label"),
-                producthazardstatements_hazardstatement_reference: row
-                    .get_unwrap("hazardstatement_reference"),
-                producthazardstatements_hazardstatement_cmr: row.get_unwrap("hazardstatement_cmr"),
+                producthazardstatements_hazard_statement_id: row
+                    .get_unwrap("producthazardstatements_hazard_statement_id"),
+                producthazardstatements_hazard_statement_label: row
+                    .get_unwrap("hazard_statement_label"),
+                producthazardstatements_hazard_statement_reference: row
+                    .get_unwrap("hazard_statement_reference"),
+                producthazardstatements_hazard_statement_cmr: row
+                    .get_unwrap("hazard_statement_cmr"),
             }
         })
     }

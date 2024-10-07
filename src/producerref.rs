@@ -1,6 +1,6 @@
 use chimitheque_types::producer::Producer as ProducerStruct;
 use chimitheque_types::{
-    producerref::Producerref as ProducerrefStruct, requestfilter::RequestFilter,
+    producerref::ProducerRef as ProducerRefStruct, requestfilter::RequestFilter,
 };
 use log::debug;
 use rusqlite::{Connection, Row};
@@ -12,23 +12,23 @@ use crate::producer::Producer;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-pub enum Producerref {
+pub enum ProducerRef {
     Table,
-    ProducerrefId,
-    ProducerrefLabel,
+    ProducerRefId,
+    ProducerRefLabel,
     Producer,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ProducerrefWrapper(ProducerrefStruct);
+pub struct ProducerRefWrapper(ProducerRefStruct);
 
-impl From<&Row<'_>> for ProducerrefWrapper {
+impl From<&Row<'_>> for ProducerRefWrapper {
     fn from(row: &Row) -> Self {
         Self({
-            ProducerrefStruct {
+            ProducerRefStruct {
                 match_exact_search: false,
-                producerref_id: row.get_unwrap("producerref_id"),
-                producerref_label: row.get_unwrap("producerref_label"),
+                producer_ref_id: row.get_unwrap("producer_ref_id"),
+                producer_ref_label: row.get_unwrap("producer_ref_label"),
                 producer: ProducerStruct {
                     match_exact_search: false,
                     producer_id: row.get_unwrap("producer.producer_id"),
@@ -39,26 +39,26 @@ impl From<&Row<'_>> for ProducerrefWrapper {
     }
 }
 
-pub fn get_producerrefs(
+pub fn get_producer_refs(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<ProducerrefStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<ProducerRefStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
     let mut expression = Query::select();
     expression
-        .from(Producerref::Table)
+        .from(ProducerRef::Table)
         .left_join(
             Producer::Table,
-            Expr::col((Producerref::Table, Producerref::Producer))
+            Expr::col((ProducerRef::Table, ProducerRef::Producer))
                 .equals((Producer::Table, Producer::ProducerId)),
         )
         .conditions(
             filter.search.is_some(),
             |q| {
                 q.and_where(
-                    Expr::col(Producerref::ProducerrefLabel)
+                    Expr::col(ProducerRef::ProducerRefLabel)
                         .like(format!("%{}%", filter.search.clone().unwrap())),
                 );
             },
@@ -67,7 +67,7 @@ pub fn get_producerrefs(
         .conditions(
             filter.producer.is_some(),
             |q| {
-                q.and_where(Expr::col(Producerref::Producer).eq(filter.producer.unwrap()));
+                q.and_where(Expr::col(ProducerRef::Producer).eq(filter.producer.unwrap()));
             },
             |_| {},
         );
@@ -75,7 +75,7 @@ pub fn get_producerrefs(
     // Create count query.
     let (count_sql, count_values) = expression
         .clone()
-        .expr(Expr::col((Producerref::Table, Producerref::ProducerrefId)).count_distinct())
+        .expr(Expr::col((ProducerRef::Table, ProducerRef::ProducerRefId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
@@ -83,7 +83,7 @@ pub fn get_producerrefs(
 
     // Create select query.
     let (select_sql, select_values) = expression
-        .columns([Producerref::ProducerrefId, Producerref::ProducerrefLabel])
+        .columns([ProducerRef::ProducerRefId, ProducerRef::ProducerRefLabel])
         .expr_as(
             Expr::col((Producer::Table, Producer::ProducerId)),
             Alias::new("producer.producer_id"),
@@ -92,7 +92,7 @@ pub fn get_producerrefs(
             Expr::col((Producer::Table, Producer::ProducerLabel)),
             Alias::new("producer.producer_label"),
         )
-        .order_by(Producerref::ProducerrefLabel, Order::Asc)
+        .order_by(ProducerRef::ProducerRefLabel, Order::Asc)
         .conditions(
             filter.limit.is_some(),
             |q| {
@@ -124,33 +124,33 @@ pub fn get_producerrefs(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(ProducerrefWrapper::from(row).0)
+        Ok(ProducerRefWrapper::from(row).0)
     })?;
 
     // Build result.
-    let mut producerrefs = Vec::new();
-    for maybe_producerref in rows {
-        let mut producerref = maybe_producerref?;
+    let mut producer_refs = Vec::new();
+    for maybe_producer_ref in rows {
+        let mut producer_ref = maybe_producer_ref?;
 
-        // Set match_exact_search for producerref matching filter.search.
+        // Set match_exact_search for producer_ref matching filter.search.
         if filter.search.is_some()
-            && producerref
-                .producerref_label
+            && producer_ref
+                .producer_ref_label
                 .eq(&filter.search.clone().unwrap())
         {
-            producerref.match_exact_search = true;
+            producer_ref.match_exact_search = true;
 
             // Inserting the producer at the beginning of the results.
-            producerrefs.insert(0, producerref)
+            producer_refs.insert(0, producer_ref)
         } else {
             // Inserting the producer at the end of the results.
-            producerrefs.push(producerref);
+            producer_refs.push(producer_ref);
         }
     }
 
-    debug!("producerrefs: {:#?}", producerrefs);
+    debug!("producer_refs: {:#?}", producer_refs);
 
-    Ok((producerrefs, count))
+    Ok((producer_refs, count))
 }
 
 #[cfg(test)]
@@ -182,50 +182,50 @@ mod tests {
             )
             .unwrap();
 
-        // insert fake producerrefs.
+        // insert fake producer_refs.
         let _ = db_connection
             .execute(
-                "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
+                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
                 (String::from("1_ref1"), 300),
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
+                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
                 (String::from("1_ref2"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
+                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
                 (String::from("1234"), 300),
             )
             .unwrap();
         let _ = db_connection.execute(
-            "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
+            "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
             (String::from("12"), 300),
         );
 
         let _ = db_connection
             .execute(
-                "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
+                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
                 (String::from("2_ref1"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
+                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
                 (String::from("2_ref2"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
+                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
                 (String::from("1234"), 301),
             )
             .unwrap();
         let _ = db_connection.execute(
-            "INSERT INTO producerref (producerref_label, producer) VALUES (?1, ?2)",
+            "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
             (String::from("22"), 301),
         );
 
@@ -233,7 +233,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_producerrefs() {
+    fn test_get_producer_refs() {
         init_logger();
 
         let db_connection = init_test_db();
@@ -242,7 +242,7 @@ mod tests {
         let filter = RequestFilter {
             ..Default::default()
         };
-        let (_, count) = get_producerrefs(&db_connection, filter).unwrap();
+        let (_, count) = get_producer_refs(&db_connection, filter).unwrap();
 
         // expected number of results.
         assert_eq!(count, 8);
@@ -252,12 +252,12 @@ mod tests {
             search: Some(String::from("1_ref1")),
             ..Default::default()
         };
-        let (producerrefs, count) = get_producerrefs(&db_connection, filter).unwrap();
+        let (producer_refs, count) = get_producer_refs(&db_connection, filter).unwrap();
 
         // expected number of results.
         assert_eq!(count, 1);
         // expected correct producer.
-        assert!(producerrefs[0]
+        assert!(producer_refs[0]
             .producer
             .producer_label
             .eq("FAKE_PRODUCER_1"))

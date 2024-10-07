@@ -1,17 +1,17 @@
-use chimitheque_types::classofcompound::Classofcompound as ClassofcompoundStruct;
+use chimitheque_types::classofcompound::ClassOfCompound as ClassOfCompoundStruct;
 use sea_query::Iden;
 use serde::Serialize;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-pub enum Classofcompound {
+pub enum ClassOfCompound {
     Table,
-    ClassofcompoundId,
-    ClassofcompoundLabel,
+    ClassOfCompoundId,
+    ClassOfCompoundLabel,
 }
 
 #[derive(Debug, Serialize, Default)]
-pub struct ClassofcompoundWrapper(pub ClassofcompoundStruct);
+pub struct ClassOfCompoundWrapper(pub ClassOfCompoundStruct);
 
 #[cfg(test)]
 mod tests {
@@ -20,20 +20,20 @@ mod tests {
     use crate::searchable::tests::test_searchable;
 
     #[test]
-    fn test_get_classesofcompound() {
+    fn test_get_classes_of_compound() {
         test_searchable(
-            ClassofcompoundStruct {
+            ClassOfCompoundStruct {
                 ..Default::default()
             },
             vec![
-                "casnumber1",
-                "aa casnumber1",
-                "bb cAsNuMbEr1",
-                "casnumber2",
-                "casnumber3",
+                "classesofcompound1",
+                "aa classesofcompound1",
+                "bb cLaSsOfCoMpOuNd1",
+                "classesofcompound2",
+                "classesofcompound3",
             ],
             3,
-            "casnumber1",
+            "classesofcompound1",
         )
     }
 }

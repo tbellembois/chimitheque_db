@@ -169,10 +169,10 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
 
         DROP TABLE IF EXISTS precautionarystatement;
         CREATE TABLE precautionarystatement (
-            precautionarystatement_id	INTEGER,
+            precautionary_statement_id	INTEGER,
             precautionarystatement_label	TEXT NOT NULL,
             precautionarystatement_reference	TEXT NOT NULL UNIQUE,
-            PRIMARY KEY(precautionarystatement_id)
+            PRIMARY KEY(precautionary_statement_id)
         ) STRICT;
 
         DROP TABLE IF EXISTS producer;
@@ -260,10 +260,10 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         DROP TABLE IF EXISTS productprecautionarystatements;
         CREATE TABLE productprecautionarystatements (
             productprecautionarystatements_product_id	INTEGER NOT NULL,
-            productprecautionarystatements_precautionarystatement_id	INTEGER NOT NULL,
-            PRIMARY KEY(productprecautionarystatements_product_id,productprecautionarystatements_precautionarystatement_id),
+            productprecautionarystatements_precautionary_statement_id	INTEGER NOT NULL,
+            PRIMARY KEY(productprecautionarystatements_product_id,productprecautionarystatements_precautionary_statement_id),
             FOREIGN KEY(productprecautionarystatements_product_id) REFERENCES product(product_id),
-            FOREIGN KEY(productprecautionarystatements_precautionarystatement_id) REFERENCES precautionarystatement(precautionarystatement_id)
+            FOREIGN KEY(productprecautionarystatements_precautionary_statement_id) REFERENCES precautionarystatement(precautionary_statement_id)
         ) STRICT;
 
         DROP TABLE IF EXISTS productsupplierrefs;
@@ -525,7 +525,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         DROP INDEX IF EXISTS idx_productprecautionarystatements;
         CREATE UNIQUE INDEX idx_productprecautionarystatements ON productprecautionarystatements (
             productprecautionarystatements_product_id,
-            productprecautionarystatements_precautionarystatement_id
+            productprecautionarystatements_precautionary_statement_id
         );
         DROP INDEX IF EXISTS idx_productsupplierrefs;
         CREATE UNIQUE INDEX idx_productsupplierrefs ON productsupplierrefs (

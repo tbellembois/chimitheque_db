@@ -9,8 +9,8 @@ use serde::Serialize;
 pub enum Productsupplierrefs {
     Table,
     ProductsupplierrefsProductId,
-    ProductsupplierrefsSupplierrefId,
-    ProductsupplierrefsSupplierrefLabel,
+    ProductsupplierrefsSupplierRefId,
+    ProductsupplierrefsSupplierRefLabel,
     ProductsupplierrefsSupplierId,
     ProductsupplierrefsSupplierLabel,
 }
@@ -25,9 +25,9 @@ impl From<&Row<'_>> for ProductsupplierrefsWrapper {
         Self({
             ProductsupplierrefsStruct {
                 productsupplierrefs_product_id: row.get_unwrap("productsupplierrefs_product_id"),
-                productsupplierrefs_supplierref_id: row
-                    .get_unwrap("productsupplierrefs_supplierref_id"),
-                productsupplierrefs_supplierref_label: row.get_unwrap("supplierref_label"),
+                productsupplierrefs_supplier_ref_id: row
+                    .get_unwrap("productsupplierrefs_supplier_ref_id"),
+                productsupplierrefs_supplier_ref_label: row.get_unwrap("supplier_ref_label"),
                 productsupplierrefs_supplier_id: row.get_unwrap("supplier_id"),
                 productsupplierrefs_supplier_label: row.get_unwrap("supplier_label"),
             }

@@ -1,18 +1,20 @@
 use crate::{
-    casnumber::Casnumber,
+    casnumber::CasNumber,
     category::Category,
-    cenumber::Cenumber,
-    classofcompound::Classofcompound,
-    empiricalformula::Empiricalformula,
-    hazardstatement::Hazardstatement,
-    linearformula::Linearformula,
+    cenumber::CeNumber,
+    classofcompound::ClassOfCompound,
+    empiricalformula::EmpiricalFormula,
+    hazardstatement::HazardStatement,
+    linearformula::LinearFormula,
     name::Name,
+    permission::Permission,
     person::Person,
-    physicalstate::Physicalstate,
-    precautionarystatement::Precautionarystatement,
+    personentities::Personentities,
+    physicalstate::PhysicalState,
+    precautionarystatement::PrecautionaryStatement,
     producer::Producer,
-    producerref::Producerref,
-    productclassofcompound::{Productclassofcompound, ProductclassofcompoundWrapper},
+    producerref::ProducerRef,
+    productclassesofcompounds::{Productclassesofcompounds, ProductclassesofcompoundsWrapper},
     producthazardstatements::{Producthazardstatements, ProducthazardstatementsWrapper},
     productprecautionarystatements::{
         Productprecautionarystatements, ProductprecautionarystatementsWrapper,
@@ -21,37 +23,36 @@ use crate::{
     productsymbols::{Productsymbols, ProductsymbolsWrapper},
     productsynonyms::{Productsynonyms, ProductsynonymsWrapper},
     producttags::{Producttags, ProducttagsWrapper},
-    signalword::Signalword,
+    signalword::SignalWord,
+    storage::Storage,
+    storelocation::StoreLocation,
     supplier::Supplier,
-    supplierref::Supplierref,
+    supplierref::SupplierRef,
     symbol::Symbol,
     tag::Tag,
     unit::Unit,
 };
 use chimitheque_types::{
-    casnumber::Casnumber as CasnumberStruct,
+    casnumber::CasNumber as CasNumberStruct,
     category::Category as CategoryStruct,
-    cenumber::Cenumber as CenumberStruct,
-    empiricalformula::Empiricalformula as EmpiricalformulaStruct,
-    hazardstatement::Hazardstatement as HazardstatementStruct,
-    linearformula::Linearformula as LinearformulaStruct,
+    cenumber::CeNumber as CeNumberStruct,
+    empiricalformula::EmpiricalFormula as EmpiricalFormulaStruct,
+    linearformula::LinearFormula as LinearFormulaStruct,
     name::Name as NameStruct,
     person::Person as PersonStruct,
-    physicalstate::Physicalstate as PhysicalstateStruct,
+    physicalstate::PhysicalState as PhysicalStateStruct,
     producer::Producer as ProducerStruct,
-    producerref::Producerref as ProducerrefStruct,
+    producerref::ProducerRef as ProducerRefStruct,
     product::Product as ProductStruct,
-    productsupplierrefs::Productsupplierrefs as ProductsupplierrefsStruct,
     requestfilter::RequestFilter,
-    signalword::Signalword as SignalwordStruct,
-    tag::Tag as TagStruct,
+    signalword::SignalWord as SignalWordStruct,
     unit::Unit as UnitStruct,
     unittype::{ParseUnitTypeError, UnitType},
 };
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
-    Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SqliteQueryBuilder,
+    all, Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SqliteQueryBuilder,
 };
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
@@ -101,19 +102,19 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
         let maybe_unit_temperature_type_string: Option<String> =
             row.get_unwrap("unit_temperature_unit_type");
-        let maybe_unit_molecularweight_type_string: Option<String> =
-            row.get_unwrap("unit_molecularweight_unit_type");
-        let maybe_casnumber: Option<u64> = row.get_unwrap("casnumber_id");
-        let maybe_cenumber: Option<u64> = row.get_unwrap("cenumber_id");
-        let maybe_empiricalformula: Option<u64> = row.get_unwrap("empiricalformula_id");
-        let maybe_linearformula: Option<u64> = row.get_unwrap("linearformula_id");
-        let maybe_physicalstate: Option<u64> = row.get_unwrap("physicalstate_id");
-        let maybe_signalword: Option<u64> = row.get_unwrap("signalword_id");
+        let maybe_unit_molecular_weight_type_string: Option<String> =
+            row.get_unwrap("unit_molecular_weight_unit_type");
+        let maybe_cas_number: Option<u64> = row.get_unwrap("cas_number_id");
+        let maybe_ce_number: Option<u64> = row.get_unwrap("ce_number_id");
+        let maybe_empirical_formula: Option<u64> = row.get_unwrap("empirical_formula_id");
+        let maybe_linear_formula: Option<u64> = row.get_unwrap("linear_formula_id");
+        let maybe_physical_state: Option<u64> = row.get_unwrap("physical_state_id");
+        let maybe_signal_word: Option<u64> = row.get_unwrap("signal_word_id");
         let maybe_category: Option<u64> = row.get_unwrap("category_id");
-        let maybe_producerref: Option<u64> = row.get_unwrap("producerref_id");
+        let maybe_producer_ref: Option<u64> = row.get_unwrap("producer_ref_id");
         let maybe_unit_temperature: Option<u64> = row.get_unwrap("unit_temperature_unit_id");
-        let maybe_unit_molecularweight: Option<u64> =
-            row.get_unwrap("unit_molecularweight_unit_id");
+        let maybe_unit_molecular_weight: Option<u64> =
+            row.get_unwrap("unit_molecular_weight_unit_id");
 
         // Extract unit temperature type if some.
         let unit_temperature_type: UnitType;
@@ -125,12 +126,12 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
         }
 
         // Extract unit molecular weight type if some.
-        let unit_molecularweight_type: UnitType;
-        if maybe_unit_molecularweight.is_some() {
-            unit_molecularweight_type =
-                UnitType::from_str(&maybe_unit_molecularweight_type_string.unwrap())?;
+        let unit_molecular_weight_type: UnitType;
+        if maybe_unit_molecular_weight.is_some() {
+            unit_molecular_weight_type =
+                UnitType::from_str(&maybe_unit_molecular_weight_type_string.unwrap())?;
         } else {
-            unit_molecularweight_type = Default::default();
+            unit_molecular_weight_type = Default::default();
         }
 
         Ok(Self(ProductStruct {
@@ -144,34 +145,34 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
                 person_id: row.get_unwrap("person_id"),
                 person_email: row.get_unwrap("person_email"),
             },
-            cas_number: maybe_casnumber.map(|_| CasnumberStruct {
-                casnumber_id: row.get_unwrap("casnumber_id"),
-                casnumber_label: row.get_unwrap("casnumber_label"),
+            cas_number: maybe_cas_number.map(|_| CasNumberStruct {
+                cas_number_id: row.get_unwrap("cas_number_id"),
+                cas_number_label: row.get_unwrap("cas_number_label"),
                 ..Default::default()
             }),
-            ce_number: maybe_cenumber.map(|_| CenumberStruct {
-                cenumber_id: row.get_unwrap("cenumber_id"),
-                cenumber_label: row.get_unwrap("cenumber_label"),
+            ce_number: maybe_ce_number.map(|_| CeNumberStruct {
+                ce_number_id: row.get_unwrap("ce_number_id"),
+                ce_number_label: row.get_unwrap("ce_number_label"),
                 ..Default::default()
             }),
-            empirical_formula: maybe_empiricalformula.map(|_| EmpiricalformulaStruct {
-                empiricalformula_id: row.get_unwrap("empiricalformula_id"),
-                empiricalformula_label: row.get_unwrap("empiricalformula_label"),
+            empirical_formula: maybe_empirical_formula.map(|_| EmpiricalFormulaStruct {
+                empirical_formula_id: row.get_unwrap("empirical_formula_id"),
+                empirical_formula_label: row.get_unwrap("empirical_formula_label"),
                 ..Default::default()
             }),
-            linear_formula: maybe_linearformula.map(|_| LinearformulaStruct {
-                linearformula_id: row.get_unwrap("linearformula_id"),
-                linearformula_label: row.get_unwrap("linearformula_label"),
+            linear_formula: maybe_linear_formula.map(|_| LinearFormulaStruct {
+                linear_formula_id: row.get_unwrap("linear_formula_id"),
+                linear_formula_label: row.get_unwrap("linear_formula_label"),
                 ..Default::default()
             }),
-            physical_state: maybe_physicalstate.map(|_| PhysicalstateStruct {
-                physicalstate_id: row.get_unwrap("physicalstate_id"),
-                physicalstate_label: row.get_unwrap("physicalstate_label"),
+            physical_state: maybe_physical_state.map(|_| PhysicalStateStruct {
+                physical_state_id: row.get_unwrap("physical_state_id"),
+                physical_state_label: row.get_unwrap("physical_state_label"),
                 ..Default::default()
             }),
-            signal_word: maybe_signalword.map(|_| SignalwordStruct {
-                signalword_id: row.get_unwrap("signalword_id"),
-                signalword_label: row.get_unwrap("signalword_label"),
+            signal_word: maybe_signal_word.map(|_| SignalWordStruct {
+                signal_word_id: row.get_unwrap("signal_word_id"),
+                signal_word_label: row.get_unwrap("signal_word_label"),
                 ..Default::default()
             }),
             category: maybe_category.map(|_| CategoryStruct {
@@ -179,9 +180,9 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
                 category_label: row.get_unwrap("category_label"),
                 ..Default::default()
             }),
-            producer_ref: maybe_producerref.map(|_| ProducerrefStruct {
-                producerref_id: row.get_unwrap("producerref_id"),
-                producerref_label: row.get_unwrap("producerref_label"),
+            producer_ref: maybe_producer_ref.map(|_| ProducerRefStruct {
+                producer_ref_id: row.get_unwrap("producer_ref_id"),
+                producer_ref_label: row.get_unwrap("producer_ref_label"),
                 producer: ProducerStruct {
                     producer_id: row.get_unwrap("producer_id"),
                     producer_label: row.get_unwrap("producer_label"),
@@ -196,11 +197,11 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
                 unit_type: unit_temperature_type,
                 unit: Default::default(),
             }),
-            unit_molecular_weight: maybe_unit_molecularweight.map(|_| UnitStruct {
-                unit_id: row.get_unwrap("unit_molecularweight_unit_id"),
-                unit_label: row.get_unwrap("unit_molecularweight_unit_label"),
-                unit_multiplier: row.get_unwrap("unit_molecularweight_unit_multiplier"),
-                unit_type: unit_molecularweight_type,
+            unit_molecular_weight: maybe_unit_molecular_weight.map(|_| UnitStruct {
+                unit_id: row.get_unwrap("unit_molecular_weight_unit_id"),
+                unit_label: row.get_unwrap("unit_molecular_weight_unit_label"),
+                unit_multiplier: row.get_unwrap("unit_molecular_weight_unit_multiplier"),
+                unit_type: unit_molecular_weight_type,
                 unit: Default::default(),
             }),
 
@@ -295,25 +296,26 @@ fn populate_classes_of_compound(
         // Create select query.
         let (sql, values) = Query::select()
             .columns([
-                Productclassofcompound::ProductclassofcompoundProductId,
-                Productclassofcompound::ProductclassofcompoundClassofcompoundId,
+                Productclassesofcompounds::ProductclassesofcompoundsProductId,
+                Productclassesofcompounds::ProductclassesofcompoundsClassOfCompoundId,
             ])
-            .column(Classofcompound::ClassofcompoundLabel)
-            .from(Productclassofcompound::Table)
+            .column(ClassOfCompound::ClassOfCompoundLabel)
+            .from(Productclassesofcompounds::Table)
             //
             // classofcompounds
             //
             .join(
                 JoinType::LeftJoin,
-                Classofcompound::Table,
+                ClassOfCompound::Table,
                 Expr::col((
-                    Productclassofcompound::Table,
-                    Productclassofcompound::ProductclassofcompoundClassofcompoundId,
+                    Productclassesofcompounds::Table,
+                    Productclassesofcompounds::ProductclassesofcompoundsClassOfCompoundId,
                 ))
-                .equals((Classofcompound::Table, Classofcompound::ClassofcompoundId)),
+                .equals((ClassOfCompound::Table, ClassOfCompound::ClassOfCompoundId)),
             )
             .and_where(
-                Expr::col(Productclassofcompound::ProductclassofcompoundProductId).eq(product_id),
+                Expr::col(Productclassesofcompounds::ProductclassesofcompoundsProductId)
+                    .eq(product_id),
             )
             .build_rusqlite(SqliteQueryBuilder);
 
@@ -323,22 +325,22 @@ fn populate_classes_of_compound(
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
         let rows = stmt.query_map(&*values.as_params(), |row| {
-            Ok(ProductclassofcompoundWrapper::from(row))
+            Ok(ProductclassesofcompoundsWrapper::from(row))
         })?;
 
         // Populate product classes of compound.
-        let mut classes_of_compound: Vec<chimitheque_types::classofcompound::Classofcompound> =
+        let mut classes_of_compound: Vec<chimitheque_types::classofcompound::ClassOfCompound> =
             vec![];
         for row in rows {
             let product_class_of_compound_wrapper = row?;
-            classes_of_compound.push(chimitheque_types::classofcompound::Classofcompound {
+            classes_of_compound.push(chimitheque_types::classofcompound::ClassOfCompound {
                 match_exact_search: false,
-                classofcompound_id: product_class_of_compound_wrapper
+                class_of_compound_id: product_class_of_compound_wrapper
                     .0
-                    .productclassofcompound_classofcompound_id,
-                classofcompound_label: product_class_of_compound_wrapper
+                    .productclassesofcompounds_class_of_compound_id,
+                class_of_compound_label: product_class_of_compound_wrapper
                     .0
-                    .productclassofcompound_classofcompound_label,
+                    .productclassesofcompounds_class_of_compound_label,
             });
         }
 
@@ -423,23 +425,23 @@ fn populate_hazard_statements(
         let (sql, values) = Query::select()
             .columns([
                 Producthazardstatements::ProducthazardstatementsProductId,
-                Producthazardstatements::ProducthazardstatementsHazardstatementId,
+                Producthazardstatements::ProducthazardstatementsHazardStatementId,
             ])
-            .column(Hazardstatement::HazardstatementLabel)
-            .column(Hazardstatement::HazardstatementReference)
-            .column(Hazardstatement::HazardstatementCmr)
+            .column(HazardStatement::HazardStatementLabel)
+            .column(HazardStatement::HazardStatementReference)
+            .column(HazardStatement::HazardStatementCmr)
             .from(Producthazardstatements::Table)
             //
             // hazardstatement
             //
             .join(
                 JoinType::LeftJoin,
-                Hazardstatement::Table,
+                HazardStatement::Table,
                 Expr::col((
                     Producthazardstatements::Table,
-                    Producthazardstatements::ProducthazardstatementsHazardstatementId,
+                    Producthazardstatements::ProducthazardstatementsHazardStatementId,
                 ))
-                .equals((Hazardstatement::Table, Hazardstatement::HazardstatementId)),
+                .equals((HazardStatement::Table, HazardStatement::HazardStatementId)),
             )
             .and_where(
                 Expr::col(Producthazardstatements::ProducthazardstatementsProductId).eq(product_id),
@@ -456,24 +458,24 @@ fn populate_hazard_statements(
         })?;
 
         // Populate product hazard statements.
-        let mut hazard_statements: Vec<chimitheque_types::hazardstatement::Hazardstatement> =
+        let mut hazard_statements: Vec<chimitheque_types::hazardstatement::HazardStatement> =
             vec![];
         for row in rows {
             let product_hazardstatements_wrapper = row?;
-            hazard_statements.push(chimitheque_types::hazardstatement::Hazardstatement {
+            hazard_statements.push(chimitheque_types::hazardstatement::HazardStatement {
                 match_exact_search: false,
-                hazardstatement_id: product_hazardstatements_wrapper
+                hazard_statement_id: product_hazardstatements_wrapper
                     .0
-                    .producthazardstatements_hazardstatement_id,
-                hazardstatement_label: product_hazardstatements_wrapper
+                    .producthazardstatements_hazard_statement_id,
+                hazard_statement_label: product_hazardstatements_wrapper
                     .0
-                    .producthazardstatements_hazardstatement_label,
-                hazardstatement_reference: product_hazardstatements_wrapper
+                    .producthazardstatements_hazard_statement_label,
+                hazard_statement_reference: product_hazardstatements_wrapper
                     .0
-                    .producthazardstatements_hazardstatement_reference,
-                hazardstatement_cmr: product_hazardstatements_wrapper
+                    .producthazardstatements_hazard_statement_reference,
+                hazard_statement_cmr: product_hazardstatements_wrapper
                     .0
-                    .producthazardstatements_hazardstatement_cmr,
+                    .producthazardstatements_hazard_statement_cmr,
             });
         }
 
@@ -498,22 +500,22 @@ fn populate_precautionary_statements(
         let (sql, values) = Query::select()
             .columns([
                 Productprecautionarystatements::ProductprecautionarystatementsProductId,
-                Productprecautionarystatements::ProductprecautionarystatementsPrecautionarystatementId,
+                Productprecautionarystatements::ProductprecautionarystatementsPrecautionaryStatementId,
             ])
-            .column(Precautionarystatement::PrecautionarystatementLabel)
-            .column(Precautionarystatement::PrecautionarystatementReference)
+            .column(PrecautionaryStatement::PrecautionaryStatementLabel)
+            .column(PrecautionaryStatement::PrecautionaryStatementReference)
             .from(Productprecautionarystatements::Table)
             //
             // precautionarystatement
             //
             .join(
                 JoinType::LeftJoin,
-                Precautionarystatement::Table,
+                PrecautionaryStatement::Table,
                 Expr::col((
                     Productprecautionarystatements::Table,
-                    Productprecautionarystatements::ProductprecautionarystatementsPrecautionarystatementId,
+                    Productprecautionarystatements::ProductprecautionarystatementsPrecautionaryStatementId,
                 ))
-                .equals((Precautionarystatement::Table, Precautionarystatement::PrecautionarystatementId)),
+                .equals((PrecautionaryStatement::Table, PrecautionaryStatement::PrecautionaryStatementId)),
             )
             .and_where(
                 Expr::col(Productprecautionarystatements::ProductprecautionarystatementsProductId).eq(product_id),
@@ -531,22 +533,22 @@ fn populate_precautionary_statements(
 
         // Populate product precautionary statements.
         let mut precautionary_statements: Vec<
-            chimitheque_types::precautionarystatement::Precautionarystatement,
+            chimitheque_types::precautionarystatement::PrecautionaryStatement,
         > = vec![];
         for row in rows {
             let product_precautionarystatements_wrapper = row?;
             precautionary_statements.push(
-                chimitheque_types::precautionarystatement::Precautionarystatement {
+                chimitheque_types::precautionarystatement::PrecautionaryStatement {
                     match_exact_search: false,
-                    precautionarystatement_id: product_precautionarystatements_wrapper
+                    precautionary_statement_id: product_precautionarystatements_wrapper
                         .0
-                        .productprecautionarystatements_precautionarystatement_id,
-                    precautionarystatement_label: product_precautionarystatements_wrapper
+                        .productprecautionarystatements_precautionary_statement_id,
+                    precautionary_statement_label: product_precautionarystatements_wrapper
                         .0
-                        .productprecautionarystatements_precautionarystatement_label,
-                    precautionarystatement_reference: product_precautionarystatements_wrapper
+                        .productprecautionarystatements_precautionary_statement_label,
+                    precautionary_statement_reference: product_precautionarystatements_wrapper
                         .0
-                        .productprecautionarystatements_precautionarystatement_reference,
+                        .productprecautionarystatements_precautionary_statement_reference,
                 },
             );
         }
@@ -572,9 +574,9 @@ fn populate_supplier_refs(
         let (sql, values) = Query::select()
             .columns([
                 Productsupplierrefs::ProductsupplierrefsProductId,
-                Productsupplierrefs::ProductsupplierrefsSupplierrefId,
+                Productsupplierrefs::ProductsupplierrefsSupplierRefId,
             ])
-            .columns([Supplierref::SupplierrefId, Supplierref::SupplierrefLabel])
+            .columns([SupplierRef::SupplierRefId, SupplierRef::SupplierRefLabel])
             .columns([Supplier::SupplierId, Supplier::SupplierLabel])
             .from(Productsupplierrefs::Table)
             //
@@ -582,12 +584,12 @@ fn populate_supplier_refs(
             //
             .join(
                 JoinType::LeftJoin,
-                Supplierref::Table,
+                SupplierRef::Table,
                 Expr::col((
                     Productsupplierrefs::Table,
-                    Productsupplierrefs::ProductsupplierrefsSupplierrefId,
+                    Productsupplierrefs::ProductsupplierrefsSupplierRefId,
                 ))
-                .equals((Supplierref::Table, Supplierref::SupplierrefId)),
+                .equals((SupplierRef::Table, SupplierRef::SupplierRefId)),
             )
             //
             // supplier
@@ -595,7 +597,7 @@ fn populate_supplier_refs(
             .join(
                 JoinType::LeftJoin,
                 Supplier::Table,
-                Expr::col((Supplierref::Table, Supplierref::Supplier))
+                Expr::col((SupplierRef::Table, SupplierRef::Supplier))
                     .equals((Supplier::Table, Supplier::SupplierId)),
             )
             .and_where(Expr::col(Productsupplierrefs::ProductsupplierrefsProductId).eq(product_id))
@@ -611,17 +613,17 @@ fn populate_supplier_refs(
         })?;
 
         // Populate product supplier refs.
-        let mut supplier_refs: Vec<chimitheque_types::supplierref::Supplierref> = vec![];
+        let mut supplier_refs: Vec<chimitheque_types::supplierref::SupplierRef> = vec![];
         for row in rows {
             let product_supplierrefs_wrapper = row?;
-            supplier_refs.push(chimitheque_types::supplierref::Supplierref {
+            supplier_refs.push(chimitheque_types::supplierref::SupplierRef {
                 match_exact_search: false,
-                supplierref_id: product_supplierrefs_wrapper
+                supplier_ref_id: product_supplierrefs_wrapper
                     .0
-                    .productsupplierrefs_supplierref_id,
-                supplierref_label: product_supplierrefs_wrapper
+                    .productsupplierrefs_supplier_ref_id,
+                supplier_ref_label: product_supplierrefs_wrapper
                     .0
-                    .productsupplierrefs_supplierref_label,
+                    .productsupplierrefs_supplier_ref_label,
                 supplier: chimitheque_types::supplier::Supplier {
                     match_exact_search: false,
                     supplier_id: product_supplierrefs_wrapper
@@ -713,7 +715,7 @@ pub fn get_products(
         match order_by_string.as_str() {
             "name" => (Name::Table, Name::NameLabel).into_column_ref(),
             "empirical_formula" => Product::EmpiricalFormula.into_column_ref(),
-            "cas_number" => (Casnumber::Table, Casnumber::CasnumberLabel).into_column_ref(),
+            "cas_number" => (CasNumber::Table, CasNumber::CasNumberLabel).into_column_ref(),
             _ => (Product::Table, Product::ProductId).into_column_ref(),
         }
     } else {
@@ -751,28 +753,28 @@ pub fn get_products(
         //
         .join(
             JoinType::LeftJoin,
-            Casnumber::Table,
+            CasNumber::Table,
             Expr::col((Product::Table, Product::CasNumber))
-                .equals((Casnumber::Table, Casnumber::CasnumberId)),
+                .equals((CasNumber::Table, CasNumber::CasNumberId)),
         )
         //
         // ce number
         //
         .join(
             JoinType::LeftJoin,
-            Cenumber::Table,
+            CeNumber::Table,
             Expr::col((Product::Table, Product::CeNumber))
-                .equals((Cenumber::Table, Cenumber::CenumberId)),
+                .equals((CeNumber::Table, CeNumber::CeNumberId)),
         )
         //
         // empirical formula
         //
         .join(
             JoinType::LeftJoin,
-            Empiricalformula::Table,
+            EmpiricalFormula::Table,
             Expr::col((Product::Table, Product::EmpiricalFormula)).equals((
-                Empiricalformula::Table,
-                Empiricalformula::EmpiricalformulaId,
+                EmpiricalFormula::Table,
+                EmpiricalFormula::EmpiricalFormulaId,
             )),
         )
         //
@@ -780,27 +782,27 @@ pub fn get_products(
         //
         .join(
             JoinType::LeftJoin,
-            Linearformula::Table,
+            LinearFormula::Table,
             Expr::col((Product::Table, Product::LinearFormula))
-                .equals((Linearformula::Table, Linearformula::LinearformulaId)),
+                .equals((LinearFormula::Table, LinearFormula::LinearFormulaId)),
         )
         //
         // physical state
         //
         .join(
             JoinType::LeftJoin,
-            Physicalstate::Table,
+            PhysicalState::Table,
             Expr::col((Product::Table, Product::PhysicalState))
-                .equals((Physicalstate::Table, Physicalstate::PhysicalstateId)),
+                .equals((PhysicalState::Table, PhysicalState::PhysicalStateId)),
         )
         //
         // signal word
         //
         .join(
             JoinType::LeftJoin,
-            Signalword::Table,
+            SignalWord::Table,
             Expr::col((Product::Table, Product::SignalWord))
-                .equals((Signalword::Table, Signalword::SignalwordId)),
+                .equals((SignalWord::Table, SignalWord::SignalWordId)),
         )
         //
         // category
@@ -816,14 +818,14 @@ pub fn get_products(
         //
         .join(
             JoinType::LeftJoin,
-            Producerref::Table,
+            ProducerRef::Table,
             Expr::col((Product::Table, Product::ProducerRef))
-                .equals((Producerref::Table, Producerref::ProducerrefId)),
+                .equals((ProducerRef::Table, ProducerRef::ProducerRefId)),
         )
         .join(
             JoinType::LeftJoin,
             Producer::Table,
-            Expr::col((Producerref::Table, Producerref::Producer))
+            Expr::col((ProducerRef::Table, ProducerRef::Producer))
                 .equals((Producer::Table, Producer::ProducerId)),
         )
         //
@@ -842,9 +844,9 @@ pub fn get_products(
         .join_as(
             JoinType::LeftJoin,
             Unit::Table,
-            Alias::new("unit_molecularweight"),
+            Alias::new("unit_molecular_weight"),
             Expr::col((Product::Table, Product::UnitMolecularWeight))
-                .equals((Alias::new("unit_molecularweight"), Unit::UnitId)),
+                .equals((Alias::new("unit_molecular_weight"), Unit::UnitId)),
         )
         //
         // hazard statements
@@ -871,6 +873,104 @@ pub fn get_products(
             .equals((Product::Table, Product::ProductId)),
         )
         //
+        // permissions
+        //
+        .conditions(
+            filter.entity.is_some()
+                || filter.store_location.is_some()
+                || filter.storage_barecode.is_some()
+                || filter.storage_to_destroy,
+            |q| {
+                q.join(
+                    // storage
+                    JoinType::Join,
+                    Storage::Table,
+                    Expr::col((Storage::Table, Storage::Product))
+                        .equals((Product::Table, Product::ProductId)),
+                );
+                q.join(
+                    // storelocation
+                    JoinType::Join,
+                    StoreLocation::Table,
+                    Expr::col((Storage::Table, Storage::StoreLocation))
+                        .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
+                );
+                q.join_as(
+                    JoinType::InnerJoin,
+                    Permission::Table,
+                    Alias::new("perm"),
+                    Expr::col((Alias::new("perm"), Alias::new("person")))
+                        .eq(person_id)
+                        .and(
+                            Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
+                                .is_in(["all", "storages"]),
+                        )
+                        .and(
+                            Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
+                                .is_in(["r", "w", "all"]),
+                        )
+                        .and(
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                                .equals(StoreLocation::Entity)
+                                .or(Expr::col((
+                                    Alias::new("perm"),
+                                    Alias::new("permission_entity_id"),
+                                ))
+                                .eq(-1)),
+                        ),
+                );
+                // q.join(
+                //     // person <> entities
+                //     JoinType::Join,
+                //     Personentities::Table,
+                //     all![
+                //         Expr::col((
+                //             Personentities::Table,
+                //             Personentities::PersonentitiesEntityId
+                //         ))
+                //         .equals((StoreLocation::Table, StoreLocation::Entity)),
+                //         Expr::col((
+                //             Personentities::Table,
+                //             Personentities::PersonentitiesEntityId
+                //         ))
+                //         .in_subquery(
+                //             Query::select()
+                //                 .column((
+                //                     Personentities::Table,
+                //                     Personentities::PersonentitiesEntityId
+                //                 ))
+                //                 .from(Personentities::Table)
+                //                 .and_where(
+                //                     Expr::col((
+                //                         Personentities::Table,
+                //                         Personentities::PersonentitiesPersonId
+                //                     ))
+                //                     .eq(person_id)
+                //                 )
+                //                 .take()
+                //         ),
+                //         Expr::col((
+                //             Personentities::Table,
+                //             Personentities::PersonentitiesPersonId
+                //         ))
+                //         .eq(person_id)
+                //     ],
+                // );
+                // q.join(
+                //     JoinType::Join,
+                //     Permission::Table,
+                //     all![
+                //         Expr::col((Permission::Table, Permission::Person)).eq(person_id),
+                //         Expr::col((Permission::Table, Permission::PermissionItemName))
+                //             .is_in(["all", "storages"]),
+                //         Expr::col((Permission::Table, Permission::PermissionPermName))
+                //             .is_in(["all", "r", "w"])
+                //     ],
+                // );
+            },
+            |_| {},
+        )
+        //
         // filters
         //
         .conditions(
@@ -887,6 +987,14 @@ pub fn get_products(
             filter.cas_number.is_some(),
             |q| {
                 q.and_where(Expr::col(Product::CasNumber).eq(filter.cas_number.unwrap()));
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.is_cmr,
+            |q| {
+                q.and_where(Expr::col(CasNumber::CasNumberCmr).is_not_null())
+                    .and_where(Expr::col(HazardStatement::HazardStatementCmr).is_not_null());
             },
             |_| {},
         )
@@ -933,42 +1041,42 @@ pub fn get_products(
         .expr(Expr::col((Name::Table, Name::NameLabel)))
         .expr(Expr::col((Person::Table, Person::PersonId)))
         .expr(Expr::col((Person::Table, Person::PersonEmail)))
-        .expr(Expr::col((Casnumber::Table, Casnumber::CasnumberId)))
-        .expr(Expr::col((Casnumber::Table, Casnumber::CasnumberLabel)))
-        .expr(Expr::col((Cenumber::Table, Cenumber::CenumberId)))
-        .expr(Expr::col((Cenumber::Table, Cenumber::CenumberLabel)))
+        .expr(Expr::col((CasNumber::Table, CasNumber::CasNumberId)))
+        .expr(Expr::col((CasNumber::Table, CasNumber::CasNumberLabel)))
+        .expr(Expr::col((CeNumber::Table, CeNumber::CeNumberId)))
+        .expr(Expr::col((CeNumber::Table, CeNumber::CeNumberLabel)))
         .expr(Expr::col((
-            Empiricalformula::Table,
-            Empiricalformula::EmpiricalformulaId,
+            EmpiricalFormula::Table,
+            EmpiricalFormula::EmpiricalFormulaId,
         )))
         .expr(Expr::col((
-            Empiricalformula::Table,
-            Empiricalformula::EmpiricalformulaLabel,
+            EmpiricalFormula::Table,
+            EmpiricalFormula::EmpiricalFormulaLabel,
         )))
         .expr(Expr::col((
-            Linearformula::Table,
-            Linearformula::LinearformulaId,
+            LinearFormula::Table,
+            LinearFormula::LinearFormulaId,
         )))
         .expr(Expr::col((
-            Linearformula::Table,
-            Linearformula::LinearformulaLabel,
+            LinearFormula::Table,
+            LinearFormula::LinearFormulaLabel,
         )))
         .expr(Expr::col((
-            Physicalstate::Table,
-            Physicalstate::PhysicalstateId,
+            PhysicalState::Table,
+            PhysicalState::PhysicalStateId,
         )))
         .expr(Expr::col((
-            Physicalstate::Table,
-            Physicalstate::PhysicalstateLabel,
+            PhysicalState::Table,
+            PhysicalState::PhysicalStateLabel,
         )))
         .expr(Expr::col((Category::Table, Category::CategoryId)))
         .expr(Expr::col((Category::Table, Category::CategoryLabel)))
-        .expr(Expr::col((Signalword::Table, Signalword::SignalwordId)))
-        .expr(Expr::col((Signalword::Table, Signalword::SignalwordLabel)))
-        .expr(Expr::col((Producerref::Table, Producerref::ProducerrefId)))
+        .expr(Expr::col((SignalWord::Table, SignalWord::SignalWordId)))
+        .expr(Expr::col((SignalWord::Table, SignalWord::SignalWordLabel)))
+        .expr(Expr::col((ProducerRef::Table, ProducerRef::ProducerRefId)))
         .expr(Expr::col((
-            Producerref::Table,
-            Producerref::ProducerrefLabel,
+            ProducerRef::Table,
+            ProducerRef::ProducerRefLabel,
         )))
         .expr(Expr::col((Producer::Table, Producer::ProducerId)))
         .expr(Expr::col((Producer::Table, Producer::ProducerLabel)))
@@ -992,24 +1100,34 @@ pub fn get_products(
             Alias::new("unit_temperature_unit_type"),
         )
         .expr_as(
-            Expr::col((Alias::new("unit_molecularweight"), Alias::new("unit_id"))),
-            Alias::new("unit_molecularweight_unit_id"),
-        )
-        .expr_as(
-            Expr::col((Alias::new("unit_molecularweight"), Alias::new("unit_label"))),
-            Alias::new("unit_molecularweight_unit_label"),
+            Expr::col((Alias::new("unit_molecular_weight"), Alias::new("unit_id"))),
+            Alias::new("unit_molecular_weight_unit_id"),
         )
         .expr_as(
             Expr::col((
-                Alias::new("unit_molecularweight"),
-                Alias::new("unit_multiplier"),
+                Alias::new("unit_molecular_weight"),
+                Alias::new("unit_label"),
             )),
-            Alias::new("unit_molecularweight_unit_multiplier"),
+            Alias::new("unit_molecular_weight_unit_label"),
         )
         .expr_as(
-            Expr::col((Alias::new("unit_molecularweight"), Alias::new("unit_type"))),
-            Alias::new("unit_molecularweight_unit_type"),
+            Expr::col((
+                Alias::new("unit_molecular_weight"),
+                Alias::new("unit_multiplier"),
+            )),
+            Alias::new("unit_molecular_weight_unit_multiplier"),
         )
+        .expr_as(
+            Expr::col((Alias::new("unit_molecular_weight"), Alias::new("unit_type"))),
+            Alias::new("unit_molecular_weight_unit_type"),
+        )
+        // storage count
+        // storage archive count
+        // .expr_as(
+        //     Expr::count_distinct(Expr::col(Storage::StorageId)),
+        //     Alias::new("storage_archive_count"),
+        // )
+        // .and_where(Expr::col(Storage::StorageArchive).eq(true))
         .order_by(order_by, order)
         .group_by_col((Product::Table, Product::ProductId))
         .conditions(
@@ -1088,22 +1206,27 @@ mod tests {
         init_db(&mut db_connection).unwrap();
         insert_fake_values(&mut db_connection).unwrap();
 
-        info!("testing total result");
+        // info!("testing total result");
+        // let filter = RequestFilter {
+        //     order_by: Some("name".to_string()),
+        //     ..Default::default()
+        // };
+        // let products: Vec<chimitheque_types::product::Product>;
+        // let count: usize;
+        // (products, count) = get_products(&db_connection, filter, 143).unwrap();
+        //
+        // info!("count: {}", count);
+        // assert!(count > 0);
+
+        info!("testing storage and permission join");
         let filter = RequestFilter {
-            order_by: Some("name".to_string()),
+            storage_to_destroy: true,
             ..Default::default()
         };
         let products: Vec<chimitheque_types::product::Product>;
         let count: usize;
-        (products, count) = get_products(&db_connection, filter, 2).unwrap();
+        (products, count) = get_products(&db_connection, filter, 143).unwrap();
 
-        assert!(count > 0);
-
-        for product in products.iter() {
-            if product.product_id.eq(&5973) {
-                info!("product:{:?}", product);
-                assert!(product.empirical_formula.is_some())
-            }
-        }
+        info!("count: {}", count);
     }
 }

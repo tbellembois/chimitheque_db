@@ -1,5 +1,5 @@
 use chimitheque_types::{
-    hazardstatement::Hazardstatement as HazardstatementStruct, requestfilter::RequestFilter,
+    hazardstatement::HazardStatement as HazardStatementStruct, requestfilter::RequestFilter,
 };
 use log::debug;
 use rusqlite::{Connection, Row};
@@ -9,26 +9,26 @@ use serde::Serialize;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-pub enum Hazardstatement {
+pub enum HazardStatement {
     Table,
-    HazardstatementId,
-    HazardstatementLabel,
-    HazardstatementReference,
-    HazardstatementCmr,
+    HazardStatementId,
+    HazardStatementLabel,
+    HazardStatementReference,
+    HazardStatementCmr,
 }
 
 #[derive(Debug, Serialize, Default)]
-pub struct HazardstatementWrapper(pub HazardstatementStruct);
+pub struct HazardStatementWrapper(pub HazardStatementStruct);
 
-impl From<&Row<'_>> for HazardstatementWrapper {
+impl From<&Row<'_>> for HazardStatementWrapper {
     fn from(row: &Row) -> Self {
         Self({
-            HazardstatementStruct {
+            HazardStatementStruct {
                 match_exact_search: false,
-                hazardstatement_id: row.get_unwrap("hazardstatement_id"),
-                hazardstatement_label: row.get_unwrap("hazardstatement_label"),
-                hazardstatement_reference: row.get_unwrap("hazardstatement_reference"),
-                hazardstatement_cmr: row.get_unwrap("hazardstatement_cmr"),
+                hazard_statement_id: row.get_unwrap("hazard_statement_id"),
+                hazard_statement_label: row.get_unwrap("hazard_statement_label"),
+                hazard_statement_reference: row.get_unwrap("hazard_statement_reference"),
+                hazard_statement_cmr: row.get_unwrap("hazard_statement_cmr"),
             }
         })
     }
@@ -37,18 +37,18 @@ impl From<&Row<'_>> for HazardstatementWrapper {
 pub fn parse(
     db_connection: &Connection,
     s: &str,
-) -> Result<Option<HazardstatementStruct>, Box<dyn std::error::Error>> {
+) -> Result<Option<HazardStatementStruct>, Box<dyn std::error::Error>> {
     debug!("s:{:?}", s);
 
     let (select_sql, select_values) = Query::select()
         .columns([
-            Hazardstatement::HazardstatementId,
-            Hazardstatement::HazardstatementLabel,
-            Hazardstatement::HazardstatementReference,
-            Hazardstatement::HazardstatementCmr,
+            HazardStatement::HazardStatementId,
+            HazardStatement::HazardStatementLabel,
+            HazardStatement::HazardStatementReference,
+            HazardStatement::HazardStatementCmr,
         ])
-        .from(Hazardstatement::Table)
-        .cond_where(Expr::col(Hazardstatement::HazardstatementReference).eq(s))
+        .from(HazardStatement::Table)
+        .cond_where(Expr::col(HazardStatement::HazardStatementReference).eq(s))
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
@@ -57,17 +57,17 @@ pub fn parse(
     // Perform select query.
     let mut stmt = db_connection.prepare(&select_sql)?;
     let mayerr_query = stmt.query_row(&*select_values.as_params(), |row| {
-        Ok(Some(HazardstatementStruct {
+        Ok(Some(HazardStatementStruct {
             match_exact_search: false,
-            hazardstatement_id: row.get_unwrap(0),
-            hazardstatement_label: row.get_unwrap(1),
-            hazardstatement_reference: row.get_unwrap(2),
-            hazardstatement_cmr: row.get_unwrap(3),
+            hazard_statement_id: row.get_unwrap(0),
+            hazard_statement_label: row.get_unwrap(1),
+            hazard_statement_reference: row.get_unwrap(2),
+            hazard_statement_cmr: row.get_unwrap(3),
         }))
     });
 
     match mayerr_query {
-        Ok(hazardstatement) => Ok(hazardstatement),
+        Ok(hazard_statement) => Ok(hazard_statement),
         Err(e) => match e {
             rusqlite::Error::QueryReturnedNoRows => Ok(None),
             _ => Err(Box::new(e)),
@@ -75,19 +75,19 @@ pub fn parse(
     }
 }
 
-pub fn get_hazardstatements(
+pub fn get_hazard_statements(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<HazardstatementStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<HazardStatementStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
     let mut expression = Query::select();
-    expression.from(Hazardstatement::Table).conditions(
+    expression.from(HazardStatement::Table).conditions(
         filter.search.is_some(),
         |q| {
             q.and_where(
-                Expr::col(Hazardstatement::HazardstatementReference)
+                Expr::col(HazardStatement::HazardStatementReference)
                     .like(format!("%{}%", filter.search.clone().unwrap())),
             );
         },
@@ -98,7 +98,7 @@ pub fn get_hazardstatements(
     let (count_sql, count_values) = expression
         .clone()
         .expr(
-            Expr::col((Hazardstatement::Table, Hazardstatement::HazardstatementId))
+            Expr::col((HazardStatement::Table, HazardStatement::HazardStatementId))
                 .count_distinct(),
         )
         .build_rusqlite(SqliteQueryBuilder);
@@ -109,12 +109,12 @@ pub fn get_hazardstatements(
     // Create select query.
     let (select_sql, select_values) = expression
         .columns([
-            Hazardstatement::HazardstatementId,
-            Hazardstatement::HazardstatementLabel,
-            Hazardstatement::HazardstatementReference,
-            Hazardstatement::HazardstatementCmr,
+            HazardStatement::HazardStatementId,
+            HazardStatement::HazardStatementLabel,
+            HazardStatement::HazardStatementReference,
+            HazardStatement::HazardStatementCmr,
         ])
-        .order_by(Hazardstatement::HazardstatementReference, Order::Asc)
+        .order_by(HazardStatement::HazardStatementReference, Order::Asc)
         .conditions(
             filter.limit.is_some(),
             |q| {
@@ -146,34 +146,34 @@ pub fn get_hazardstatements(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(HazardstatementWrapper::from(row))
+        Ok(HazardStatementWrapper::from(row))
     })?;
 
     // Build result.
-    let mut hazardstatements = Vec::new();
-    for maybe_hazardstatement in rows {
-        let mut hazardstatement = maybe_hazardstatement?;
+    let mut hazard_statements = Vec::new();
+    for maybe_hazard_statement in rows {
+        let mut hazard_statement = maybe_hazard_statement?;
 
         // Set match_exact_search for statement matching filter.search.
         if filter.search.is_some()
-            && hazardstatement
+            && hazard_statement
                 .0
-                .hazardstatement_reference
+                .hazard_statement_reference
                 .eq(&filter.search.clone().unwrap())
         {
-            hazardstatement.0.match_exact_search = true;
+            hazard_statement.0.match_exact_search = true;
 
             // Inserting the statement at the beginning of the results.
-            hazardstatements.insert(0, hazardstatement.0)
+            hazard_statements.insert(0, hazard_statement.0)
         } else {
             // Inserting the statement at the end of the results.
-            hazardstatements.push(hazardstatement.0);
+            hazard_statements.push(hazard_statement.0);
         }
     }
 
-    debug!("hazardstatements: {:#?}", hazardstatements);
+    debug!("hazard_statements: {:#?}", hazard_statements);
 
-    Ok((hazardstatements, count))
+    Ok((hazard_statements, count))
 }
 
 #[cfg(test)]
@@ -193,29 +193,29 @@ mod tests {
         let mut db_connection = Connection::open_in_memory().unwrap();
         init_db(&mut db_connection).unwrap();
 
-        // insert fake hazardstatements.
+        // insert fake hazard statements.
         let _ = db_connection
             .execute(
-                "INSERT INTO hazardstatement (hazardstatement_label, hazardstatement_reference) VALUES (?1, ?2)",
-                [String::from("hazardstatement1"), String::from("hazardstatement1-ref")],
+                "INSERT INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2)",
+                [String::from("hazard_statement1"), String::from("hazard_statement1-ref")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO hazardstatement (hazardstatement_label, hazardstatement_reference) VALUES (?1, ?2)",
-                [String::from("aa hazardstatement1"), String::from("aa hazardstatement1-ref")],
+                "INSERT INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2)",
+                [String::from("aa hazard_statement1"), String::from("aa hazard_statement1-ref")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO hazardstatement (hazardstatement_label, hazardstatement_reference) VALUES (?1, ?2)",
-                [String::from("hazardstatement2"), String::from("hazardstatement2-ref")],
+                "INSERT INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2)",
+                [String::from("hazard_statement2"), String::from("hazard_statement2-ref")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO hazardstatement (hazardstatement_label, hazardstatement_reference) VALUES (?1, ?2)",
-                [String::from("hazardstatement3"), String::from("hazardstatement3-ref")],
+                "INSERT INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2)",
+                [String::from("hazard_statement3"), String::from("hazard_statement3-ref")],
             )
             .unwrap();
 
@@ -223,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_hazardstatement() {
+    fn test_parse_hazard_statement() {
         init_logger();
 
         let mut db_connection = init_test_db();
@@ -235,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_hazardstatements() {
+    fn test_get_hazard_statements() {
         init_logger();
 
         let db_connection = init_test_db();
@@ -244,23 +244,23 @@ mod tests {
         let filter = RequestFilter {
             ..Default::default()
         };
-        assert!(get_hazardstatements(&db_connection, filter,).is_ok());
+        assert!(get_hazard_statements(&db_connection, filter,).is_ok());
 
         info!("testing filter search");
         let filter = RequestFilter {
-            search: Some(String::from("hazardstatement1-ref")),
+            search: Some(String::from("hazard_statement1-ref")),
             ..Default::default()
         };
-        let (hazardstatements, count) = get_hazardstatements(&db_connection, filter).unwrap();
+        let (hazard_statements, count) = get_hazard_statements(&db_connection, filter).unwrap();
 
         // expected number of results.
         assert_eq!(count, 2);
         // expected exact match appears first.
-        assert!(hazardstatements[0]
-            .hazardstatement_reference
-            .eq("hazardstatement1-ref"));
-        assert!(hazardstatements[0]
-            .hazardstatement_label
-            .eq("hazardstatement1"));
+        assert!(hazard_statements[0]
+            .hazard_statement_reference
+            .eq("hazard_statement1-ref"));
+        assert!(hazard_statements[0]
+            .hazard_statement_label
+            .eq("hazard_statement1"));
     }
 }

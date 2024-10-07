@@ -1,7 +1,7 @@
 use crate::{entity::Entity, permission::Permission};
 use chimitheque_types::{
     entity::Entity as EntityStruct, requestfilter::RequestFilter,
-    storelocation::Storelocation as StorelocationStruct,
+    storelocation::StoreLocation as StoreLocationStruct,
 };
 use log::debug;
 use rusqlite::{Connection, Row};
@@ -13,45 +13,45 @@ use serde::Serialize;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-enum Storelocation {
+pub enum StoreLocation {
     Table,
-    StorelocationId,
-    StorelocationName,
-    StorelocationCanstore,
-    StorelocationColor,
-    StorelocationFullpath,
+    StoreLocationId,
+    StoreLocationName,
+    StoreLocationCanStore,
+    StoreLocationColor,
+    StoreLocationFullPath,
     Entity,
-    Storelocation,
+    StoreLocation,
 }
 
 #[derive(Debug, Serialize)]
-pub struct StorelocationWrapper(pub StorelocationStruct);
+pub struct StoreLocationWrapper(pub StoreLocationStruct);
 
-impl From<&Row<'_>> for StorelocationWrapper {
+impl From<&Row<'_>> for StoreLocationWrapper {
     fn from(row: &Row) -> Self {
-        // Test if there is a parent storelocation.
-        let maybe_parent_storelocation: Option<u64> = row.get_unwrap("parent_storelocation_id");
+        // Test if there is a parent store location.
+        let maybe_parent_store_location: Option<u64> = row.get_unwrap("parent_store_location_id");
 
         Self({
-            StorelocationStruct {
-                storelocation_id: row.get_unwrap("storelocation_id"),
-                storelocation_name: row.get_unwrap("storelocation_name"),
-                storelocation_canstore: row.get_unwrap("storelocation_canstore"),
-                storelocation_color: row.get_unwrap("storelocation_color"),
-                storelocation_fullpath: row.get_unwrap("storelocation_fullpath"),
+            StoreLocationStruct {
+                store_location_id: row.get_unwrap("store_location_id"),
+                store_location_name: row.get_unwrap("store_location_name"),
+                store_location_can_store: row.get_unwrap("store_location_can_store"),
+                store_location_color: row.get_unwrap("store_location_color"),
+                store_location_full_path: row.get_unwrap("store_location_full_path"),
                 entity: Some(EntityStruct {
                     entity_id: row.get_unwrap("entity_id"),
                     entity_name: row.get_unwrap("entity_name"),
                 }),
-                storelocation: maybe_parent_storelocation.map(|_| {
-                    Box::new(StorelocationStruct {
-                        storelocation_id: row.get_unwrap("parent_storelocation_id"),
-                        storelocation_name: row.get_unwrap("parent_storelocation_name"),
-                        storelocation_canstore: row.get_unwrap("parent_storelocation_canstore"),
-                        storelocation_color: row.get_unwrap("parent_storelocation_color"),
-                        storelocation_fullpath: row.get_unwrap("parent_storelocation_fullpath"),
+                store_location: maybe_parent_store_location.map(|_| {
+                    Box::new(StoreLocationStruct {
+                        store_location_id: row.get_unwrap("parent_store_location_id"),
+                        store_location_name: row.get_unwrap("parent_store_location_name"),
+                        store_location_can_store: row.get_unwrap("parent_store_location_can_store"),
+                        store_location_color: row.get_unwrap("parent_store_location_color"),
+                        store_location_full_path: row.get_unwrap("parent_store_location_full_path"),
                         entity: None,
-                        storelocation: None,
+                        store_location: None,
                     })
                 }),
             }
@@ -59,25 +59,25 @@ impl From<&Row<'_>> for StorelocationWrapper {
     }
 }
 
-pub fn get_storelocations(
+pub fn get_store_locations(
     db_connection: &Connection,
     filter: RequestFilter,
     person_id: u64,
-) -> Result<(Vec<StorelocationStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<StoreLocationStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
     let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {
         match order_by_string.as_str() {
             "entity.entity_name" => Entity::EntityName.into_column_ref(),
-            "storelocation" => Alias::new("parent_storelocation_fullpath").into_column_ref(),
-            "storelocation_fullpath" => {
-                (Storelocation::Table, Storelocation::StorelocationFullpath).into_column_ref()
+            "store_location" => Alias::new("parent_store_location_fullpath").into_column_ref(),
+            "store_location_full_path" => {
+                (StoreLocation::Table, StoreLocation::StoreLocationFullPath).into_column_ref()
             }
-            _ => (Storelocation::Table, Storelocation::StorelocationFullpath).into_column_ref(),
+            _ => (StoreLocation::Table, StoreLocation::StoreLocationFullPath).into_column_ref(),
         }
     } else {
-        (Storelocation::Table, Storelocation::StorelocationFullpath).into_column_ref()
+        (StoreLocation::Table, StoreLocation::StoreLocationFullPath).into_column_ref()
     };
 
     let order = if filter.order.eq_ignore_ascii_case("desc") {
@@ -89,20 +89,23 @@ pub fn get_storelocations(
     // Create common query statement.
     let mut expression = Query::select();
     expression
-        .from(Storelocation::Table)
+        .from(StoreLocation::Table)
         .join(
             JoinType::LeftJoin,
             Entity::Table,
-            Expr::col((Storelocation::Table, Storelocation::Entity))
+            Expr::col((StoreLocation::Table, StoreLocation::Entity))
                 .equals((Entity::Table, Entity::EntityId)),
         )
         .join_as(
             JoinType::LeftJoin,
-            Storelocation::Table,
+            StoreLocation::Table,
             Alias::new("parent"),
-            Expr::col((Storelocation::Table, Storelocation::Storelocation))
-                .equals((Alias::new("parent"), Alias::new("storelocation_id"))),
+            Expr::col((StoreLocation::Table, StoreLocation::StoreLocation))
+                .equals((Alias::new("parent"), Alias::new("store_location_id"))),
         )
+        //
+        // permissions
+        //
         .join_as(
             JoinType::InnerJoin,
             Permission::Table,
@@ -130,7 +133,7 @@ pub fn get_storelocations(
             filter.search.is_some(),
             |q| {
                 q.and_where(
-                    Expr::col((Storelocation::Table, Storelocation::StorelocationName))
+                    Expr::col((StoreLocation::Table, StoreLocation::StoreLocationName))
                         .like(format!("%{}%", filter.search.clone().unwrap())),
                 );
             },
@@ -147,7 +150,7 @@ pub fn get_storelocations(
             filter.store_location_can_store,
             |q| {
                 q.and_where(
-                    Expr::col((Storelocation::Table, Storelocation::StorelocationCanstore))
+                    Expr::col((StoreLocation::Table, StoreLocation::StoreLocationCanStore))
                         .eq(filter.store_location_can_store),
                 );
             },
@@ -157,7 +160,7 @@ pub fn get_storelocations(
     // Create count query.
     let (count_sql, count_values) = expression
         .clone()
-        .expr(Expr::col((Storelocation::Table, Storelocation::StorelocationId)).count_distinct())
+        .expr(Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
@@ -167,47 +170,47 @@ pub fn get_storelocations(
     let (select_sql, select_values) = expression
         .columns([Entity::EntityId, Entity::EntityName])
         .expr(Expr::col((
-            Storelocation::Table,
-            Storelocation::StorelocationId,
+            StoreLocation::Table,
+            StoreLocation::StoreLocationId,
         )))
         .expr(Expr::col((
-            Storelocation::Table,
-            Storelocation::StorelocationName,
+            StoreLocation::Table,
+            StoreLocation::StoreLocationName,
         )))
         .expr(Expr::col((
-            Storelocation::Table,
-            Storelocation::StorelocationCanstore,
+            StoreLocation::Table,
+            StoreLocation::StoreLocationCanStore,
         )))
         .expr(Expr::col((
-            Storelocation::Table,
-            Storelocation::StorelocationColor,
+            StoreLocation::Table,
+            StoreLocation::StoreLocationColor,
         )))
         .expr(Expr::col((
-            Storelocation::Table,
-            Storelocation::StorelocationFullpath,
+            StoreLocation::Table,
+            StoreLocation::StoreLocationFullPath,
         )))
         .expr_as(
-            Expr::col((Alias::new("parent"), Alias::new("storelocation_id"))),
-            Alias::new("parent_storelocation_id"),
+            Expr::col((Alias::new("parent"), Alias::new("store_location_id"))),
+            Alias::new("parent_store_location_id"),
         )
         .expr_as(
-            Expr::col((Alias::new("parent"), Alias::new("storelocation_name"))),
-            Alias::new("parent_storelocation_name"),
+            Expr::col((Alias::new("parent"), Alias::new("store_location_name"))),
+            Alias::new("parent_store_location_name"),
         )
         .expr_as(
-            Expr::col((Alias::new("parent"), Alias::new("storelocation_canstore"))),
-            Alias::new("parent_storelocation_canstore"),
+            Expr::col((Alias::new("parent"), Alias::new("store_location_can_store"))),
+            Alias::new("parent_store_location_can_store"),
         )
         .expr_as(
-            Expr::col((Alias::new("parent"), Alias::new("storelocation_color"))),
-            Alias::new("parent_storelocation_color"),
+            Expr::col((Alias::new("parent"), Alias::new("store_location_color"))),
+            Alias::new("parent_store_location_color"),
         )
         .expr_as(
-            Expr::col((Alias::new("parent"), Alias::new("storelocation_fullpath"))),
-            Alias::new("parent_storelocation_fullpath"),
+            Expr::col((Alias::new("parent"), Alias::new("store_location_full_path"))),
+            Alias::new("parent_store_location_full_path"),
         )
         .order_by(order_by, order)
-        .group_by_col((Storelocation::Table, Storelocation::StorelocationId))
+        .group_by_col((StoreLocation::Table, StoreLocation::StoreLocationId))
         .conditions(
             filter.limit.is_some(),
             |q| {
@@ -239,20 +242,20 @@ pub fn get_storelocations(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(StorelocationWrapper::from(row).0)
+        Ok(StoreLocationWrapper::from(row).0)
     })?;
 
     // Build select result.
-    let mut storelocations = Vec::new();
-    for maybe_storelocation in rows {
-        let storelocation = maybe_storelocation?;
+    let mut store_locations = Vec::new();
+    for maybe_store_location in rows {
+        let store_location = maybe_store_location?;
 
-        storelocations.push(storelocation);
+        store_locations.push(store_location);
     }
 
-    debug!("storelocations: {:#?}", storelocations);
+    debug!("store_locations: {:#?}", store_locations);
 
-    Ok((storelocations, count))
+    Ok((store_locations, count))
 }
 
 #[cfg(test)]
@@ -274,7 +277,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_storelocations() {
+    fn test_get_store_locations() {
         init_logger();
 
         let mut db_connection = init_test_db();
@@ -317,9 +320,9 @@ mod tests {
         )
         .unwrap();
 
-        // Insert fake storelocations.
-        let mut storelocation_id = 300;
-        for (storelocation_name, storelocaion_canstore, entity) in [
+        // Insert fake store locations.
+        let mut store_location_id = 300;
+        for (store_location_name, storelocaion_canstore, entity) in [
             ("FAKE_STORELOCATION_11", false, 200),
             ("FAKE_STORELOCATION_12", false, 200),
             ("FAKE_STORELOCATION_13", false, 200),
@@ -336,57 +339,61 @@ mod tests {
         {
             let _ = db_connection
             .execute(
-                "INSERT INTO storelocation (storelocation_id, storelocation_name, storelocation_canstore, entity) VALUES (?1, ?2, ?3, ?4)",
-                (storelocation_id, storelocation_name, storelocaion_canstore, entity),
+                "INSERT INTO store_location (store_location_id, store_location_name, store_location_can_store, entity) VALUES (?1, ?2, ?3, ?4)",
+                (store_location_id, store_location_name, storelocaion_canstore, entity),
             )
             .unwrap();
-            storelocation_id += 1;
+            store_location_id += 1;
         }
 
         info!("testing total result");
         let filter = RequestFilter {
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
+        let (store_locations, count) = get_store_locations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 11);
-        assert_eq!(storelocations.len(), 11);
+        assert_eq!(store_locations.len(), 11);
 
         info!("testing entity filter");
         let filter = RequestFilter {
             entity: Some(201),
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
+        let (store_locations, count) = get_store_locations(&db_connection, filter, 2).unwrap();
 
         assert_eq!(count, 2);
-        for storelocation in storelocations.iter() {
+        for store_location in store_locations.iter() {
             assert!(
-                (storelocation.storelocation_name.eq("FAKE_STORELOCATION_21")
-                    || storelocation.storelocation_name.eq("FAKE_STORELOCATION_22"))
+                (store_location
+                    .store_location_name
+                    .eq("FAKE_STORELOCATION_21")
+                    || store_location
+                        .store_location_name
+                        .eq("FAKE_STORELOCATION_22"))
             )
         }
 
-        info!("testing storelocation name filter");
+        info!("testing store location name filter");
         let filter = RequestFilter {
             search: Some(String::from("FAKE_STORELOCATION_22")),
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
+        let (store_locations, count) = get_store_locations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 1);
         assert_eq!(
-            storelocations[0].storelocation_name,
+            store_locations[0].store_location_name,
             "FAKE_STORELOCATION_22"
         );
 
-        info!("testing storelocation canstore filter");
+        info!("testing store location can store filter");
         let filter = RequestFilter {
             store_location_can_store: true,
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
+        let (store_locations, count) = get_store_locations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 1);
         assert_eq!(
-            storelocations[0].storelocation_name,
+            store_locations[0].store_location_name,
             "FAKE_STORELOCATION_22"
         );
 
@@ -395,9 +402,9 @@ mod tests {
             limit: Some(5),
             ..Default::default()
         };
-        let (storelocations, count) = get_storelocations(&db_connection, filter, 2).unwrap();
+        let (store_locations, count) = get_store_locations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 11);
-        assert_eq!(storelocations.len(), 5);
+        assert_eq!(store_locations.len(), 5);
 
         info!("testing permissions filter");
         let filter = RequestFilter {
@@ -410,7 +417,7 @@ mod tests {
             (2, "r", "storages", 200),
         )
         .unwrap();
-        let (_, count) = get_storelocations(&db_connection, filter, 2).unwrap();
+        let (_, count) = get_store_locations(&db_connection, filter, 2).unwrap();
         assert_eq!(count, 9);
     }
 }

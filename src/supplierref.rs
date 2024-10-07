@@ -1,6 +1,6 @@
 use chimitheque_types::{
     requestfilter::RequestFilter, supplier::Supplier as SupplierStruct,
-    supplierref::Supplierref as SupplierrefStruct,
+    supplierref::SupplierRef as SupplierRefStruct,
 };
 use log::debug;
 use rusqlite::{Connection, Row};
@@ -12,23 +12,23 @@ use crate::supplier::Supplier;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-pub enum Supplierref {
+pub enum SupplierRef {
     Table,
-    SupplierrefId,
-    SupplierrefLabel,
+    SupplierRefId,
+    SupplierRefLabel,
     Supplier,
 }
 
 #[derive(Debug, Serialize)]
-pub struct SupplierrefWrapper(pub SupplierrefStruct);
+pub struct SupplierRefWrapper(pub SupplierRefStruct);
 
-impl From<&Row<'_>> for SupplierrefWrapper {
+impl From<&Row<'_>> for SupplierRefWrapper {
     fn from(row: &Row) -> Self {
         Self({
-            SupplierrefStruct {
+            SupplierRefStruct {
                 match_exact_search: false,
-                supplierref_id: row.get_unwrap("supplierref_id"),
-                supplierref_label: row.get_unwrap("supplierref_label"),
+                supplier_ref_id: row.get_unwrap("supplier_ref_id"),
+                supplier_ref_label: row.get_unwrap("supplier_ref_label"),
                 supplier: SupplierStruct {
                     match_exact_search: false,
                     supplier_id: row.get_unwrap("supplier_id"),
@@ -39,26 +39,26 @@ impl From<&Row<'_>> for SupplierrefWrapper {
     }
 }
 
-pub fn get_supplierrefs(
+pub fn get_supplier_refs(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<SupplierrefStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<SupplierRefStruct>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
     let mut expression = Query::select();
     expression
-        .from(Supplierref::Table)
+        .from(SupplierRef::Table)
         .left_join(
             Supplier::Table,
-            Expr::col((Supplierref::Table, Supplierref::Supplier))
+            Expr::col((SupplierRef::Table, SupplierRef::Supplier))
                 .equals((Supplier::Table, Supplier::SupplierId)),
         )
         .conditions(
             filter.search.is_some(),
             |q| {
                 q.and_where(
-                    Expr::col(Supplierref::SupplierrefLabel)
+                    Expr::col(SupplierRef::SupplierRefLabel)
                         .like(format!("%{}%", filter.search.clone().unwrap())),
                 );
             },
@@ -67,7 +67,7 @@ pub fn get_supplierrefs(
         .conditions(
             filter.supplier.is_some(),
             |q| {
-                q.and_where(Expr::col(Supplierref::Supplier).eq(filter.supplier.unwrap()));
+                q.and_where(Expr::col(SupplierRef::Supplier).eq(filter.supplier.unwrap()));
             },
             |_| {},
         );
@@ -75,7 +75,7 @@ pub fn get_supplierrefs(
     // Create count query.
     let (count_sql, count_values) = expression
         .clone()
-        .expr(Expr::col((Supplierref::Table, Supplierref::SupplierrefId)).count_distinct())
+        .expr(Expr::col((SupplierRef::Table, SupplierRef::SupplierRefId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
@@ -84,7 +84,7 @@ pub fn get_supplierrefs(
     // Create select query.
 
     let (select_sql, select_values) = expression
-        .columns([Supplierref::SupplierrefId, Supplierref::SupplierrefLabel])
+        .columns([SupplierRef::SupplierRefId, SupplierRef::SupplierRefLabel])
         .expr_as(
             Expr::col((Supplier::Table, Supplier::SupplierId)),
             Alias::new("supplier.supplier_id"),
@@ -93,7 +93,7 @@ pub fn get_supplierrefs(
             Expr::col((Supplier::Table, Supplier::SupplierLabel)),
             Alias::new("supplier.supplier_label"),
         )
-        .order_by(Supplierref::SupplierrefLabel, Order::Asc)
+        .order_by(SupplierRef::SupplierRefLabel, Order::Asc)
         .conditions(
             filter.limit.is_some(),
             |q| {
@@ -125,33 +125,33 @@ pub fn get_supplierrefs(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(SupplierrefWrapper::from(row).0)
+        Ok(SupplierRefWrapper::from(row).0)
     })?;
 
     // Build result.
-    let mut supplierrefs = Vec::new();
-    for maybe_supplierref in rows {
-        let mut supplierref = maybe_supplierref?;
+    let mut supplier_refs = Vec::new();
+    for maybe_supplier_ref in rows {
+        let mut supplier_ref = maybe_supplier_ref?;
 
-        // Set match_exact_search for supplierref matching filter.search.
+        // Set match_exact_search for supplier_ref matching filter.search.
         if filter.search.is_some()
-            && supplierref
-                .supplierref_label
+            && supplier_ref
+                .supplier_ref_label
                 .eq(&filter.search.clone().unwrap())
         {
-            supplierref.match_exact_search = true;
+            supplier_ref.match_exact_search = true;
 
             // Inserting the supplier at the beginning of the results.
-            supplierrefs.insert(0, supplierref)
+            supplier_refs.insert(0, supplier_ref)
         } else {
             // Inserting the supplier at the end of the results.
-            supplierrefs.push(supplierref);
+            supplier_refs.push(supplier_ref);
         }
     }
 
-    debug!("supplierrefs: {:#?}", supplierrefs);
+    debug!("supplier_refs: {:#?}", supplier_refs);
 
-    Ok((supplierrefs, count))
+    Ok((supplier_refs, count))
 }
 
 #[cfg(test)]
@@ -183,53 +183,53 @@ mod tests {
             )
             .unwrap();
 
-        // insert fake supplierrefs.
+        // insert fake supplier refs.
         let _ = db_connection
             .execute(
-                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                "INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES (?1, ?2)",
                 (String::from("1_ref1"), 300),
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                "INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES (?1, ?2)",
                 (String::from("1_ref2"), 300),
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                "INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES (?1, ?2)",
                 (String::from("1234"), 300),
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                "INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES (?1, ?2)",
                 (String::from("12"), 300),
             )
             .unwrap();
 
         let _ = db_connection
             .execute(
-                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                "INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES (?1, ?2)",
                 (String::from("2_ref1"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                "INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES (?1, ?2)",
                 (String::from("2_ref2"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                "INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES (?1, ?2)",
                 (String::from("1234"), 301),
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO supplierref (supplierref_label, supplier) VALUES (?1, ?2)",
+                "INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES (?1, ?2)",
                 (String::from("22"), 301),
             )
             .unwrap();
@@ -238,7 +238,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_supplierrefs() {
+    fn test_get_supplier_refs() {
         init_logger();
 
         let db_connection = init_test_db();
@@ -247,7 +247,7 @@ mod tests {
         let filter = RequestFilter {
             ..Default::default()
         };
-        let (_, count) = get_supplierrefs(&db_connection, filter).unwrap();
+        let (_, count) = get_supplier_refs(&db_connection, filter).unwrap();
 
         // expected number of results.
         assert_eq!(count, 8);
@@ -257,12 +257,12 @@ mod tests {
             search: Some(String::from("1_ref1")),
             ..Default::default()
         };
-        let (supplierrefs, count) = get_supplierrefs(&db_connection, filter).unwrap();
+        let (supplier_refs, count) = get_supplier_refs(&db_connection, filter).unwrap();
 
         // expected number of results.
         assert_eq!(count, 1);
         // expected correct supplier.
-        assert!(supplierrefs[0]
+        assert!(supplier_refs[0]
             .supplier
             .supplier_label
             .eq("FAKE_SUPPLIER_1"))

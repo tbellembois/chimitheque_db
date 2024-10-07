@@ -1,17 +1,17 @@
-use chimitheque_types::physicalstate::Physicalstate as PhysicalstateStruct;
+use chimitheque_types::physicalstate::PhysicalState as PhysicalStateStruct;
 use sea_query::Iden;
 use serde::Serialize;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-pub enum Physicalstate {
+pub enum PhysicalState {
     Table,
-    PhysicalstateId,
-    PhysicalstateLabel,
+    PhysicalStateId,
+    PhysicalStateLabel,
 }
 
 #[derive(Debug, Serialize, Default)]
-pub struct PhysicalstateWrapper(pub PhysicalstateStruct);
+pub struct PhysicalStateWrapper(pub PhysicalStateStruct);
 
 #[cfg(test)]
 mod tests {
@@ -20,9 +20,9 @@ mod tests {
     use crate::searchable::tests::test_searchable;
 
     #[test]
-    fn test_get_physicalstates() {
+    fn test_get_physical_states() {
         test_searchable(
-            PhysicalstateStruct {
+            PhysicalStateStruct {
                 ..Default::default()
             },
             vec![

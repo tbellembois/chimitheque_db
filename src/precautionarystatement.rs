@@ -1,5 +1,5 @@
 use chimitheque_types::{
-    precautionarystatement::Precautionarystatement as PrecautionarystatementStruct,
+    precautionarystatement::PrecautionaryStatement as PrecautionaryStatementStruct,
     requestfilter::RequestFilter,
 };
 use log::debug;
@@ -10,25 +10,25 @@ use serde::Serialize;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
-pub enum Precautionarystatement {
+pub enum PrecautionaryStatement {
     Table,
-    PrecautionarystatementId,
-    PrecautionarystatementLabel,
-    PrecautionarystatementReference,
+    PrecautionaryStatementId,
+    PrecautionaryStatementLabel,
+    PrecautionaryStatementReference,
 }
 
 #[derive(Debug, Serialize, Default)]
-pub struct PrecautionarystatementWrapper(pub PrecautionarystatementStruct);
+pub struct PrecautionaryStatementWrapper(pub PrecautionaryStatementStruct);
 
-impl From<&Row<'_>> for PrecautionarystatementWrapper {
+impl From<&Row<'_>> for PrecautionaryStatementWrapper {
     fn from(row: &Row) -> Self {
         Self({
-            PrecautionarystatementStruct {
+            PrecautionaryStatementStruct {
                 match_exact_search: false,
-                precautionarystatement_id: row.get_unwrap("precautionarystatement_id"),
-                precautionarystatement_label: row.get_unwrap("precautionarystatement_label"),
-                precautionarystatement_reference: row
-                    .get_unwrap("precautionarystatement_reference"),
+                precautionary_statement_id: row.get_unwrap("precautionary_statement_id"),
+                precautionary_statement_label: row.get_unwrap("precautionary_statement_label"),
+                precautionary_statement_reference: row
+                    .get_unwrap("precautionary_statement_reference"),
             }
         })
     }
@@ -37,17 +37,17 @@ impl From<&Row<'_>> for PrecautionarystatementWrapper {
 pub fn parse(
     db_connection: &Connection,
     s: &str,
-) -> Result<Option<PrecautionarystatementStruct>, Box<dyn std::error::Error>> {
+) -> Result<Option<PrecautionaryStatementStruct>, Box<dyn std::error::Error>> {
     debug!("s:{:?}", s);
 
     let (select_sql, select_values) = Query::select()
         .columns([
-            Precautionarystatement::PrecautionarystatementId,
-            Precautionarystatement::PrecautionarystatementLabel,
-            Precautionarystatement::PrecautionarystatementReference,
+            PrecautionaryStatement::PrecautionaryStatementId,
+            PrecautionaryStatement::PrecautionaryStatementLabel,
+            PrecautionaryStatement::PrecautionaryStatementReference,
         ])
-        .from(Precautionarystatement::Table)
-        .cond_where(Expr::col(Precautionarystatement::PrecautionarystatementReference).eq(s))
+        .from(PrecautionaryStatement::Table)
+        .cond_where(Expr::col(PrecautionaryStatement::PrecautionaryStatementReference).eq(s))
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
@@ -56,16 +56,16 @@ pub fn parse(
     // Perform select query.
     let mut stmt = db_connection.prepare(&select_sql)?;
     let mayerr_query = stmt.query_row(&*select_values.as_params(), |row| {
-        Ok(Some(PrecautionarystatementStruct {
+        Ok(Some(PrecautionaryStatementStruct {
             match_exact_search: false,
-            precautionarystatement_id: row.get_unwrap(0),
-            precautionarystatement_label: row.get_unwrap(1),
-            precautionarystatement_reference: row.get_unwrap(2),
+            precautionary_statement_id: row.get_unwrap(0),
+            precautionary_statement_label: row.get_unwrap(1),
+            precautionary_statement_reference: row.get_unwrap(2),
         }))
     });
 
     match mayerr_query {
-        Ok(precautionarystatement) => Ok(precautionarystatement),
+        Ok(precautionary_statement) => Ok(precautionary_statement),
         Err(e) => match e {
             rusqlite::Error::QueryReturnedNoRows => Ok(None),
             _ => Err(Box::new(e)),
@@ -73,19 +73,19 @@ pub fn parse(
     }
 }
 
-pub fn get_precautionarystatements(
+pub fn get_precautionary_statements(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<PrecautionarystatementWrapper>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<PrecautionaryStatementWrapper>, usize), Box<dyn std::error::Error>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
     let mut expression = Query::select();
-    expression.from(Precautionarystatement::Table).conditions(
+    expression.from(PrecautionaryStatement::Table).conditions(
         filter.search.is_some(),
         |q| {
             q.and_where(
-                Expr::col(Precautionarystatement::PrecautionarystatementReference)
+                Expr::col(PrecautionaryStatement::PrecautionaryStatementReference)
                     .like(format!("%{}%", filter.search.clone().unwrap())),
             );
         },
@@ -97,8 +97,8 @@ pub fn get_precautionarystatements(
         .clone()
         .expr(
             Expr::col((
-                Precautionarystatement::Table,
-                Precautionarystatement::PrecautionarystatementId,
+                PrecautionaryStatement::Table,
+                PrecautionaryStatement::PrecautionaryStatementId,
             ))
             .count_distinct(),
         )
@@ -110,12 +110,12 @@ pub fn get_precautionarystatements(
     // Create select query.
     let (select_sql, select_values) = expression
         .columns([
-            Precautionarystatement::PrecautionarystatementId,
-            Precautionarystatement::PrecautionarystatementLabel,
-            Precautionarystatement::PrecautionarystatementReference,
+            PrecautionaryStatement::PrecautionaryStatementId,
+            PrecautionaryStatement::PrecautionaryStatementLabel,
+            PrecautionaryStatement::PrecautionaryStatementReference,
         ])
         .order_by(
-            Precautionarystatement::PrecautionarystatementReference,
+            PrecautionaryStatement::PrecautionaryStatementReference,
             Order::Asc,
         )
         .conditions(
@@ -149,34 +149,34 @@ pub fn get_precautionarystatements(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(PrecautionarystatementWrapper::from(row))
+        Ok(PrecautionaryStatementWrapper::from(row))
     })?;
 
     // Build result.
-    let mut precautionarystatements = Vec::new();
-    for maybe_precautionarystatement in rows {
-        let mut precautionarystatement = maybe_precautionarystatement?;
+    let mut precautionary_statements = Vec::new();
+    for maybe_precautionary_statement in rows {
+        let mut precautionary_statement = maybe_precautionary_statement?;
 
         // Set match_exact_search for statement matching filter.search.
         if filter.search.is_some()
-            && precautionarystatement
+            && precautionary_statement
                 .0
-                .precautionarystatement_reference
+                .precautionary_statement_reference
                 .eq(&filter.search.clone().unwrap())
         {
-            precautionarystatement.0.match_exact_search = true;
+            precautionary_statement.0.match_exact_search = true;
 
             // Inserting the statement at the beginning of the results.
-            precautionarystatements.insert(0, precautionarystatement)
+            precautionary_statements.insert(0, precautionary_statement)
         } else {
             // Inserting the statement at the end of the results.
-            precautionarystatements.push(precautionarystatement);
+            precautionary_statements.push(precautionary_statement);
         }
     }
 
-    debug!("precautionarystatements: {:#?}", precautionarystatements);
+    debug!("precautionary_statements: {:#?}", precautionary_statements);
 
-    Ok((precautionarystatements, count))
+    Ok((precautionary_statements, count))
 }
 
 #[cfg(test)]
@@ -196,29 +196,29 @@ mod tests {
         let mut db_connection = Connection::open_in_memory().unwrap();
         init_db(&mut db_connection).unwrap();
 
-        // insert fake precautionarystatements.
+        // insert fake precautionary_statements.
         let _ = db_connection
             .execute(
-                "INSERT INTO precautionarystatement (precautionarystatement_label, precautionarystatement_reference) VALUES (?1, ?2)",
-                [String::from("precautionarystatement1"), String::from("precautionarystatement1-ref")],
+                "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
+                [String::from("precautionary_statement1"), String::from("precautionary_statement1-ref")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO precautionarystatement (precautionarystatement_label, precautionarystatement_reference) VALUES (?1, ?2)",
-                [String::from("aa precautionarystatement1"), String::from("aa precautionarystatement1-ref")],
+                "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
+                [String::from("aa precautionary_statement1"), String::from("aa precautionary_statement1-ref")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO precautionarystatement (precautionarystatement_label, precautionarystatement_reference) VALUES (?1, ?2)",
-                [String::from("precautionarystatement2"), String::from("precautionarystatement2-ref")],
+                "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
+                [String::from("precautionary_statement2"), String::from("precautionary_statement2-ref")],
             )
             .unwrap();
         let _ = db_connection
             .execute(
-                "INSERT INTO precautionarystatement (precautionarystatement_label, precautionarystatement_reference) VALUES (?1, ?2)",
-                [String::from("precautionarystatement3"), String::from("precautionarystatement3-ref")],
+                "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
+                [String::from("precautionary_statement3"), String::from("precautionary_statement3-ref")],
             )
             .unwrap();
 
@@ -226,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_precautionarystatement() {
+    fn test_parse_precautionary_statement() {
         init_logger();
 
         let mut db_connection = init_test_db();
@@ -238,7 +238,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_precautionarystatements() {
+    fn test_get_precautionary_statements() {
         init_logger();
 
         let db_connection = init_test_db();
@@ -247,26 +247,26 @@ mod tests {
         let filter = RequestFilter {
             ..Default::default()
         };
-        assert!(get_precautionarystatements(&db_connection, filter,).is_ok());
+        assert!(get_precautionary_statements(&db_connection, filter,).is_ok());
 
         info!("testing filter search");
         let filter = RequestFilter {
-            search: Some(String::from("precautionarystatement1-ref")),
+            search: Some(String::from("precautionary_statement1-ref")),
             ..Default::default()
         };
-        let (precautionarystatements, count) =
-            get_precautionarystatements(&db_connection, filter).unwrap();
+        let (precautionary_statements, count) =
+            get_precautionary_statements(&db_connection, filter).unwrap();
 
         // expected number of results.
         assert_eq!(count, 2);
         // expected exact match appears first.
-        assert!(precautionarystatements[0]
+        assert!(precautionary_statements[0]
             .0
-            .precautionarystatement_reference
-            .eq("precautionarystatement1-ref"));
-        assert!(precautionarystatements[0]
+            .precautionary_statement_reference
+            .eq("precautionary_statement1-ref"));
+        assert!(precautionary_statements[0]
             .0
-            .precautionarystatement_label
-            .eq("precautionarystatement1"));
+            .precautionary_statement_label
+            .eq("precautionary_statement1"));
     }
 }

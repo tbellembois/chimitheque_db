@@ -7,12 +7,12 @@ use crate::searchable::create;
 use crate::searchable::parse;
 use crate::{precautionarystatement, unit};
 use chimitheque_traits::searchable::Searchable;
-use chimitheque_types::casnumber::Casnumber;
-use chimitheque_types::cenumber::Cenumber;
-use chimitheque_types::empiricalformula::Empiricalformula;
+use chimitheque_types::casnumber::CasNumber;
+use chimitheque_types::cenumber::CeNumber;
+use chimitheque_types::empiricalformula::EmpiricalFormula;
 use chimitheque_types::name::Name;
 use chimitheque_types::pubchemproduct::PubchemProduct;
-use chimitheque_types::signalword::Signalword;
+use chimitheque_types::signalword::SignalWord;
 use chimitheque_types::symbol::Symbol;
 use chimitheque_utils::casnumber::is_cas_number;
 use chimitheque_utils::cenumber::is_ce_number;
@@ -159,7 +159,7 @@ pub fn create_product_from_pubchem(
         };
 
         let maybe_casnumber = parse(
-            &Casnumber {
+            &CasNumber {
                 ..Default::default()
             },
             db_connection,
@@ -169,7 +169,7 @@ pub fn create_product_from_pubchem(
         let casnumber_id = match maybe_casnumber {
             Some(casnumber) => Some(casnumber.get_id()),
             None => Some(create(
-                &Casnumber {
+                &CasNumber {
                     ..Default::default()
                 },
                 db_connection,
@@ -190,7 +190,7 @@ pub fn create_product_from_pubchem(
         };
 
         let maybe_ecnumber = parse(
-            &Cenumber {
+            &CeNumber {
                 ..Default::default()
             },
             db_connection,
@@ -200,7 +200,7 @@ pub fn create_product_from_pubchem(
         let ecnumber_id = match maybe_ecnumber {
             Some(ecnumber) => Some(ecnumber.get_id()),
             None => Some(create(
-                &Cenumber {
+                &CeNumber {
                     ..Default::default()
                 },
                 db_connection,
@@ -217,7 +217,7 @@ pub fn create_product_from_pubchem(
         let sorted_empiricalformula = sort_empirical_formula(&empiricalformula_text)?;
 
         let maybe_empiricalformula = parse(
-            &Empiricalformula {
+            &EmpiricalFormula {
                 ..Default::default()
             },
             db_connection,
@@ -227,7 +227,7 @@ pub fn create_product_from_pubchem(
         let empiricalformula_id = match maybe_empiricalformula {
             Some(empiricalformula) => Some(empiricalformula.get_id()),
             None => Some(create(
-                &Empiricalformula {
+                &EmpiricalFormula {
                     ..Default::default()
                 },
                 db_connection,
@@ -243,7 +243,7 @@ pub fn create_product_from_pubchem(
     if let Some(signals_text) = pubchem_product.signal {
         if let Some(signalword) = signals_text.first() {
             let maybe_signalword = parse(
-                &Signalword {
+                &SignalWord {
                     ..Default::default()
                 },
                 db_connection,
@@ -294,7 +294,7 @@ pub fn create_product_from_pubchem(
             let maybe_hazardstatement = hazardstatement::parse(db_connection, &hazardstatement)?;
 
             let hazardstatement_id = match maybe_hazardstatement {
-                Some(hazardstatement) => hazardstatement.hazardstatement_id,
+                Some(hazardstatement) => hazardstatement.hazard_statement_id,
                 None => {
                     return Err(Box::new(ImportPubchemProductError::UnknownHazardstatement(
                         hazardstatement,
@@ -307,15 +307,15 @@ pub fn create_product_from_pubchem(
     }
 
     // Precautionary statements.
-    let mut precautionarystatement_ids: Vec<u64> = Vec::new();
+    let mut precautionary_statement_ids: Vec<u64> = Vec::new();
 
     if let Some(precautionarystatements_text) = pubchem_product.ps {
         for precautionarystatement in precautionarystatements_text {
             let maybe_precautionarystatement =
                 precautionarystatement::parse(db_connection, &precautionarystatement)?;
 
-            let precautionarystatement_id = match maybe_precautionarystatement {
-                Some(precautionarystatement) => precautionarystatement.precautionarystatement_id,
+            let precautionary_statement_id = match maybe_precautionarystatement {
+                Some(precautionarystatement) => precautionarystatement.precautionary_statement_id,
                 None => {
                     return Err(Box::new(
                         ImportPubchemProductError::UnknownPrecautionarystatement(
@@ -325,7 +325,7 @@ pub fn create_product_from_pubchem(
                 }
             };
 
-            precautionarystatement_ids.push(precautionarystatement_id);
+            precautionary_statement_ids.push(precautionary_statement_id);
         }
     }
 
@@ -363,7 +363,7 @@ pub fn create_product_from_pubchem(
             .into_table(Producthazardstatements::Table)
             .columns([
                 Producthazardstatements::ProducthazardstatementsProductId,
-                Producthazardstatements::ProducthazardstatementsHazardstatementId,
+                Producthazardstatements::ProducthazardstatementsHazardStatementId,
             ])
             .values([product_id.into(), hazardstatement_id.into()])?
             .to_string(SqliteQueryBuilder);
@@ -372,14 +372,14 @@ pub fn create_product_from_pubchem(
     }
 
     // Insert precautionary statements.
-    for precautionarystatement_id in precautionarystatement_ids {
+    for precautionary_statement_id in precautionary_statement_ids {
         let sql_query = Query::insert()
             .into_table(Productprecautionarystatements::Table)
             .columns([
                 Productprecautionarystatements::ProductprecautionarystatementsProductId,
-                Productprecautionarystatements::ProductprecautionarystatementsPrecautionarystatementId,
+                Productprecautionarystatements::ProductprecautionarystatementsPrecautionaryStatementId,
             ])
-            .values([product_id.into(), precautionarystatement_id.into()])?
+            .values([product_id.into(), precautionary_statement_id.into()])?
             .to_string(SqliteQueryBuilder);
 
         _ = db_connection.execute(&sql_query, ())?;

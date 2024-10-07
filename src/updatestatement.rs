@@ -18,7 +18,7 @@ pub fn update_ghs_statements(db_connection: &Connection) -> Result<(), Box<dyn s
             debug!("{reference}: {label}");
 
             db_connection.execute(
-            "INSERT OR IGNORE INTO hazardstatement (hazardstatement_label, hazardstatement_reference) VALUES (?1, ?2)",
+            "INSERT OR IGNORE INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2)",
             (&label, &reference),
             )?;
         } else if let Some(captures) = precautionary_statement_re.captures(line) {
@@ -28,7 +28,7 @@ pub fn update_ghs_statements(db_connection: &Connection) -> Result<(), Box<dyn s
             debug!("{reference}: {label}");
 
             db_connection.execute(
-            "INSERT OR IGNORE INTO precautionarystatement (precautionarystatement_label, precautionarystatement_reference) VALUES (?1, ?2)",
+            "INSERT OR IGNORE INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
             (&label, &reference),
             )?;
         };
