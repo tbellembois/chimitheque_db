@@ -4,12 +4,12 @@ use crate::{
     cenumber::CeNumber,
     classofcompound::ClassOfCompound,
     empiricalformula::EmpiricalFormula,
+    entity::Entity,
     hazardstatement::HazardStatement,
     linearformula::LinearFormula,
     name::Name,
     permission::Permission,
     person::Person,
-    personentities::Personentities,
     physicalstate::PhysicalState,
     precautionarystatement::PrecautionaryStatement,
     producer::Producer,
@@ -50,9 +50,10 @@ use chimitheque_types::{
     unittype::{ParseUnitTypeError, UnitType},
 };
 use log::debug;
-use rusqlite::{Connection, Row};
+use rusqlite::{types::Null, Connection, Row};
 use sea_query::{
-    all, Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SqliteQueryBuilder,
+    all, extension::postgres::PgExpr, Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order,
+    Query, SelectStatement, SqliteQueryBuilder,
 };
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
@@ -221,10 +222,21 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             product_sheet: row.get_unwrap("product_sheet"),
             product_number_per_carton: row.get_unwrap("product_number_per_carton"),
             product_number_per_bag: row.get_unwrap("product_number_per_bag"),
+            product_sl: row.get_unwrap("product_sl"),
+            product_hs_cmr: row.get_unwrap("product_hs_cmr"),
             ..Default::default()
         }))
     }
 }
+
+// fn populate_product_sc(
+//     db_connection: &Connection,
+//     products: &mut Vec<ProductStruct>,
+//     person_id: u64,
+//     archived: bool,
+// ) -> Result<(), Box<dyn std::error::Error>> {
+//     Ok(())
+// }
 
 fn populate_synonyms(
     db_connection: &Connection,
@@ -860,6 +872,14 @@ pub fn get_products(
             ))
             .equals((Product::Table, Product::ProductId)),
         )
+        .join(
+            JoinType::LeftJoin,
+            HazardStatement::Table,
+            Expr::col((HazardStatement::Table, HazardStatement::HazardStatementId)).equals((
+                Producthazardstatements::Table,
+                Producthazardstatements::ProducthazardstatementsHazardStatementId,
+            )),
+        )
         //
         // precautionary statements
         //
@@ -872,22 +892,73 @@ pub fn get_products(
             ))
             .equals((Product::Table, Product::ProductId)),
         )
+        .join(
+            JoinType::LeftJoin,
+            PrecautionaryStatement::Table,
+            Expr::col((PrecautionaryStatement::Table, PrecautionaryStatement::PrecautionaryStatementId)).equals((
+                Productprecautionarystatements::Table,
+                Productprecautionarystatements::ProductprecautionarystatementsPrecautionaryStatementId,
+            )),
+        )
         //
-        // permissions
+        // storage
         //
+        .join(
+            JoinType::Join,
+            Storage::Table,
+            Expr::col((Storage::Table, Storage::Product))
+                .equals((Product::Table, Product::ProductId)),
+        )
+        // .join(
+        //     // storelocation
+        //     JoinType::Join,
+        //     StoreLocation::Table,
+        //     Expr::col((Storage::Table, Storage::StoreLocation))
+        //         .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
+        // )
+        // .join(
+        //     // entity
+        //     JoinType::Join,
+        //     Entity::Table,
+        //     Expr::col((StoreLocation::Table, StoreLocation::Entity))
+        //         .equals((Entity::Table, Entity::EntityId)),
+        // )
+        // .join_as(
+        //     JoinType::InnerJoin,
+        //     Permission::Table,
+        //     Alias::new("perm"),
+        //     Expr::col((Alias::new("perm"), Alias::new("person")))
+        //         .eq(person_id)
+        //         .and(
+        //             Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
+        //                 .is_in(["all", "storages"]),
+        //         )
+        //         .and(
+        //             Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
+        //                 .is_in(["r", "w", "all"]),
+        //         )
+        //         .and(
+        //             Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+        //                 .equals(Entity::EntityId)
+        //                 .or(
+        //                     Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+        //                         .eq(-1),
+        //                 ),
+        //         ),
+        // )
         .conditions(
             filter.entity.is_some()
                 || filter.store_location.is_some()
                 || filter.storage_barecode.is_some()
                 || filter.storage_to_destroy,
             |q| {
-                q.join(
-                    // storage
-                    JoinType::Join,
-                    Storage::Table,
-                    Expr::col((Storage::Table, Storage::Product))
-                        .equals((Product::Table, Product::ProductId)),
-                );
+                // q.join(
+                //     // storage
+                //     JoinType::Join,
+                //     Storage::Table,
+                //     Expr::col((Storage::Table, Storage::Product))
+                //         .equals((Product::Table, Product::ProductId)),
+                // );
                 q.join(
                     // storelocation
                     JoinType::Join,
@@ -895,7 +966,15 @@ pub fn get_products(
                     Expr::col((Storage::Table, Storage::StoreLocation))
                         .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
                 );
+                q.join(
+                    // entity
+                    JoinType::Join,
+                    Entity::Table,
+                    Expr::col((StoreLocation::Table, StoreLocation::Entity))
+                        .equals((Entity::Table, Entity::EntityId)),
+                );
                 q.join_as(
+                    // permission
                     JoinType::InnerJoin,
                     Permission::Table,
                     Alias::new("perm"),
@@ -911,7 +990,7 @@ pub fn get_products(
                         )
                         .and(
                             Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
-                                .equals(StoreLocation::Entity)
+                                .equals(Entity::EntityId)
                                 .or(Expr::col((
                                     Alias::new("perm"),
                                     Alias::new("permission_entity_id"),
@@ -919,54 +998,6 @@ pub fn get_products(
                                 .eq(-1)),
                         ),
                 );
-                // q.join(
-                //     // person <> entities
-                //     JoinType::Join,
-                //     Personentities::Table,
-                //     all![
-                //         Expr::col((
-                //             Personentities::Table,
-                //             Personentities::PersonentitiesEntityId
-                //         ))
-                //         .equals((StoreLocation::Table, StoreLocation::Entity)),
-                //         Expr::col((
-                //             Personentities::Table,
-                //             Personentities::PersonentitiesEntityId
-                //         ))
-                //         .in_subquery(
-                //             Query::select()
-                //                 .column((
-                //                     Personentities::Table,
-                //                     Personentities::PersonentitiesEntityId
-                //                 ))
-                //                 .from(Personentities::Table)
-                //                 .and_where(
-                //                     Expr::col((
-                //                         Personentities::Table,
-                //                         Personentities::PersonentitiesPersonId
-                //                     ))
-                //                     .eq(person_id)
-                //                 )
-                //                 .take()
-                //         ),
-                //         Expr::col((
-                //             Personentities::Table,
-                //             Personentities::PersonentitiesPersonId
-                //         ))
-                //         .eq(person_id)
-                //     ],
-                // );
-                // q.join(
-                //     JoinType::Join,
-                //     Permission::Table,
-                //     all![
-                //         Expr::col((Permission::Table, Permission::Person)).eq(person_id),
-                //         Expr::col((Permission::Table, Permission::PermissionItemName))
-                //             .is_in(["all", "storages"]),
-                //         Expr::col((Permission::Table, Permission::PermissionPermName))
-                //             .is_in(["all", "r", "w"])
-                //     ],
-                // );
             },
             |_| {},
         )
@@ -1002,6 +1033,31 @@ pub fn get_products(
             filter.name.is_some(),
             |q| {
                 q.and_where(Expr::col(Product::Name).eq(filter.name.unwrap()));
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.store_location.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col(StoreLocation::StoreLocationId).eq(filter.store_location.unwrap()),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.storage_to_destroy,
+            |q| {
+                q.and_where(Expr::col(Storage::StorageToDestroy).eq(filter.storage_to_destroy));
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.storage_barecode.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col(Storage::StorageBarecode).eq(filter.storage_barecode.unwrap()),
+                );
             },
             |_| {},
         );
@@ -1121,13 +1177,23 @@ pub fn get_products(
             Expr::col((Alias::new("unit_molecular_weight"), Alias::new("unit_type"))),
             Alias::new("unit_molecular_weight_unit_type"),
         )
+        .expr_as(
+            Expr::cust("GROUP_CONCAT(DISTINCT REGEXP_SUBSTR(storage.storage_barecode, '[a-zA-Z]{1}[0-9]+.'))"),
+            Alias::new("product_sl"),
+        )
+        .expr_as(
+            Expr::cust("GROUP_CONCAT(DISTINCT hazard_statement.hazard_statement_cmr)"),
+                 Alias::new("product_hs_cmr"),
+        )
         // storage count
-        // storage archive count
         // .expr_as(
-        //     Expr::count_distinct(Expr::col(Storage::StorageId)),
-        //     Alias::new("storage_archive_count"),
+        //     Expr::expr(Expr::case(
+        //         Expr::col((Storage::Table, Storage::StorageArchive)).eq(false),
+        //         1,
+        //     ))
+        //     .count(),
+        //     Alias::new("count_storage_not_archive"),
         // )
-        // .and_where(Expr::col(Storage::StorageArchive).eq(true))
         .order_by(order_by, order)
         .group_by_col((Product::Table, Product::ProductId))
         .conditions(

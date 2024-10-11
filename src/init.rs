@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, io::Write};
 
 use log::info;
 use rusqlite::{Batch, Connection};
@@ -9,7 +9,28 @@ use crate::define::{
 };
 
 pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
-    Connection::open(db_path)
+    // let regexp_extension = include_bytes!("extensions/regexp.so");
+
+    // let mut regexp_extension_file = NamedTempFile::new().expect("Unable to create temp file.");
+    // regexp_extension_file
+    //     .write_all(regexp_extension)
+    //     .expect("Unable to write temp file.");
+    // fs::write("/home/thbellem/ext.so", regexp_extension)
+    // .expect("Unable to write regexp extension file.");
+
+    println!("{:?}", std::env::current_exe());
+
+    let db_connection = Connection::open(db_path)?;
+    unsafe {
+        db_connection
+            .load_extension(
+                "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions/regexp.so",
+                None,
+            )
+            .expect("Unable to load regexp extension.")
+    };
+
+    Ok(db_connection)
 }
 
 pub fn insert_fake_values(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
@@ -726,6 +747,13 @@ mod tests {
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    #[test]
+    fn test_connect() {
+        init_logger();
+
+        assert!(connect("/tmp/storage.db").is_ok());
     }
 
     #[test]
