@@ -52,8 +52,8 @@ use chimitheque_types::{
 use log::debug;
 use rusqlite::{types::Null, Connection, Row};
 use sea_query::{
-    all, extension::postgres::PgExpr, Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order,
-    Query, SelectStatement, SqliteQueryBuilder,
+    all, extension::postgres::PgExpr, Alias, ColumnRef, ConditionalStatement, Expr, Iden,
+    IntoColumnRef, JoinType, Order, Query, SelectStatement, SqliteQueryBuilder,
 };
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
@@ -229,14 +229,111 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
     }
 }
 
-// fn populate_product_sc(
-//     db_connection: &Connection,
-//     products: &mut Vec<ProductStruct>,
-//     person_id: u64,
-//     archived: bool,
-// ) -> Result<(), Box<dyn std::error::Error>> {
-//     Ok(())
-// }
+fn populate_product_sc(
+    db_connection: &Connection,
+    products: &mut Vec<ProductStruct>,
+    person_id: u64,
+    total: bool,
+    archived: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("person_id:{:?}", person_id);
+    debug!("archived:{:?}", archived);
+
+    for product in products.iter_mut() {
+        let product_id = product.product_id;
+
+        let (count_sql, count_values) = Query::select()
+            .from(Storage::Table)
+            .expr(Expr::col((Storage::Table, Storage::StorageId)).count_distinct())
+            .join(
+                JoinType::Join,
+                Product::Table,
+                Expr::col((Storage::Table, Storage::Product))
+                    .equals((Product::Table, Product::ProductId)),
+            )
+            //
+            // permissions
+            //
+            .join(
+                // storelocation
+                JoinType::Join,
+                StoreLocation::Table,
+                Expr::col((Storage::Table, Storage::StoreLocation))
+                    .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
+            )
+            .join(
+                // entity
+                JoinType::Join,
+                Entity::Table,
+                Expr::col((StoreLocation::Table, StoreLocation::Entity))
+                    .equals((Entity::Table, Entity::EntityId)),
+            )
+            .conditions(
+                !total,
+                |q| {
+                    q.join_as(
+                        JoinType::InnerJoin,
+                        Permission::Table,
+                        Alias::new("perm"),
+                        Expr::col((Alias::new("perm"), Alias::new("person")))
+                            .eq(person_id)
+                            .and(
+                                Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
+                                    .is_in(["all", "storages"]),
+                            )
+                            .and(
+                                Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
+                                    .is_in(["r", "w", "all"]),
+                            )
+                            .and(
+                                Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                                    .equals(Entity::EntityId)
+                                    .or(Expr::col(Entity::EntityId).is_null()) // products with no storages for non admins
+                                    .or(Expr::col((
+                                        Alias::new("perm"),
+                                        Alias::new("permission_entity_id"),
+                                    ))
+                                    .eq(-1)),
+                            ),
+                    );
+                },
+                |_| {},
+            )
+            .conditions(
+                archived,
+                |q| {
+                    q.and_where(Expr::col((Storage::Table, Storage::StorageArchive)).eq(archived));
+                },
+                |_| {},
+            )
+            .and_where(Expr::col((Storage::Table, Storage::Product)).eq(product_id))
+            .and_where(Expr::col((Storage::Table, Storage::Storage)).is_null())
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", count_sql.clone().as_str());
+        debug!("values: {:?}", count_values);
+
+        // Perform count query.
+        let mut stmt = db_connection.prepare(count_sql.as_str())?;
+        let mut rows = stmt.query(&*count_values.as_params())?;
+        let count: u64 = if let Some(row) = rows.next()? {
+            row.get_unwrap(0)
+        } else {
+            0
+        };
+
+        // Populate count.
+        if total {
+            product.product_tsc = Some(count);
+        } else if archived {
+            product.product_asc = Some(count);
+        } else {
+            product.product_sc = Some(count);
+        }
+    }
+
+    Ok(())
+}
 
 fn populate_synonyms(
     db_connection: &Connection,
@@ -901,14 +998,53 @@ pub fn get_products(
             )),
         )
         //
-        // storage
+        // storage -> permissions
         //
         .join(
-            JoinType::Join,
+            JoinType::LeftJoin,
             Storage::Table,
             Expr::col((Storage::Table, Storage::Product))
                 .equals((Product::Table, Product::ProductId)),
         )
+        .join(
+            // storelocation
+            JoinType::LeftJoin,
+            StoreLocation::Table,
+            Expr::col((Storage::Table, Storage::StoreLocation))
+            .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
+        )
+        .join(
+            // entity
+            JoinType::LeftJoin,
+            Entity::Table,
+            Expr::col((StoreLocation::Table, StoreLocation::Entity))
+            .equals((Entity::Table, Entity::EntityId)),
+        )
+        .join_as(
+            JoinType::InnerJoin,
+            Permission::Table,
+            Alias::new("perm"),
+            Expr::col((Alias::new("perm"), Alias::new("person")))
+                .eq(person_id)
+                .and(
+                    Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
+                        .is_in(["all", "storages"]),
+                )
+                .and(
+                    Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
+                        .is_in(["r", "w", "all"]),
+                )
+                .and(
+                    Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                        .equals(Entity::EntityId)
+                        .or( Expr::col(Entity::EntityId).is_null()) // products with no storages for non admins
+                        .or(
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                                .eq(-1),
+                        ),
+                ),
+        )
+
         // .join(
         //     // storelocation
         //     JoinType::Join,
@@ -946,61 +1082,54 @@ pub fn get_products(
         //                 ),
         //         ),
         // )
-        .conditions(
-            filter.entity.is_some()
-                || filter.store_location.is_some()
-                || filter.storage_barecode.is_some()
-                || filter.storage_to_destroy,
-            |q| {
-                // q.join(
-                //     // storage
-                //     JoinType::Join,
-                //     Storage::Table,
-                //     Expr::col((Storage::Table, Storage::Product))
-                //         .equals((Product::Table, Product::ProductId)),
-                // );
-                q.join(
-                    // storelocation
-                    JoinType::Join,
-                    StoreLocation::Table,
-                    Expr::col((Storage::Table, Storage::StoreLocation))
-                        .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
-                );
-                q.join(
-                    // entity
-                    JoinType::Join,
-                    Entity::Table,
-                    Expr::col((StoreLocation::Table, StoreLocation::Entity))
-                        .equals((Entity::Table, Entity::EntityId)),
-                );
-                q.join_as(
-                    // permission
-                    JoinType::InnerJoin,
-                    Permission::Table,
-                    Alias::new("perm"),
-                    Expr::col((Alias::new("perm"), Alias::new("person")))
-                        .eq(person_id)
-                        .and(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
-                                .is_in(["all", "storages"]),
-                        )
-                        .and(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
-                                .is_in(["r", "w", "all"]),
-                        )
-                        .and(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
-                                .equals(Entity::EntityId)
-                                .or(Expr::col((
-                                    Alias::new("perm"),
-                                    Alias::new("permission_entity_id"),
-                                ))
-                                .eq(-1)),
-                        ),
-                );
-            },
-            |_| {},
-        )
+        // .conditions(
+        //     filter.entity.is_some()
+        //         || filter.store_location.is_some()
+        //         || filter.storage_barecode.is_some()
+        //         || filter.storage_to_destroy,
+        //     |q| {
+        //         q.join(
+        //             // storelocation
+        //             JoinType::Join,
+        //             StoreLocation::Table,
+        //             Expr::col((Storage::Table, Storage::StoreLocation))
+        //                 .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
+        //         );
+        //         q.join(
+        //             // entity
+        //             JoinType::Join,
+        //             Entity::Table,
+        //             Expr::col((StoreLocation::Table, StoreLocation::Entity))
+        //                 .equals((Entity::Table, Entity::EntityId)),
+        //         );
+        //         q.join_as(
+        //             // permission
+        //             JoinType::InnerJoin,
+        //             Permission::Table,
+        //             Alias::new("perm"),
+        //             Expr::col((Alias::new("perm"), Alias::new("person")))
+        //                 .eq(person_id)
+        //                 .and(
+        //                     Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
+        //                         .is_in(["all", "storages"]),
+        //                 )
+        //                 .and(
+        //                     Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
+        //                         .is_in(["r", "w", "all"]),
+        //                 )
+        //                 .and(
+        //                     Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+        //                         .equals(Entity::EntityId)
+        //                         .or(Expr::col((
+        //                             Alias::new("perm"),
+        //                             Alias::new("permission_entity_id"),
+        //                         ))
+        //                         .eq(-1)),
+        //                 ),
+        //         );
+        //     },
+        //     |_| {},
+        // )
         //
         // filters
         //
@@ -1240,6 +1369,10 @@ pub fn get_products(
     populate_precautionary_statements(db_connection, &mut products)?;
     populate_supplier_refs(db_connection, &mut products)?;
     populate_tags(db_connection, &mut products)?;
+
+    populate_product_sc(db_connection, &mut products, person_id, false, false)?;
+    populate_product_sc(db_connection, &mut products, person_id, true, false)?;
+    populate_product_sc(db_connection, &mut products, person_id, false, true)?;
 
     debug!("products: {:#?}", products);
 
