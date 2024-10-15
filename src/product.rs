@@ -1,4 +1,6 @@
 use crate::{
+    bookmark::Bookmark,
+    borrowing::Borrowing,
     casnumber::CasNumber,
     category::Category,
     cenumber::CeNumber,
@@ -50,10 +52,9 @@ use chimitheque_types::{
     unittype::{ParseUnitTypeError, UnitType},
 };
 use log::debug;
-use rusqlite::{types::Null, Connection, Row};
+use rusqlite::{Connection, Row};
 use sea_query::{
-    all, extension::postgres::PgExpr, Alias, ColumnRef, ConditionalStatement, Expr, Iden,
-    IntoColumnRef, JoinType, Order, Query, SelectStatement, SqliteQueryBuilder,
+    any, Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SqliteQueryBuilder,
 };
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
@@ -1161,7 +1162,19 @@ pub fn get_products(
         .conditions(
             filter.name.is_some(),
             |q| {
-                q.and_where(Expr::col(Product::Name).eq(filter.name.unwrap()));
+                q.join(
+                    // synonyms
+                    JoinType::Join,
+                    Productsynonyms::Table,
+                    Expr::col((Productsynonyms::Table, Productsynonyms::ProductsynonymsProductId))
+                    .equals((Product::Table, Product::ProductId)),
+                );
+                q.cond_where(
+                  any![
+                      Expr::col(Product::Name).eq(filter.name.unwrap()),
+                      Expr::col(Productsynonyms::ProductsynonymsNameId).eq(filter.name.unwrap()),
+                  ]
+                );
             },
             |_| {},
         )
@@ -1173,6 +1186,15 @@ pub fn get_products(
                 );
             },
             |_| {},
+        )
+        .conditions(
+            filter.entity.is_some(),
+                    |q| {
+                        q.and_where(
+                            Expr::col(Entity::EntityId).eq(filter.entity.unwrap()),
+                        );
+                    },
+                    |_| {},
         )
         .conditions(
             filter.storage_to_destroy,
@@ -1189,7 +1211,34 @@ pub fn get_products(
                 );
             },
             |_| {},
-        );
+        )
+        .conditions(
+            filter.borrowing,
+            |q| {
+                q.join(
+                    // borrowing
+                    JoinType::Join,
+                    Borrowing::Table,
+                    Expr::col((Borrowing::Table, Borrowing::Storage))
+                        .equals((Storage::Table, Storage::StorageId)),
+                );
+                q.and_where(Expr::col((Borrowing::Table, Borrowing::Borrower)).eq(person_id));
+            },
+            |_| {},)
+        .conditions(
+            filter.bookmark,
+            |q| {
+                q.join(
+                    // bookmark
+                    JoinType::Join,
+                    Bookmark::Table,
+                    Expr::col((Bookmark::Table, Bookmark::Product))
+                    .equals((Product::Table, Product::ProductId)),
+                );
+                q.and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id));
+            },
+            |_| {},)
+        ;
 
     // Create count query.
     let (count_sql, count_values) = expression

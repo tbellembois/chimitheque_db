@@ -1,4 +1,4 @@
-use std::{fs, io::Write};
+use std::fs;
 
 use log::info;
 use rusqlite::{Batch, Connection};
