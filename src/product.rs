@@ -999,6 +999,46 @@ pub fn get_products(
             )),
         )
         //
+        // symbols
+        //
+        .join(
+            JoinType::LeftJoin,
+            Productsymbols::Table,
+            Expr::col((
+                Productsymbols::Table,
+                Productsymbols::ProductsymbolsProductId,
+            ))
+            .equals((Product::Table, Product::ProductId)),
+        )
+        .join(
+            JoinType::LeftJoin,
+            Symbol::Table,
+            Expr::col((Symbol::Table, Symbol::SymbolId)).equals((
+                Productsymbols::Table,
+                Productsymbols::ProductsymbolsSymbolId,
+            )),
+        )
+        //
+        // tags
+        //
+        .join(
+            JoinType::LeftJoin,
+            Producttags::Table,
+            Expr::col((
+                Producttags::Table,
+                Producttags::ProducttagsProductId,
+            ))
+            .equals((Product::Table, Product::ProductId)),
+        )
+        .join(
+            JoinType::LeftJoin,
+            Tag::Table,
+            Expr::col((Tag::Table, Tag::TagId)).equals((
+                Producttags::Table,
+                Producttags::ProducttagsTagId,
+            )),
+        )
+        //
         // storage -> permissions
         //
         .join(
@@ -1152,6 +1192,13 @@ pub fn get_products(
             |_| {},
         )
         .conditions(
+            filter.empirical_formula.is_some(),
+                    |q| {
+                        q.and_where(Expr::col(Product::EmpiricalFormula).eq(filter.empirical_formula.unwrap()));
+                    },
+                    |_| {},
+        )
+        .conditions(
             filter.is_cmr,
             |q| {
                 q.and_where(Expr::col(CasNumber::CasNumberCmr).is_not_null())
@@ -1207,7 +1254,16 @@ pub fn get_products(
             filter.storage_barecode.is_some(),
             |q| {
                 q.and_where(
-                    Expr::col(Storage::StorageBarecode).eq(filter.storage_barecode.unwrap()),
+                    Expr::col(Storage::StorageBarecode).like(format!("%{}%",filter.storage_barecode.unwrap())),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.storage_batch_number.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col(Storage::StorageBatchNumber).like(format!("%{}%",filter.storage_batch_number.unwrap())),
                 );
             },
             |_| {},
@@ -1226,6 +1282,14 @@ pub fn get_products(
             },
             |_| {},)
         .conditions(
+            filter.producer_ref.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col(Product::ProducerRef).eq(filter.producer_ref.unwrap()),
+                );
+            },
+            |_| {},)
+        .conditions(
             filter.bookmark,
             |q| {
                 q.join(
@@ -1238,7 +1302,52 @@ pub fn get_products(
                 q.and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id));
             },
             |_| {},)
-        ;
+        .conditions(
+            filter.tags.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col(Producttags::ProducttagsTagId).is_in(filter.tags.unwrap()));
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.symbols.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col(Productsymbols::ProductsymbolsSymbolId).is_in(filter.symbols.unwrap()));
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.hazard_statements.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col(Producthazardstatements::ProducthazardstatementsHazardStatementId).is_in(filter.hazard_statements.unwrap()));
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.precautionary_statements.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col(Productprecautionarystatements::ProductprecautionarystatementsPrecautionaryStatementId).is_in(filter.precautionary_statements.unwrap()));
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.category.is_some(),
+            |q| {
+                q.and_where(Expr::col(Product::Category).eq(filter.category.unwrap()));
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.signal_word.is_some(),
+            |q| {
+                q.and_where(Expr::col(Product::SignalWord).eq(filter.signal_word.unwrap()));
+            },
+            |_| {},
+            );
 
     // Create count query.
     let (count_sql, count_values) = expression
