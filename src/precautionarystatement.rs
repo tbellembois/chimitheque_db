@@ -230,7 +230,6 @@ mod tests {
         init_logger();
 
         let mut db_connection = init_test_db();
-        init_db(&mut db_connection).unwrap();
 
         info!("testing parse");
         assert!(parse(&db_connection, "P322").is_ok_and(|u| u.is_some()));

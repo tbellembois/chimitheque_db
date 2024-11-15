@@ -66,6 +66,7 @@ pub enum Product {
     Table,
     Person,
     ProductId,
+    ProductType,
     ProductInchi,
     ProductInchikey,
     ProductCanonicalSmiles,
@@ -1175,6 +1176,46 @@ pub fn get_products(
         // filters
         //
         .conditions(
+            filter.show_chem,
+            |q| {
+            q.and_where(
+                Expr::col((Product::Table, Product::ProductType))
+                .eq("chem"),
+            );
+        },
+        |_| {},
+        )
+        .conditions(
+            filter.show_bio,
+            |q| {
+                q.and_where(
+                    Expr::col((Product::Table, Product::ProductType))
+                    .eq("bio"),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.show_consu,
+            |q| {
+                q.and_where(
+                    Expr::col((Product::Table, Product::ProductType))
+                    .eq("cons"),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.product.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((Product::Table, Product::ProductId))
+                    .eq(filter.product.unwrap()),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
             filter.custom_name_part_of.is_some(),
             |q| {
                 q.and_where(
@@ -1211,7 +1252,7 @@ pub fn get_products(
             |q| {
                 q.join(
                     // synonyms
-                    JoinType::Join,
+                    JoinType::LeftJoin,
                     Productsynonyms::Table,
                     Expr::col((Productsynonyms::Table, Productsynonyms::ProductsynonymsProductId))
                     .equals((Product::Table, Product::ProductId)),
@@ -1560,7 +1601,6 @@ mod tests {
         init_logger();
 
         let mut db_connection = init_test_db();
-        init_db(&mut db_connection).unwrap();
         insert_fake_values(&mut db_connection).unwrap();
 
         // info!("testing total result");

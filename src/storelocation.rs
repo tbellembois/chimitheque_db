@@ -242,7 +242,7 @@ pub fn get_store_locations(
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(StoreLocationWrapper::from(row).0)
+        Ok(StoreLocationWrapper::from(row))
     })?;
 
     // Build select result.
@@ -250,7 +250,7 @@ pub fn get_store_locations(
     for maybe_store_location in rows {
         let store_location = maybe_store_location?;
 
-        store_locations.push(store_location);
+        store_locations.push(store_location.0);
     }
 
     debug!("store_locations: {:#?}", store_locations);
@@ -281,7 +281,6 @@ mod tests {
         init_logger();
 
         let mut db_connection = init_test_db();
-        init_db(&mut db_connection).unwrap();
 
         // Insert fake entities.
         for (entity_id, entity_name) in [

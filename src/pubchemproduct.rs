@@ -415,7 +415,6 @@ mod tests {
         init_logger();
 
         let mut db_connection = init_test_db();
-        init_db(&mut db_connection).unwrap();
 
         info!("testing create product from pubchem");
         assert!(create_product_from_pubchem(
