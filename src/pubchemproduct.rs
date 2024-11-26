@@ -385,8 +385,6 @@ pub fn create_product_from_pubchem(
         _ = db_connection.execute(&sql_query, ())?;
     }
 
-    debug!("product_id: {}", product_id);
-
     Ok(product_id)
 }
 

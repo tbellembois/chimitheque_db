@@ -1,4 +1,6 @@
-use crate::{entity::Entity, permission::Permission};
+use std::fmt::Write;
+
+use crate::{entity::Entity, permission::Permission, storage::Storage};
 use chimitheque_types::{
     entity::Entity as EntityStruct, requestfilter::RequestFilter,
     storelocation::StoreLocation as StoreLocationStruct,
@@ -6,7 +8,9 @@ use chimitheque_types::{
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
-    Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SqliteQueryBuilder,
+    Alias, ColumnRef, CommonTableExpression, Cycle, Expr, Func, Iden, IntoColumnRef, IntoIden,
+    JoinType, Order, Query, QueryStatementBuilder, SelectStatement, SimpleExpr, SqliteQueryBuilder,
+    UnionType, WithClause,
 };
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
@@ -37,8 +41,8 @@ impl From<&Row<'_>> for StoreLocationWrapper {
                 store_location_id: row.get_unwrap("store_location_id"),
                 store_location_name: row.get_unwrap("store_location_name"),
                 store_location_can_store: row.get_unwrap("store_location_can_store"),
-                store_location_color: row.get_unwrap("store_location_color"),
-                store_location_full_path: row.get_unwrap("store_location_full_path"),
+                store_location_color: row.get("store_location_color").unwrap_or_default(),
+                store_location_full_path: row.get("store_location_full_path").unwrap_or_default(),
                 entity: Some(EntityStruct {
                     entity_id: row.get_unwrap("entity_id"),
                     entity_name: row.get_unwrap("entity_name"),
@@ -48,12 +52,22 @@ impl From<&Row<'_>> for StoreLocationWrapper {
                         store_location_id: row.get_unwrap("parent_store_location_id"),
                         store_location_name: row.get_unwrap("parent_store_location_name"),
                         store_location_can_store: row.get_unwrap("parent_store_location_can_store"),
-                        store_location_color: row.get_unwrap("parent_store_location_color"),
-                        store_location_full_path: row.get_unwrap("parent_store_location_full_path"),
+                        store_location_color: row
+                            .get("parent_store_location_color")
+                            .unwrap_or_default(),
+                        store_location_full_path: row
+                            .get("parent_store_location_full_path")
+                            .unwrap_or_default(),
                         entity: None,
                         store_location: None,
+                        store_location_nb_storage: None,
+                        store_location_nb_children: None,
                     })
                 }),
+                store_location_nb_storage: row.get("store_location_nb_storage").unwrap_or_default(),
+                store_location_nb_children: row
+                    .get("store_location_nb_children")
+                    .unwrap_or_default(),
             }
         })
     }
@@ -70,7 +84,7 @@ pub fn get_store_locations(
     let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {
         match order_by_string.as_str() {
             "entity.entity_name" => Entity::EntityName.into_column_ref(),
-            "store_location" => Alias::new("parent_store_location_fullpath").into_column_ref(),
+            "store_location" => Alias::new("parent_store_location_name").into_column_ref(),
             "store_location_full_path" => {
                 (StoreLocation::Table, StoreLocation::StoreLocationFullPath).into_column_ref()
             }
@@ -104,6 +118,25 @@ pub fn get_store_locations(
                 .equals((Alias::new("parent"), Alias::new("store_location_id"))),
         )
         //
+        // storages for nb_storage
+        //
+        .join(
+            JoinType::LeftJoin,
+            Storage::Table,
+            Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
+                .equals((Storage::Table, Storage::StoreLocation)),
+        )
+        //
+        // store locations for nb_children
+        //
+        .join_as(
+            JoinType::LeftJoin,
+            StoreLocation::Table,
+            Alias::new("children"),
+            Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
+                .equals((Alias::new("children"), Alias::new("store_location"))),
+        )
+        //
         // permissions
         //
         .join_as(
@@ -129,12 +162,25 @@ pub fn get_store_locations(
                         ),
                 ),
         )
+        //
+        // filters
+        //
         .conditions(
             filter.search.is_some(),
             |q| {
                 q.and_where(
                     Expr::col((StoreLocation::Table, StoreLocation::StoreLocationName))
                         .like(format!("%{}%", filter.search.clone().unwrap())),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.store_location.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
+                        .eq(filter.store_location.unwrap()),
                 );
             },
             |_| {},
@@ -209,6 +255,14 @@ pub fn get_store_locations(
             Expr::col((Alias::new("parent"), Alias::new("store_location_full_path"))),
             Alias::new("parent_store_location_full_path"),
         )
+        .expr_as(
+            Expr::col(Storage::StorageId).count_distinct(),
+            Alias::new("store_location_nb_storage"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("children"), Alias::new("store_location_id"))).count_distinct(),
+            Alias::new("store_location_nb_children"),
+        )
         .order_by(order_by, order)
         .group_by_col((StoreLocation::Table, StoreLocation::StoreLocationId))
         .conditions(
@@ -256,6 +310,157 @@ pub fn get_store_locations(
     debug!("store_locations: {:#?}", store_locations);
 
     Ok((store_locations, count))
+}
+
+fn populate_store_location_full_path(
+    db_connection: &Connection,
+    store_location: &mut StoreLocationStruct,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if store_location.store_location.is_none() {
+        store_location.store_location_full_path = Some(store_location.store_location_name.clone());
+        return Ok(());
+    }
+
+    let parent_id = store_location
+        .store_location
+        .as_ref()
+        .unwrap()
+        .store_location_id;
+
+    /*    WITH ancestor AS (SELECT store_location as p, store_location_name as n FROM store_location WHERE store_location_id = ????
+     *    UNION ALL
+     *    SELECT store_location, store_location_name FROM ancestor, store_location
+     *    WHERE ancestor.p = store_location.store_location_id)
+     *    SELECT group_concat(n, '/') AS store_location_full_path FROM ancestor */
+
+    struct MyGroupConcatFunction;
+
+    impl Iden for MyGroupConcatFunction {
+        fn unquoted(&self, s: &mut dyn Write) {
+            write!(s, "group_concat").unwrap();
+        }
+    }
+
+    let base_query = SelectStatement::new()
+        .expr_as(Expr::col(StoreLocation::StoreLocation), Alias::new("p"))
+        .expr_as(Expr::col(StoreLocation::StoreLocationName), Alias::new("n"))
+        .from(StoreLocation::Table)
+        .and_where(Expr::col(StoreLocation::StoreLocationId).eq(parent_id))
+        .and_where(
+            Expr::col(StoreLocation::StoreLocationId)
+                .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
+        )
+        .to_owned();
+
+    let cte_referencing = SelectStatement::new()
+        .columns([
+            StoreLocation::StoreLocation,
+            StoreLocation::StoreLocationName,
+        ])
+        .from(StoreLocation::Table)
+        .from(Alias::new("ancestor"))
+        .and_where(
+            Expr::col((Alias::new("ancestor"), Alias::new("p")))
+                .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
+        )
+        .to_owned();
+
+    let common_table_expression = CommonTableExpression::new()
+        .query(
+            base_query
+                .clone()
+                .union(UnionType::All, cte_referencing)
+                .to_owned(),
+        )
+        .table_name(Alias::new("ancestor"))
+        .to_owned();
+
+    let select = SelectStatement::new()
+        .expr_as(
+            Func::cust(MyGroupConcatFunction).arg(ColumnRef::Column(Alias::new("n").into_iden())),
+            Alias::new("store_location_full_path"),
+        )
+        .from(Alias::new("ancestor"))
+        .to_owned();
+
+    let with_clause = WithClause::new()
+        .recursive(false)
+        .cte(common_table_expression)
+        .cycle(Cycle::new_from_expr_set_using(
+            SimpleExpr::Column(ColumnRef::Column(Alias::new("id").into_iden())),
+            Alias::new("looped"),
+            Alias::new("traversal_path"),
+        ))
+        .to_owned();
+
+    let (select_sql, select_values) = select.with(with_clause).build_rusqlite(SqliteQueryBuilder);
+
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(select_sql.as_str())?;
+    let mut rows = stmt.query(&*select_values.as_params())?;
+    store_location.store_location_full_path = if let Some(row) = rows.next()? {
+        Some(row.get_unwrap(0))
+    } else {
+        Some(store_location.store_location_name.clone())
+    };
+
+    Ok(())
+}
+
+pub fn create_store_location(
+    db_connection: &Connection,
+    store_location: StoreLocationStruct,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    debug!("store_location: {:#?}", store_location);
+
+    // List of columns and values to insert in the store_location table.
+    let mut columns = vec![
+        StoreLocation::StoreLocationName,
+        StoreLocation::StoreLocationCanStore,
+    ];
+    let mut values = vec![
+        SimpleExpr::Value(store_location.store_location_name.into()),
+        SimpleExpr::Value(store_location.store_location_can_store.into()),
+    ];
+
+    if let Some(color) = store_location.store_location_color {
+        columns.push(StoreLocation::StoreLocationColor);
+        values.push(SimpleExpr::Value(color.into()));
+    }
+
+    if let Some(full_path) = store_location.store_location_full_path {
+        columns.push(StoreLocation::StoreLocationFullPath);
+        values.push(SimpleExpr::Value(full_path.into()));
+    }
+
+    if let Some(entity) = store_location.entity {
+        columns.push(StoreLocation::Entity);
+        values.push(SimpleExpr::Value(entity.entity_id.into()));
+    }
+
+    if let Some(store_location) = store_location.store_location {
+        columns.push(StoreLocation::StoreLocation);
+        values.push(SimpleExpr::Value(store_location.store_location_id.into()));
+    }
+
+    // Insert store location.
+    let sql_query = Query::insert()
+        .into_table(StoreLocation::Table)
+        .columns(columns)
+        .values(values)?
+        .to_string(SqliteQueryBuilder);
+
+    debug!("insert_sql: {}", sql_query.clone().as_str());
+
+    _ = db_connection.execute(&sql_query, ())?;
+    let store_location_id: u64 = db_connection.last_insert_rowid().try_into()?;
+
+    debug!("store_location_id: {}", store_location_id);
+
+    Ok(store_location_id)
 }
 
 #[cfg(test)]

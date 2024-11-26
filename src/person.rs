@@ -81,6 +81,19 @@ pub fn get_people(
                                 .eq(-1),
                         ),
                 ),
+        )
+        //
+        // filters
+        //
+        .conditions(
+            filter.search.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((Person::Table, Person::PersonEmail))
+                        .like(format!("%{}%", filter.search.clone().unwrap())),
+                );
+            },
+            |_| {},
         );
 
     // Create count query.
