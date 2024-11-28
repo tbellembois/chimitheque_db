@@ -9,8 +9,7 @@ use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
     Alias, ColumnRef, CommonTableExpression, Cycle, Expr, Func, Iden, IntoColumnRef, IntoIden,
-    JoinType, Order, Query, QueryStatementBuilder, SelectStatement, SimpleExpr, SqliteQueryBuilder,
-    UnionType, WithClause,
+    JoinType, Order, Query, SelectStatement, SimpleExpr, SqliteQueryBuilder, UnionType, WithClause,
 };
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
@@ -316,6 +315,7 @@ fn populate_store_location_full_path(
     db_connection: &Connection,
     store_location: &mut StoreLocationStruct,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // If the store location has no parent setting its name as full path.
     if store_location.store_location.is_none() {
         store_location.store_location_full_path = Some(store_location.store_location_name.clone());
         return Ok(());
@@ -378,7 +378,7 @@ fn populate_store_location_full_path(
     let select = SelectStatement::new()
         .expr_as(
             Func::cust(MyGroupConcatFunction).arg(ColumnRef::Column(Alias::new("n").into_iden())),
-            Alias::new("store_location_full_path"),
+            Alias::new("store_location_parents"),
         )
         .from(Alias::new("ancestor"))
         .to_owned();
@@ -402,19 +402,89 @@ fn populate_store_location_full_path(
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let mut rows = stmt.query(&*select_values.as_params())?;
     store_location.store_location_full_path = if let Some(row) = rows.next()? {
-        Some(row.get_unwrap(0))
+        let store_location_parents: String = row.get_unwrap("store_location_parents");
+
+        let mut store_location_full_path = store_location.store_location_name.clone();
+        store_location_full_path.push_str(",");
+        store_location_full_path.push_str(&store_location_parents);
+
+        // At this point store_location_full_path is like:
+        // store_location_name,parent1,parent2,root
+        // We should revert it and replace , by /.
+        let store_location_full_path_reversed = store_location_full_path
+            .split(',')
+            .rev()
+            .collect::<Vec<_>>()
+            .join("/");
+
+        Some(store_location_full_path_reversed)
     } else {
-        Some(store_location.store_location_name.clone())
+        // We should always have a result.
+        // The case where the store location has no parent is handled at the begining of the function.
+        unreachable!()
     };
+
+    Ok(())
+}
+
+pub fn update_store_location(
+    db_connection: &Connection,
+    mut store_location: StoreLocationStruct,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("store_location: {:#?}", store_location);
+
+    // Setting up the full path.
+    populate_store_location_full_path(db_connection, &mut store_location)?;
+
+    // List of (columns, values) pairs to insert in the store_location table.
+    let mut columns_values = vec![(
+        StoreLocation::StoreLocationName,
+        store_location.store_location_name.into(),
+    )];
+
+    if let Some(color) = store_location.store_location_color {
+        columns_values.push((StoreLocation::StoreLocationColor, color.into()));
+    }
+
+    if let Some(full_path) = store_location.store_location_full_path {
+        columns_values.push((StoreLocation::StoreLocationFullPath, full_path.into()));
+    }
+
+    if let Some(entity) = store_location.entity {
+        columns_values.push((StoreLocation::Entity, entity.entity_id.into()));
+    }
+
+    if let Some(store_location) = store_location.store_location {
+        columns_values.push((
+            StoreLocation::StoreLocation,
+            store_location.store_location_id.into(),
+        ));
+    }
+
+    // Update store location.
+    let (update_sql, update_values) = Query::update()
+        .table(StoreLocation::Table)
+        .values(columns_values)
+        .and_where(Expr::col(StoreLocation::StoreLocationId).eq(store_location.store_location_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("update_sql: {}", update_sql.clone().as_str());
+    debug!("update_values: {:?}", update_values);
+
+    let nb_rows_affected = db_connection.execute(update_sql.as_str(), &*update_values.as_params());
+    debug!("nb_rows_affected: {:?}", nb_rows_affected);
 
     Ok(())
 }
 
 pub fn create_store_location(
     db_connection: &Connection,
-    store_location: StoreLocationStruct,
+    mut store_location: StoreLocationStruct,
 ) -> Result<u64, Box<dyn std::error::Error>> {
     debug!("store_location: {:#?}", store_location);
+
+    // Setting up the full path.
+    populate_store_location_full_path(db_connection, &mut store_location)?;
 
     // List of columns and values to insert in the store_location table.
     let mut columns = vec![
@@ -447,17 +517,19 @@ pub fn create_store_location(
     }
 
     // Insert store location.
-    let sql_query = Query::insert()
+    let (insert_sql, insert_values) = Query::insert()
         .into_table(StoreLocation::Table)
         .columns(columns)
         .values(values)?
-        .to_string(SqliteQueryBuilder);
+        .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("insert_sql: {}", sql_query.clone().as_str());
+    debug!("insert_sql: {}", insert_sql.clone().as_str());
+    debug!("insert_values: {:?}", insert_values);
 
-    _ = db_connection.execute(&sql_query, ())?;
+    let nb_rows_affected = db_connection.execute(insert_sql.as_str(), &*insert_values.as_params());
+    debug!("nb_rows_affected: {:?}", nb_rows_affected);
+
     let store_location_id: u64 = db_connection.last_insert_rowid().try_into()?;
-
     debug!("store_location_id: {}", store_location_id);
 
     Ok(store_location_id)
