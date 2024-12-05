@@ -1,7 +1,5 @@
 use chimitheque_types::{
-    requestfilter::RequestFilter,
-    unit::Unit as UnitStruct,
-    unittype::{ParseUnitTypeError, UnitType},
+    error::ParseError, requestfilter::RequestFilter, unit::Unit as UnitStruct, unittype::UnitType,
 };
 use log::debug;
 use rusqlite::{Connection, Row};
@@ -25,7 +23,7 @@ pub enum Unit {
 pub struct UnitWrapper(pub UnitStruct);
 
 impl TryFrom<&Row<'_>> for UnitWrapper {
-    type Error = ParseUnitTypeError;
+    type Error = ParseError;
 
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
         let unit_type_string: String = row.get_unwrap("unit_type");

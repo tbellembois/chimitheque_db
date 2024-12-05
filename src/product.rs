@@ -35,21 +35,14 @@ use crate::{
     unit::Unit,
 };
 use chimitheque_types::{
-    casnumber::CasNumber as CasNumberStruct,
-    category::Category as CategoryStruct,
+    casnumber::CasNumber as CasNumberStruct, category::Category as CategoryStruct,
     cenumber::CeNumber as CeNumberStruct,
-    empiricalformula::EmpiricalFormula as EmpiricalFormulaStruct,
-    linearformula::LinearFormula as LinearFormulaStruct,
-    name::Name as NameStruct,
-    person::Person as PersonStruct,
-    physicalstate::PhysicalState as PhysicalStateStruct,
-    producer::Producer as ProducerStruct,
-    producerref::ProducerRef as ProducerRefStruct,
-    product::Product as ProductStruct,
-    requestfilter::RequestFilter,
-    signalword::SignalWord as SignalWordStruct,
-    unit::Unit as UnitStruct,
-    unittype::{ParseUnitTypeError, UnitType},
+    empiricalformula::EmpiricalFormula as EmpiricalFormulaStruct, error::ParseError,
+    linearformula::LinearFormula as LinearFormulaStruct, name::Name as NameStruct,
+    person::Person as PersonStruct, physicalstate::PhysicalState as PhysicalStateStruct,
+    producer::Producer as ProducerStruct, producerref::ProducerRef as ProducerRefStruct,
+    product::Product as ProductStruct, producttype::ProductType, requestfilter::RequestFilter,
+    signalword::SignalWord as SignalWordStruct, unit::Unit as UnitStruct, unittype::UnitType,
 };
 use log::debug;
 use rusqlite::{Connection, Row};
@@ -100,7 +93,7 @@ pub enum Product {
 pub struct ProductWrapper(pub ProductStruct);
 
 impl TryFrom<&Row<'_>> for ProductWrapper {
-    type Error = ParseUnitTypeError;
+    type Error = ParseError;
 
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
         let maybe_unit_temperature_type_string: Option<String> =
@@ -118,6 +111,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
         let maybe_unit_temperature: Option<u64> = row.get_unwrap("unit_temperature_unit_id");
         let maybe_unit_molecular_weight: Option<u64> =
             row.get_unwrap("unit_molecular_weight_unit_id");
+        let product_type_string: String = row.get_unwrap("product_type");
 
         // Extract unit temperature type if some.
         let unit_temperature_type: UnitType;
@@ -208,6 +202,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
                 unit: Default::default(),
             }),
 
+            product_type: ProductType::from_str(&product_type_string)?,
             product_inchi: row.get_unwrap("product_inchi"),
             product_inchikey: row.get_unwrap("product_inchikey"),
             product_canonical_smiles: row.get_unwrap("product_canonical_smiles"),
@@ -1402,6 +1397,7 @@ pub fn get_products(
     // Create select query.
     let (select_sql, select_values) = expression
         .columns([
+            Product::ProductType,
             Product::ProductId,
             Product::ProductInchi,
             Product::ProductInchikey,

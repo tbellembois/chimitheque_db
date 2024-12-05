@@ -29,6 +29,7 @@ pub mod producttags;
 pub mod pubchemproduct;
 pub mod searchable;
 pub mod signalword;
+pub mod stock;
 pub mod storage;
 pub mod storelocation;
 pub mod supplier;
