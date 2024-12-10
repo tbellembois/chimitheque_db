@@ -15,8 +15,6 @@ use crate::{
 #[derive(Debug, Serialize)]
 pub struct StockWrapper(pub Stock);
 
-// chimitheque_db::stock] row:{Ok("store_location_id"): (Integer, 2), Ok("store_location_full_path"): (Text, "store_location2"), Ok("unit_id"): (Null, ()), Ok("unit_label"): (Null, ()), Ok("quantity"): (Null, ())}
-
 impl From<&Row<'_>> for StockWrapper {
     fn from(row: &Row) -> Self {
         // Test if there is a parent unit..

@@ -265,7 +265,6 @@ CREATE TABLE "storage" (
 	"storage_archive"	INTEGER DEFAULT 0,
 	"storage_qrcode"	BLOB,
 	"storage_concentration"	REAL,
-	"storage_number_of_unit"	INTEGER,
 	"storage_number_of_bag"	INTEGER,
 	"storage_number_of_carton"	INTEGER,
 	"person"	INTEGER NOT NULL,

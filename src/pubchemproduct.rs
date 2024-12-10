@@ -19,7 +19,10 @@ use chimitheque_utils::cenumber::is_ce_number;
 use chimitheque_utils::formula::sort_empirical_formula;
 use log::debug;
 use rusqlite::Connection;
+use sea_query::Expr;
 use sea_query::{Query, SimpleExpr, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
+use sea_query_rusqlite::RusqliteValues;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -65,10 +68,11 @@ impl Display for ImportPubchemProductError {
 
 impl std::error::Error for ImportPubchemProductError {}
 
-pub fn create_product_from_pubchem(
+pub fn create_update_product_from_pubchem(
     db_connection: &Connection,
     pubchem_product: PubchemProduct,
     person_id: u64,
+    product_id: Option<u64>,
 ) -> Result<u64, Box<dyn std::error::Error>> {
     debug!("pubchem_product: {:#?}", pubchem_product);
 
@@ -98,7 +102,13 @@ pub fn create_product_from_pubchem(
         return Err(Box::new(ImportPubchemProductError::EmptyName));
     }
 
-    // List of columns and values to insert in the product table.
+    // Update request: list of (columns, values) pairs to insert in the product table.
+    let mut columns_values = vec![
+        (Product::Name, SimpleExpr::Value(name_id.into())),
+        (Product::Person, SimpleExpr::Value(person_id.into())),
+    ];
+
+    // Create request: list of columns and values to insert in the product table.
     let mut columns = vec![Product::Name, Product::Person];
     let mut values = vec![
         SimpleExpr::Value(name_id.into()),
@@ -108,27 +118,49 @@ pub fn create_product_from_pubchem(
     // Basic fields.
     if let Some(inchi) = pubchem_product.inchi {
         columns.push(Product::ProductInchi);
-        values.push(SimpleExpr::Value(inchi.into()));
+        values.push(SimpleExpr::Value(inchi.clone().into()));
+
+        columns_values.push((Product::ProductInchi, SimpleExpr::Value(inchi.into())));
     }
 
     if let Some(inchi_key) = pubchem_product.inchi_key {
         columns.push(Product::ProductInchikey);
-        values.push(SimpleExpr::Value(inchi_key.into()));
+        values.push(SimpleExpr::Value(inchi_key.clone().into()));
+
+        columns_values.push((
+            Product::ProductInchikey,
+            SimpleExpr::Value(inchi_key.into()),
+        ));
     }
 
     if let Some(canonical_smiles) = pubchem_product.canonical_smiles {
         columns.push(Product::ProductCanonicalSmiles);
-        values.push(SimpleExpr::Value(canonical_smiles.into()));
+        values.push(SimpleExpr::Value(canonical_smiles.clone().into()));
+
+        columns_values.push((
+            Product::ProductCanonicalSmiles,
+            SimpleExpr::Value(canonical_smiles.into()),
+        ));
     }
 
     if let Some(molecular_weight) = pubchem_product.molecular_weight {
         columns.push(Product::ProductMolecularWeight);
-        values.push(SimpleExpr::Value(molecular_weight.into()));
+        values.push(SimpleExpr::Value(molecular_weight.clone().into()));
+
+        columns_values.push((
+            Product::ProductMolecularWeight,
+            SimpleExpr::Value(molecular_weight.into()),
+        ));
     }
 
     if let Some(twodpicture) = pubchem_product.twodpicture {
         columns.push(Product::ProductTwodFormula);
-        values.push(SimpleExpr::Value(twodpicture.into()));
+        values.push(SimpleExpr::Value(twodpicture.clone().into()));
+
+        columns_values.push((
+            Product::ProductTwodFormula,
+            SimpleExpr::Value(twodpicture.into()),
+        ));
     }
 
     // Molecular weight unit.
@@ -148,6 +180,11 @@ pub fn create_product_from_pubchem(
 
         columns.push(Product::UnitMolecularWeight);
         values.push(SimpleExpr::Value(molecularweight_unit_id.into()));
+
+        columns_values.push((
+            Product::UnitMolecularWeight,
+            SimpleExpr::Value(molecularweight_unit_id.into()),
+        ));
     }
 
     // Cas number.
@@ -179,6 +216,8 @@ pub fn create_product_from_pubchem(
 
         columns.push(Product::CasNumber);
         values.push(SimpleExpr::Value(casnumber_id.into()));
+
+        columns_values.push((Product::CasNumber, SimpleExpr::Value(casnumber_id.into())));
     }
 
     // Ec number.
@@ -210,6 +249,8 @@ pub fn create_product_from_pubchem(
 
         columns.push(Product::CeNumber);
         values.push(SimpleExpr::Value(ecnumber_id.into()));
+
+        columns_values.push((Product::CeNumber, SimpleExpr::Value(ecnumber_id.into())));
     }
 
     // Empirical formula.
@@ -237,6 +278,11 @@ pub fn create_product_from_pubchem(
 
         columns.push(Product::EmpiricalFormula);
         values.push(SimpleExpr::Value(empiricalformula_id.into()));
+
+        columns_values.push((
+            Product::EmpiricalFormula,
+            SimpleExpr::Value(empiricalformula_id.into()),
+        ));
     }
 
     // Signal word.
@@ -261,6 +307,8 @@ pub fn create_product_from_pubchem(
 
             columns.push(Product::SignalWord);
             values.push(SimpleExpr::Value(signalword_id.into()));
+
+            columns_values.push((Product::SignalWord, SimpleExpr::Value(signalword_id.into())));
         }
     }
 
@@ -329,19 +377,38 @@ pub fn create_product_from_pubchem(
         }
     }
 
-    // Insert product.
-    let sql_query = Query::insert()
-        .into_table(Product::Table)
-        .columns(columns)
-        .values(values)?
-        .to_string(SqliteQueryBuilder);
+    let sql_query: String;
+    let mut sql_values: RusqliteValues = RusqliteValues(vec![]);
 
-    debug!("insert_sql: {}", sql_query.clone().as_str());
+    if let Some(product_id) = product_id {
+        // Update query.
+        (sql_query, sql_values) = Query::update()
+            .table(Product::Table)
+            .values(columns_values)
+            .and_where(Expr::col(Product::ProductId).eq(product_id))
+            .build_rusqlite(SqliteQueryBuilder);
+    } else {
+        // Insert query.
+        sql_query = Query::insert()
+            .into_table(Product::Table)
+            .columns(columns)
+            .values(values)?
+            .to_string(SqliteQueryBuilder);
+    }
 
-    _ = db_connection.execute(&sql_query, ())?;
-    let product_id: u64 = db_connection.last_insert_rowid().try_into()?;
+    _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
 
-    debug!("product_id: {}", product_id);
+    let last_insert_update_id: u64;
+
+    if let Some(product_id) = product_id {
+        last_insert_update_id = product_id;
+    } else {
+        last_insert_update_id = db_connection.last_insert_rowid().try_into()?;
+    }
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+    debug!("last_insert_update_id: {}", last_insert_update_id);
 
     // Insert symbols.
     for symbol_id in symbol_ids {
@@ -351,7 +418,7 @@ pub fn create_product_from_pubchem(
                 Productsymbols::ProductsymbolsProductId,
                 Productsymbols::ProductsymbolsSymbolId,
             ])
-            .values([product_id.into(), symbol_id.into()])?
+            .values([last_insert_update_id.into(), symbol_id.into()])?
             .to_string(SqliteQueryBuilder);
 
         _ = db_connection.execute(&sql_query, ())?;
@@ -365,7 +432,7 @@ pub fn create_product_from_pubchem(
                 Producthazardstatements::ProducthazardstatementsProductId,
                 Producthazardstatements::ProducthazardstatementsHazardStatementId,
             ])
-            .values([product_id.into(), hazardstatement_id.into()])?
+            .values([last_insert_update_id.into(), hazardstatement_id.into()])?
             .to_string(SqliteQueryBuilder);
 
         _ = db_connection.execute(&sql_query, ())?;
@@ -379,13 +446,13 @@ pub fn create_product_from_pubchem(
                 Productprecautionarystatements::ProductprecautionarystatementsProductId,
                 Productprecautionarystatements::ProductprecautionarystatementsPrecautionaryStatementId,
             ])
-            .values([product_id.into(), precautionary_statement_id.into()])?
+            .values([last_insert_update_id.into(), precautionary_statement_id.into()])?
             .to_string(SqliteQueryBuilder);
 
         _ = db_connection.execute(&sql_query, ())?;
     }
 
-    Ok(product_id)
+    Ok(last_insert_update_id)
 }
 
 #[cfg(test)]
@@ -415,70 +482,76 @@ mod tests {
         let mut db_connection = init_test_db();
 
         info!("testing create product from pubchem");
-        assert!(create_product_from_pubchem(
+        assert!(create_update_product_from_pubchem(
             &db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 ..Default::default()
             },
-            1
+            1,
+            None,
         )
         .is_ok_and(|id| id > 0));
 
-        assert!(create_product_from_pubchem(
+        assert!(create_update_product_from_pubchem(
             &db_connection,
             PubchemProduct {
                 ..Default::default()
             },
-            1
+            1,
+            None,
         )
         .is_err_and(|e| e.to_string().eq("empty name")));
 
-        assert!(create_product_from_pubchem(
+        assert!(create_update_product_from_pubchem(
             &db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 hs: Some(vec!["foo".to_string()]),
                 ..Default::default()
             },
-            1
+            1,
+            None,
         )
         .is_err_and(|e| e.to_string().eq("unknown hazard statement foo")));
 
-        assert!(create_product_from_pubchem(
+        assert!(create_update_product_from_pubchem(
             &db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 ps: Some(vec!["foo".to_string()]),
                 ..Default::default()
             },
-            1
+            1,
+            None,
         )
         .is_err_and(|e| e.to_string().eq("unknown precautionary statement foo")));
 
-        assert!(create_product_from_pubchem(
+        assert!(create_update_product_from_pubchem(
             &db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 signal: Some(vec!["foo".to_string()]),
                 ..Default::default()
             },
-            1
+            1,
+            None,
         )
         .is_err_and(|e| e.to_string().eq("unknown signal word foo")));
 
-        assert!(create_product_from_pubchem(
+        assert!(create_update_product_from_pubchem(
             &db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 molecular_weight_unit: Some("foo".to_string()),
                 ..Default::default()
             },
-            1
+            1,
+            None,
         )
         .is_err_and(|e| e.to_string().eq("unknown molecular weight unit foo")));
 
-        assert!(create_product_from_pubchem(
+        assert!(create_update_product_from_pubchem(
             &db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
@@ -500,6 +573,7 @@ mod tests {
                 twodpicture: Some("twodpicture".to_string()),
             },
             1,
+            None,
         )
         .is_ok());
     }
