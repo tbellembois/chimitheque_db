@@ -20,6 +20,7 @@ use chimitheque_utils::formula::sort_empirical_formula;
 use log::debug;
 use rusqlite::Connection;
 use sea_query::Expr;
+use sea_query::OnConflict;
 use sea_query::{Query, SimpleExpr, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use sea_query_rusqlite::RusqliteValues;
@@ -418,6 +419,14 @@ pub fn create_update_product_from_pubchem(
                 Productsymbols::ProductsymbolsProductId,
                 Productsymbols::ProductsymbolsSymbolId,
             ])
+            .on_conflict(
+                OnConflict::columns([
+                    Productsymbols::ProductsymbolsProductId,
+                    Productsymbols::ProductsymbolsSymbolId,
+                ])
+                .do_nothing()
+                .to_owned(),
+            )
             .values([last_insert_update_id.into(), symbol_id.into()])?
             .to_string(SqliteQueryBuilder);
 
@@ -432,6 +441,14 @@ pub fn create_update_product_from_pubchem(
                 Producthazardstatements::ProducthazardstatementsProductId,
                 Producthazardstatements::ProducthazardstatementsHazardStatementId,
             ])
+            .on_conflict(
+                OnConflict::columns([
+                    Producthazardstatements::ProducthazardstatementsProductId,
+                    Producthazardstatements::ProducthazardstatementsHazardStatementId,
+                ])
+                .do_nothing()
+                .to_owned(),
+            )
             .values([last_insert_update_id.into(), hazardstatement_id.into()])?
             .to_string(SqliteQueryBuilder);
 
@@ -446,6 +463,14 @@ pub fn create_update_product_from_pubchem(
                 Productprecautionarystatements::ProductprecautionarystatementsProductId,
                 Productprecautionarystatements::ProductprecautionarystatementsPrecautionaryStatementId,
             ])
+            .on_conflict(
+                OnConflict::columns([
+                    Productprecautionarystatements::ProductprecautionarystatementsProductId,
+                    Productprecautionarystatements::ProductprecautionarystatementsPrecautionaryStatementId,
+                ])
+                .do_nothing()
+                .to_owned(),
+            )
             .values([last_insert_update_id.into(), precautionary_statement_id.into()])?
             .to_string(SqliteQueryBuilder);
 
