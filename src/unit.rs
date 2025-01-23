@@ -136,6 +136,13 @@ pub fn get_units(
                 );
             },
             |_| {},
+        )
+        .conditions(
+            filter.unit_type.is_some(),
+            |q| {
+                q.and_where(Expr::col((Unit::Table, Unit::UnitType)).eq(filter.unit_type.unwrap()));
+            },
+            |_| {},
         );
 
     // Create count query.
@@ -169,13 +176,6 @@ pub fn get_units(
             ((Unit::Table, Unit::UnitType), Order::Asc),
             ((Unit::Table, Unit::UnitLabel), Order::Asc),
         ])
-        .conditions(
-            filter.unit_type.is_some(),
-            |q| {
-                q.and_where(Expr::col((Unit::Table, Unit::UnitType)).eq(filter.unit_type.unwrap()));
-            },
-            |_| {},
-        )
         .conditions(
             filter.limit.is_some(),
             |q| {
