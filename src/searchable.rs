@@ -47,6 +47,10 @@ pub fn parse(
     Ok(Some(new_item))
 }
 
+// Return Searchable items.
+// The filter is either 'search' or 'id' or None.
+// 'search' will search by the get_text_field_name() item.
+// 'id' will search by the get_id_field_name() item. This should return only one item by not enforced by this function.
 pub fn get_many(
     item: &(impl Searchable + Debug + Default + Serialize),
     db_connection: &Connection,
@@ -68,6 +72,8 @@ pub fn get_many(
             item.get_text_field_name(),
             search
         ))
+    } else if let Some(id) = filter.id {
+        select_query.push_str(&format!(" WHERE {} = {}", item.get_id_field_name(), id))
     }
 
     select_query.push_str(&format!(
@@ -96,6 +102,8 @@ pub fn get_many(
             item.get_text_field_name(),
             search
         ))
+    } else if let Some(id) = filter.id {
+        count_query.push_str(&format!(" WHERE {} = {}", item.get_id_field_name(), id))
     }
 
     // Perform count query.

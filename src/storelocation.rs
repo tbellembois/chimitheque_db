@@ -529,6 +529,22 @@ pub fn create_update_store_location(
     Ok(last_insert_update_id)
 }
 
+pub fn delete_store_location(
+    db_connection: &Connection,
+    store_location_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("store_location_id: {}", store_location_id);
+
+    let (sql_query, sql_values) = Query::delete()
+        .from_table(StoreLocation::Table)
+        .and_where(Expr::col(StoreLocation::StoreLocationId).eq(store_location_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_connection.execute(sql_query.as_str(), &*sql_values.as_params());
+
+    Ok(())
+}
+
 // pub fn update_store_location(
 //     db_connection: &Connection,
 //     mut store_location: StoreLocationStruct,
