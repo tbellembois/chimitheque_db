@@ -1,8 +1,8 @@
 use chimitheque_types::{requestfilter::RequestFilter, supplier::Supplier as SupplierStruct};
 use log::debug;
 use rusqlite::{Connection, Row};
-use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
-use sea_query_rusqlite::RusqliteBinder;
+use sea_query::{Expr, Iden, Order, Query, SimpleExpr, SqliteQueryBuilder};
+use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
 
 #[derive(Iden)]
@@ -113,6 +113,59 @@ pub fn get_suppliers(
     debug!("suppliers: {:#?}", suppliers);
 
     Ok((suppliers, count))
+}
+
+pub fn create_update_supplier(
+    db_connection: &Connection,
+    supplier: SupplierStruct,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    debug!("create_update_supplier: {:#?}", supplier);
+
+    // Update request: list of (columns, values) pairs to insert.
+    let columns_values = vec![(
+        Supplier::SupplierLabel,
+        supplier.supplier_label.clone().into(),
+    )];
+
+    // Create request: list of columns and values to insert.
+    let columns = vec![Supplier::SupplierLabel];
+    let values = vec![SimpleExpr::Value(supplier.supplier_label.into())];
+
+    let sql_query: String;
+    let mut sql_values: RusqliteValues = RusqliteValues(vec![]);
+
+    if let Some(supplier_id) = supplier.supplier_id {
+        // Update query.
+        (sql_query, sql_values) = Query::update()
+            .table(Supplier::Table)
+            .values(columns_values)
+            .and_where(Expr::col(Supplier::SupplierId).eq(supplier_id))
+            .build_rusqlite(SqliteQueryBuilder);
+    } else {
+        // Insert query.
+        sql_query = Query::insert()
+            .into_table(Supplier::Table)
+            .columns(columns)
+            .values(values)?
+            .to_string(SqliteQueryBuilder);
+    }
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
+
+    let last_insert_update_id: u64;
+
+    if let Some(supplier_id) = supplier.supplier_id {
+        last_insert_update_id = supplier_id;
+    } else {
+        last_insert_update_id = db_connection.last_insert_rowid().try_into()?;
+    }
+
+    debug!("last_insert_update_id: {}", last_insert_update_id);
+
+    Ok(last_insert_update_id)
 }
 
 #[cfg(test)]

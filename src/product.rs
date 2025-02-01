@@ -732,9 +732,11 @@ fn populate_supplier_refs(
                     .productsupplierrefs_supplier_ref_label,
                 supplier: chimitheque_types::supplier::Supplier {
                     match_exact_search: false,
-                    supplier_id: product_supplierrefs_wrapper
-                        .0
-                        .productsupplierrefs_supplier_id,
+                    supplier_id: Some(
+                        product_supplierrefs_wrapper
+                            .0
+                            .productsupplierrefs_supplier_id,
+                    ),
                     supplier_label: product_supplierrefs_wrapper
                         .0
                         .productsupplierrefs_supplier_label,
@@ -1065,21 +1067,21 @@ pub fn get_products(
                 .eq(person_id)
                 .and(
                     Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
-                        .is_in(["all", "storages"]),
+                        .is_in(["all", "products"]),
                 )
                 .and(
                     Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
                         .is_in(["r", "w", "all"]),
                 )
-                .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
-                        .equals(Entity::EntityId)
-                        .or( Expr::col(Entity::EntityId).is_null()) // products with no storages for non admins
-                        .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
-                                .eq(-1),
-                        ),
-                ),
+                // .and(
+                //     Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                //         .equals(Entity::EntityId)
+                //         .or( Expr::col(Entity::EntityId).is_null()) // products with no storages for non admins
+                //         .or(
+                //             Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                //                 .eq(-1),
+                //         ),
+                // ),
         )
 
         // .join(

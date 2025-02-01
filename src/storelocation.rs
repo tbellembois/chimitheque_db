@@ -448,7 +448,7 @@ pub fn create_update_store_location(
         ),
     ];
 
-    // Create request: list of columns and values to insert in the product table.
+    // Create request: list of columns and values to insert.
     let mut columns = vec![
         StoreLocation::StoreLocationName,
         StoreLocation::StoreLocationCanStore,
