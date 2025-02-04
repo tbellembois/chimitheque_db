@@ -1,7 +1,7 @@
-use std::fs;
-
 use log::info;
 use rusqlite::{Batch, Connection};
+use std::path::Path;
+use std::{env, fs};
 
 use crate::define::{
     CATEGORIES, CMR_CAS, HAZARD_STATEMENTS, PRECAUTIONARY_STATEMENTS, PRODUCERS, SIGNAL_WORDS,
@@ -9,24 +9,17 @@ use crate::define::{
 };
 
 pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
-    // let regexp_extension = include_bytes!("extensions/regexp.so");
+    let sql_extension_dir = match env::var("SQLITE_EXTENSION_DIR") {
+        Ok(val) => val,
+        Err(_) => panic!("Missing SQLITE_EXTENSION_DIR environment variable."),
+    };
 
-    // let mut regexp_extension_file = NamedTempFile::new().expect("Unable to create temp file.");
-    // regexp_extension_file
-    //     .write_all(regexp_extension)
-    //     .expect("Unable to write temp file.");
-    // fs::write("/home/thbellem/ext.so", regexp_extension)
-    // .expect("Unable to write regexp extension file.");
-
-    println!("{:?}", std::env::current_exe());
+    let sql_extension_regex = Path::new(sql_extension_dir.as_str()).join("regexp.so");
 
     let db_connection = Connection::open(db_path)?;
     unsafe {
         db_connection
-            .load_extension(
-                "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions/regexp.so",
-                None,
-            )
+            .load_extension(sql_extension_regex, None)
             .expect("Unable to load regexp extension.")
     };
 
@@ -218,12 +211,22 @@ mod tests {
     fn test_connect() {
         init_logger();
 
+        std::env::set_var(
+            "SQLITE_EXTENSION_DIR",
+            "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions",
+        );
+
         assert!(connect("/tmp/storage.db").is_ok());
     }
 
     #[test]
     fn test_init_db() {
         init_logger();
+
+        std::env::set_var(
+            "SQLITE_EXTENSION_DIR",
+            "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions",
+        );
 
         let mut db_connection = Connection::open_in_memory().unwrap();
         let mayerr_initdb = init_db(&mut db_connection);

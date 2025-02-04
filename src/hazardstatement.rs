@@ -226,7 +226,7 @@ mod tests {
     fn test_parse_hazard_statement() {
         init_logger();
 
-        let mut db_connection = init_test_db();
+        let db_connection = init_test_db();
 
         info!("testing parse");
         assert!(parse(&db_connection, "EUH209A").is_ok_and(|u| u.is_some()));

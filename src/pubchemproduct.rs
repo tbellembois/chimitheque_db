@@ -504,7 +504,7 @@ mod tests {
     fn test_create_product_from_pubchem() {
         init_logger();
 
-        let mut db_connection = init_test_db();
+        let db_connection = init_test_db();
 
         info!("testing create product from pubchem");
         assert!(create_update_product_from_pubchem(

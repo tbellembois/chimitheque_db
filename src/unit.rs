@@ -240,7 +240,7 @@ mod tests {
     fn test_parse_unit() {
         init_logger();
 
-        let mut db_connection = init_test_db();
+        let db_connection = init_test_db();
 
         info!("testing parse");
         assert!(parse(&db_connection, "mL").is_ok_and(|u| u.is_some()));

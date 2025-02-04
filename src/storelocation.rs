@@ -675,7 +675,7 @@ mod tests {
     fn test_get_store_locations() {
         init_logger();
 
-        let mut db_connection = init_test_db();
+        let db_connection = init_test_db();
 
         // Insert fake entities.
         for (entity_id, entity_name) in [

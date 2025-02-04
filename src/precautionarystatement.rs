@@ -229,7 +229,7 @@ mod tests {
     fn test_parse_precautionary_statement() {
         init_logger();
 
-        let mut db_connection = init_test_db();
+        let db_connection = init_test_db();
 
         info!("testing parse");
         assert!(parse(&db_connection, "P322").is_ok_and(|u| u.is_some()));
