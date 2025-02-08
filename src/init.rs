@@ -228,7 +228,8 @@ mod tests {
             "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions",
         );
 
-        let mut db_connection = Connection::open_in_memory().unwrap();
+        // let mut db_connection = Connection::open_in_memory().unwrap();
+        let mut db_connection = Connection::open("/tmp/storage.db").unwrap();
         let mayerr_initdb = init_db(&mut db_connection);
 
         info!("mayerr_initdb: {:?}", mayerr_initdb);

@@ -1,4 +1,5 @@
 use chimitheque_types::{requestfilter::RequestFilter, supplier::Supplier as SupplierStruct};
+use chimitheque_utils::string::{clean, Transform};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SimpleExpr, SqliteQueryBuilder};
@@ -121,15 +122,14 @@ pub fn create_update_supplier(
 ) -> Result<u64, Box<dyn std::error::Error>> {
     debug!("create_update_supplier: {:#?}", supplier);
 
+    let clean_supplier_label = clean(&supplier.supplier_label, Transform::None);
+
     // Update request: list of (columns, values) pairs to insert.
-    let columns_values = vec![(
-        Supplier::SupplierLabel,
-        supplier.supplier_label.clone().into(),
-    )];
+    let columns_values = vec![(Supplier::SupplierLabel, clean_supplier_label.clone().into())];
 
     // Create request: list of columns and values to insert.
     let columns = vec![Supplier::SupplierLabel];
-    let values = vec![SimpleExpr::Value(supplier.supplier_label.into())];
+    let values = vec![SimpleExpr::Value(clean_supplier_label.into())];
 
     let sql_query: String;
     let mut sql_values: RusqliteValues = RusqliteValues(vec![]);

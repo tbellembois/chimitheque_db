@@ -1,4 +1,5 @@
 use chimitheque_types::{producer::Producer as ProducerStruct, requestfilter::RequestFilter};
+use chimitheque_utils::string::{clean, Transform};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SimpleExpr, SqliteQueryBuilder};
@@ -120,15 +121,14 @@ pub fn create_update_producer(
 ) -> Result<u64, Box<dyn std::error::Error>> {
     debug!("create_update_producer: {:#?}", producer);
 
+    let clean_producer_label = clean(&producer.producer_label, Transform::None);
+
     // Update request: list of (columns, values) pairs to insert.
-    let columns_values = vec![(
-        Producer::ProducerLabel,
-        producer.producer_label.clone().into(),
-    )];
+    let columns_values = vec![(Producer::ProducerLabel, clean_producer_label.clone().into())];
 
     // Create request: list of columns and values to insert.
     let columns = vec![Producer::ProducerLabel];
-    let values = vec![SimpleExpr::Value(producer.producer_label.into())];
+    let values = vec![SimpleExpr::Value(clean_producer_label.into())];
 
     let sql_query: String;
     let mut sql_values: RusqliteValues = RusqliteValues(vec![]);

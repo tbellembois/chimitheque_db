@@ -114,22 +114,18 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
         let product_type_string: String = row.get_unwrap("product_type");
 
         // Extract unit temperature type if some.
-        let unit_temperature_type: UnitType;
-        if maybe_unit_temperature.is_some() {
-            unit_temperature_type =
-                UnitType::from_str(&maybe_unit_temperature_type_string.unwrap())?;
+        let unit_temperature_type: UnitType = if maybe_unit_temperature.is_some() {
+            UnitType::from_str(&maybe_unit_temperature_type_string.unwrap())?
         } else {
-            unit_temperature_type = Default::default();
-        }
+            Default::default()
+        };
 
         // Extract unit molecular weight type if some.
-        let unit_molecular_weight_type: UnitType;
-        if maybe_unit_molecular_weight.is_some() {
-            unit_molecular_weight_type =
-                UnitType::from_str(&maybe_unit_molecular_weight_type_string.unwrap())?;
+        let unit_molecular_weight_type: UnitType = if maybe_unit_molecular_weight.is_some() {
+            UnitType::from_str(&maybe_unit_molecular_weight_type_string.unwrap())?
         } else {
-            unit_molecular_weight_type = Default::default();
-        }
+            Default::default()
+        };
 
         Ok(Self(ProductStruct {
             product_id: row.get_unwrap("product_id"),
@@ -228,7 +224,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
 
 fn populate_product_sc(
     db_connection: &Connection,
-    products: &mut Vec<ProductStruct>,
+    products: &mut [ProductStruct],
     person_id: u64,
     total: bool,
     archived: bool,
@@ -334,7 +330,7 @@ fn populate_product_sc(
 
 fn populate_synonyms(
     db_connection: &Connection,
-    products: &mut Vec<ProductStruct>,
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
     for product in products.iter_mut() {
         let product_id = product.product_id;
@@ -394,7 +390,7 @@ fn populate_synonyms(
 
 fn populate_classes_of_compound(
     db_connection: &Connection,
-    products: &mut Vec<ProductStruct>,
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
     for product in products.iter_mut() {
         let product_id = product.product_id;
@@ -462,7 +458,7 @@ fn populate_classes_of_compound(
 
 fn populate_symbols(
     db_connection: &Connection,
-    products: &mut Vec<ProductStruct>,
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
     for product in products.iter_mut() {
         let product_id = product.product_id;
@@ -522,7 +518,7 @@ fn populate_symbols(
 
 fn populate_hazard_statements(
     db_connection: &Connection,
-    products: &mut Vec<ProductStruct>,
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
     for product in products.iter_mut() {
         let product_id = product.product_id;
@@ -597,7 +593,7 @@ fn populate_hazard_statements(
 
 fn populate_precautionary_statements(
     db_connection: &Connection,
-    products: &mut Vec<ProductStruct>,
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
     for product in products.iter_mut() {
         let product_id = product.product_id;
@@ -671,7 +667,7 @@ fn populate_precautionary_statements(
 
 fn populate_supplier_refs(
     db_connection: &Connection,
-    products: &mut Vec<ProductStruct>,
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
     for product in products.iter_mut() {
         let product_id = product.product_id;
@@ -756,7 +752,7 @@ fn populate_supplier_refs(
 
 fn populate_tags(
     db_connection: &Connection,
-    products: &mut Vec<ProductStruct>,
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
     for product in products.iter_mut() {
         let product_id = product.product_id;
@@ -1623,5 +1619,6 @@ mod tests {
         (products, count) = get_products(&db_connection, filter, 143).unwrap();
 
         info!("count: {}", count);
+        info!("products: {:?}", products);
     }
 }

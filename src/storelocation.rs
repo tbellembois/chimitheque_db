@@ -5,6 +5,7 @@ use chimitheque_types::{
     entity::Entity as EntityStruct, requestfilter::RequestFilter,
     storelocation::StoreLocation as StoreLocationStruct,
 };
+use chimitheque_utils::string::{clean, Transform};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
@@ -405,7 +406,7 @@ fn populate_store_location_full_path(
         let store_location_parents: String = row.get_unwrap("store_location_parents");
 
         let mut store_location_full_path = store_location.store_location_name.clone();
-        store_location_full_path.push_str(",");
+        store_location_full_path.push(',');
         store_location_full_path.push_str(&store_location_parents);
 
         // At this point store_location_full_path is like:
@@ -436,11 +437,13 @@ pub fn create_update_store_location(
     // Setting up the full path.
     populate_store_location_full_path(db_connection, &mut store_location)?;
 
+    let clean_store_location_name = clean(&store_location.store_location_name, Transform::None);
+
     // Update request: list of (columns, values) pairs to insert.
     let mut columns_values = vec![
         (
             StoreLocation::StoreLocationName,
-            store_location.store_location_name.clone().into(),
+            clean_store_location_name.clone().into(),
         ),
         (
             StoreLocation::StoreLocationCanStore,
@@ -454,7 +457,7 @@ pub fn create_update_store_location(
         StoreLocation::StoreLocationCanStore,
     ];
     let mut values = vec![
-        SimpleExpr::Value(store_location.store_location_name.into()),
+        SimpleExpr::Value(clean_store_location_name.into()),
         SimpleExpr::Value(store_location.store_location_can_store.into()),
     ];
 
@@ -544,114 +547,6 @@ pub fn delete_store_location(
 
     Ok(())
 }
-
-// pub fn update_store_location(
-//     db_connection: &Connection,
-//     mut store_location: StoreLocationStruct,
-// ) -> Result<(), Box<dyn std::error::Error>> {
-//     debug!("store_location: {:#?}", store_location);
-//
-//     // Setting up the full path.
-//     populate_store_location_full_path(db_connection, &mut store_location)?;
-//
-//     // List of (columns, values) pairs to insert in the store_location table.
-//     let mut columns_values = vec![(
-//         StoreLocation::StoreLocationName,
-//         store_location.store_location_name.into(),
-//     )];
-//
-//     if let Some(color) = store_location.store_location_color {
-//         columns_values.push((StoreLocation::StoreLocationColor, color.into()));
-//     }
-//
-//     if let Some(full_path) = store_location.store_location_full_path {
-//         columns_values.push((StoreLocation::StoreLocationFullPath, full_path.into()));
-//     }
-//
-//     if let Some(entity) = store_location.entity {
-//         columns_values.push((StoreLocation::Entity, entity.entity_id.into()));
-//     }
-//
-//     if let Some(store_location) = store_location.store_location {
-//         columns_values.push((
-//             StoreLocation::StoreLocation,
-//             store_location.store_location_id.into(),
-//         ));
-//     }
-//
-//     // Update store location.
-//     let (update_sql, update_values) = Query::update()
-//         .table(StoreLocation::Table)
-//         .values(columns_values)
-//         .and_where(Expr::col(StoreLocation::StoreLocationId).eq(store_location.store_location_id))
-//         .build_rusqlite(SqliteQueryBuilder);
-//
-//     debug!("update_sql: {}", update_sql.clone().as_str());
-//     debug!("update_values: {:?}", update_values);
-//
-//     let nb_rows_affected = db_connection.execute(update_sql.as_str(), &*update_values.as_params());
-//     debug!("nb_rows_affected: {:?}", nb_rows_affected);
-//
-//     Ok(())
-// }
-
-// pub fn create_store_location(
-//     db_connection: &Connection,
-//     mut store_location: StoreLocationStruct,
-// ) -> Result<u64, Box<dyn std::error::Error>> {
-//     debug!("store_location: {:#?}", store_location);
-//
-//     // Setting up the full path.
-//     populate_store_location_full_path(db_connection, &mut store_location)?;
-//
-//     // List of columns and values to insert in the store_location table.
-//     let mut columns = vec![
-//         StoreLocation::StoreLocationName,
-//         StoreLocation::StoreLocationCanStore,
-//     ];
-//     let mut values = vec![
-//         SimpleExpr::Value(store_location.store_location_name.into()),
-//         SimpleExpr::Value(store_location.store_location_can_store.into()),
-//     ];
-//
-//     if let Some(color) = store_location.store_location_color {
-//         columns.push(StoreLocation::StoreLocationColor);
-//         values.push(SimpleExpr::Value(color.into()));
-//     }
-//
-//     if let Some(full_path) = store_location.store_location_full_path {
-//         columns.push(StoreLocation::StoreLocationFullPath);
-//         values.push(SimpleExpr::Value(full_path.into()));
-//     }
-//
-//     if let Some(entity) = store_location.entity {
-//         columns.push(StoreLocation::Entity);
-//         values.push(SimpleExpr::Value(entity.entity_id.into()));
-//     }
-//
-//     if let Some(store_location) = store_location.store_location {
-//         columns.push(StoreLocation::StoreLocation);
-//         values.push(SimpleExpr::Value(store_location.store_location_id.into()));
-//     }
-//
-//     // Insert store location.
-//     let (insert_sql, insert_values) = Query::insert()
-//         .into_table(StoreLocation::Table)
-//         .columns(columns)
-//         .values(values)?
-//         .build_rusqlite(SqliteQueryBuilder);
-//
-//     debug!("insert_sql: {}", insert_sql.clone().as_str());
-//     debug!("insert_values: {:?}", insert_values);
-//
-//     let nb_rows_affected = db_connection.execute(insert_sql.as_str(), &*insert_values.as_params());
-//     debug!("nb_rows_affected: {:?}", nb_rows_affected);
-//
-//     let store_location_id: u64 = db_connection.last_insert_rowid().try_into()?;
-//     debug!("store_location_id: {}", store_location_id);
-//
-//     Ok(store_location_id)
-// }
 
 #[cfg(test)]
 mod tests {

@@ -1,5 +1,6 @@
 use chimitheque_traits::searchable::Searchable;
 use chimitheque_types::requestfilter::RequestFilter;
+use chimitheque_utils::string::{clean, Transform};
 use log::debug;
 use rusqlite::Connection;
 use serde::Serialize;
@@ -40,7 +41,7 @@ pub fn parse(
     };
 
     // Build result.
-    let mut new_item = item.new();
+    let mut new_item = item.create();
     new_item.set_id_field(id);
     new_item.set_text_field(text.as_str());
 
@@ -118,7 +119,7 @@ pub fn get_many(
     // Perform select query.
     let mut stmt = db_connection.prepare(&select_query)?;
     let rows = stmt.query_map((), |row| {
-        let mut new_item = item.new();
+        let mut new_item = item.create();
 
         let row_id: u64 = row.get(0)?;
         let row_text: String = row.get(1)?;
@@ -166,7 +167,7 @@ pub fn create(
             item.get_table_name(),
             item.get_text_field_name()
         ),
-        [text],
+        [clean(text, Transform::None)],
     )?;
 
     let last_insert_id = db_connection.last_insert_rowid().try_into()?;
