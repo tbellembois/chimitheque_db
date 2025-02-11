@@ -46,6 +46,9 @@ impl From<&Row<'_>> for StoreLocationWrapper {
                 entity: Some(EntityStruct {
                     entity_id: row.get_unwrap("entity_id"),
                     entity_name: row.get_unwrap("entity_name"),
+                    managers: None,
+                    entity_nb_store_locations: None,
+                    entity_nb_people: None,
                 }),
                 store_location: maybe_parent_store_location.map(|_| {
                     Box::new(StoreLocationStruct {
@@ -60,11 +63,14 @@ impl From<&Row<'_>> for StoreLocationWrapper {
                             .unwrap_or_default(),
                         entity: None,
                         store_location: None,
-                        store_location_nb_storage: None,
+                        store_location_nb_storages: None,
                         store_location_nb_children: None,
                     })
                 }),
-                store_location_nb_storage: row.get("store_location_nb_storage").unwrap_or_default(),
+                store_location_nb_storages: row
+                    .get("store_location_nb_storages")
+                    .unwrap_or_default(),
+
                 store_location_nb_children: row
                     .get("store_location_nb_children")
                     .unwrap_or_default(),
@@ -84,7 +90,9 @@ pub fn get_store_locations(
     let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {
         match order_by_string.as_str() {
             "entity.entity_name" => Entity::EntityName.into_column_ref(),
-            "store_location" => Alias::new("parent_store_location_name").into_column_ref(),
+            "store_location.store_location_name" => {
+                Alias::new("parent_store_location_name").into_column_ref()
+            }
             "store_location_full_path" => {
                 (StoreLocation::Table, StoreLocation::StoreLocationFullPath).into_column_ref()
             }
@@ -257,7 +265,7 @@ pub fn get_store_locations(
         )
         .expr_as(
             Expr::col(Storage::StorageId).count_distinct(),
-            Alias::new("store_location_nb_storage"),
+            Alias::new("store_location_nb_storages"),
         )
         .expr_as(
             Expr::col((Alias::new("children"), Alias::new("store_location_id"))).count_distinct(),

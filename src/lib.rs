@@ -7,6 +7,7 @@ pub mod classofcompound;
 pub mod define;
 pub mod empiricalformula;
 pub mod entity;
+pub mod entitypeople;
 pub mod hazardstatement;
 pub mod init;
 pub mod linearformula;

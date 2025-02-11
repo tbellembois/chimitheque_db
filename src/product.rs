@@ -224,7 +224,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
 
 fn populate_product_sc(
     db_connection: &Connection,
-    products: &mut [ProductStruct],
+    product: &mut [ProductStruct],
     person_id: u64,
     total: bool,
     archived: bool,
@@ -232,7 +232,7 @@ fn populate_product_sc(
     debug!("person_id:{:?}", person_id);
     debug!("archived:{:?}", archived);
 
-    for product in products.iter_mut() {
+    for product in product.iter_mut() {
         let product_id = product.product_id;
 
         let (count_sql, count_values) = Query::select()
@@ -330,9 +330,9 @@ fn populate_product_sc(
 
 fn populate_synonyms(
     db_connection: &Connection,
-    products: &mut [ProductStruct],
+    product: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    for product in products.iter_mut() {
+    for product in product.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -390,9 +390,9 @@ fn populate_synonyms(
 
 fn populate_classes_of_compound(
     db_connection: &Connection,
-    products: &mut [ProductStruct],
+    product: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    for product in products.iter_mut() {
+    for product in product.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -458,9 +458,9 @@ fn populate_classes_of_compound(
 
 fn populate_symbols(
     db_connection: &Connection,
-    products: &mut [ProductStruct],
+    product: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    for product in products.iter_mut() {
+    for product in product.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -518,9 +518,9 @@ fn populate_symbols(
 
 fn populate_hazard_statements(
     db_connection: &Connection,
-    products: &mut [ProductStruct],
+    product: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    for product in products.iter_mut() {
+    for product in product.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -593,9 +593,9 @@ fn populate_hazard_statements(
 
 fn populate_precautionary_statements(
     db_connection: &Connection,
-    products: &mut [ProductStruct],
+    product: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    for product in products.iter_mut() {
+    for product in product.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -667,9 +667,9 @@ fn populate_precautionary_statements(
 
 fn populate_supplier_refs(
     db_connection: &Connection,
-    products: &mut [ProductStruct],
+    product: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    for product in products.iter_mut() {
+    for product in product.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -752,9 +752,9 @@ fn populate_supplier_refs(
 
 fn populate_tags(
     db_connection: &Connection,
-    products: &mut [ProductStruct],
+    product: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    for product in products.iter_mut() {
+    for product in product.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
