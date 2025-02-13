@@ -22,6 +22,7 @@ pub enum Entity {
     Table,
     EntityId,
     EntityName,
+    EntityDescription,
 }
 
 #[derive(Debug, Serialize)]
@@ -33,6 +34,8 @@ impl From<&Row<'_>> for EntityWrapper {
             EntityStruct {
                 entity_id: row.get_unwrap("entity_id"),
                 entity_name: row.get_unwrap("entity_name"),
+                entity_description: row.get_unwrap("entity_description"),
+
                 managers: None,
                 entity_nb_store_locations: row.get_unwrap("entity_nb_store_locations"),
                 entity_nb_people: row.get_unwrap("entity_nb_people"),
@@ -178,6 +181,15 @@ pub fn get_entities(
             |_| {},
         )
         .conditions(
+            filter.entity_name.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((Entity::Table, Entity::EntityName)).eq(filter.entity_name.unwrap()),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
             filter.entity.is_some(),
             |q| {
                 q.and_where(Expr::col(Entity::EntityId).eq(filter.entity.unwrap()));
@@ -196,7 +208,11 @@ pub fn get_entities(
 
     // Create select query.
     let (select_sql, select_values) = expression
-        .columns([Entity::EntityId, Entity::EntityName])
+        .columns([
+            Entity::EntityId,
+            Entity::EntityName,
+            Entity::EntityDescription,
+        ])
         .expr_as(
             Expr::col(StoreLocation::StoreLocationId).count_distinct(),
             Alias::new("entity_nb_store_locations"),

@@ -46,6 +46,7 @@ impl From<&Row<'_>> for StoreLocationWrapper {
                 entity: Some(EntityStruct {
                     entity_id: row.get_unwrap("entity_id"),
                     entity_name: row.get_unwrap("entity_name"),
+                    entity_description: row.get_unwrap("entity_description"),
                     managers: None,
                     entity_nb_store_locations: None,
                     entity_nb_people: None,
@@ -222,7 +223,11 @@ pub fn get_store_locations(
 
     // Create select query.
     let (select_sql, select_values) = expression
-        .columns([Entity::EntityId, Entity::EntityName])
+        .columns([
+            Entity::EntityId,
+            Entity::EntityName,
+            Entity::EntityDescription,
+        ])
         .expr(Expr::col((
             StoreLocation::Table,
             StoreLocation::StoreLocationId,
