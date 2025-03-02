@@ -155,18 +155,18 @@ pub fn get_store_locations(
             Expr::col((Alias::new("perm"), Alias::new("person")))
                 .eq(person_id)
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_item")))
                         .is_in(["all", "storages"]),
                 )
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_name")))
                         .is_in(["r", "w", "all"]),
                 )
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                         .equals(Entity::EntityId)
                         .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                                 .eq(-1),
                         ),
                 ),
@@ -617,7 +617,7 @@ mod tests {
         // Set user an admin.
         let _ = db_connection
         .execute(
-            "INSERT INTO permission (person, permission_perm_name, permission_item_name, permission_entity_id) VALUES (?1, ?2, ?3, ?4)",
+            "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (?1, ?2, ?3, ?4)",
             (2, "all", "all", -1),
         )
         .unwrap();
@@ -715,7 +715,7 @@ mod tests {
         let _ = db_connection.execute("DELETE FROM permission", ());
         let _ = db_connection
         .execute(
-            "INSERT INTO permission (person, permission_perm_name, permission_item_name, permission_entity_id) VALUES (?1, ?2, ?3, ?4)",
+            "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (?1, ?2, ?3, ?4)",
             (2, "r", "storages", 200),
         )
         .unwrap();

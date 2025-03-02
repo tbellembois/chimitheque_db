@@ -58,7 +58,17 @@ fn populate_managers(
                 Entitypeople::EntitypeoplePersonId,
             ])
             .column(Person::PersonEmail)
+            .column(Entity::EntityName)
             .from(Entitypeople::Table)
+            //
+            // entity
+            //
+            .join(
+                JoinType::LeftJoin,
+                Entity::Table,
+                Expr::col((Entitypeople::Table, Entitypeople::EntitypeopleEntityId))
+                    .equals((Entity::Table, Entity::EntityId)),
+            )
             //
             // person
             //
@@ -87,6 +97,9 @@ fn populate_managers(
             managers.push(chimitheque_types::person::Person {
                 person_id: entity_person_wrapper.0.entitypeople_person_id,
                 person_email: entity_person_wrapper.0.entitypeople_person_email,
+                entities: None,
+                managed_entities: None,
+                permissions: None,
             });
         }
 
@@ -151,19 +164,18 @@ pub fn get_entities(
             Expr::col((Alias::new("perm"), Alias::new("person")))
                 .eq(person_id)
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_item")))
                         .is_in(["all", "entities"]),
                 )
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_name")))
                         .is_in(["r", "w", "all"]),
                 )
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                         .equals(Entity::EntityId)
                         .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
-                                .eq(-1),
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1),
                         ),
                 ),
         )

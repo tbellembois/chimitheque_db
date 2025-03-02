@@ -129,19 +129,19 @@ pub fn compute_stock(
             Expr::col((Alias::new("perm"), Alias::new("person")))
                 .eq(person_id)
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_item")))
                         .is_in(["all", "storages"]),
                 )
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_name")))
                         .is_in(["r", "w", "all"]),
                 )
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                         .equals(Entity::EntityId)
                         .or(Expr::col(Entity::EntityId).is_null()) // products with no storages for non admins
                         .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                                 .eq(-1),
                         ),
                 ),

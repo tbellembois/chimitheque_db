@@ -5,7 +5,12 @@ use sea_query::{Alias, Expr, Iden, JoinType, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
-use crate::{permission::Permission, personentities::Personentities};
+use crate::{
+    entity::Entity,
+    entitypeople::{Entitypeople, EntitypeopleWrapper},
+    permission::{Permission, PermissionWrapper},
+    personentities::{Personentities, PersonentitiesWrapper},
+};
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -24,9 +29,204 @@ impl From<&Row<'_>> for PersonWrapper {
             PersonStruct {
                 person_id: row.get_unwrap("person_id"),
                 person_email: row.get_unwrap("person_email"),
+                entities: None,
+                managed_entities: None,
+                permissions: None,
             }
         })
     }
+}
+
+fn populate_entities(
+    db_connection: &Connection,
+    people: &mut [PersonStruct],
+) -> Result<(), Box<dyn std::error::Error>> {
+    for person in people.iter_mut() {
+        let person_id = person.person_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .columns([
+                Personentities::PersonentitiesPersonId,
+                Personentities::PersonentitiesEntityId,
+            ])
+            .column(Entity::EntityName)
+            // Field not needed but required to build a PersonentitiesWrapper from Row.
+            .column(Person::PersonEmail)
+            .from(Personentities::Table)
+            //
+            // entity
+            //
+            .join(
+                JoinType::LeftJoin,
+                Entity::Table,
+                Expr::col((
+                    Personentities::Table,
+                    Personentities::PersonentitiesEntityId,
+                ))
+                .equals((Entity::Table, Entity::EntityId)),
+            )
+            //
+            // person
+            //
+            .join(
+                JoinType::LeftJoin,
+                Person::Table,
+                Expr::col((Person::Table, Person::PersonId)).eq(person_id),
+            )
+            .and_where(Expr::col(Personentities::PersonentitiesPersonId).eq(person_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(sql.as_str())?;
+        let rows = stmt.query_map(&*values.as_params(), |row| {
+            Ok(PersonentitiesWrapper::from(row))
+        })?;
+
+        // Populate person entities.
+        let mut entities: Vec<chimitheque_types::entity::Entity> = vec![];
+        for row in rows {
+            let person_entity_wrapper = row?;
+            entities.push(chimitheque_types::entity::Entity {
+                entity_id: person_entity_wrapper.0.personentities_entity_id,
+                entity_name: person_entity_wrapper.0.personentities_entity_name,
+                entity_description: None,
+                managers: None,
+                entity_nb_store_locations: None,
+                entity_nb_people: None,
+            });
+        }
+
+        if !entities.is_empty() {
+            person.entities = Some(entities);
+        } else {
+            person.entities = None;
+        }
+    }
+
+    Ok(())
+}
+
+fn populate_managed_entities(
+    db_connection: &Connection,
+    people: &mut [PersonStruct],
+) -> Result<(), Box<dyn std::error::Error>> {
+    for person in people.iter_mut() {
+        let person_id = person.person_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .columns([
+                Entitypeople::EntitypeopleEntityId,
+                Entitypeople::EntitypeoplePersonId,
+            ])
+            .column(Entity::EntityName)
+            // Field not needed but required to build a PersonentitiesWrapper from Row.
+            .column(Person::PersonEmail)
+            .from(Entitypeople::Table)
+            //
+            // entity
+            //
+            .join(
+                JoinType::LeftJoin,
+                Entity::Table,
+                Expr::col((Entitypeople::Table, Entitypeople::EntitypeopleEntityId))
+                    .equals((Entity::Table, Entity::EntityId)),
+            )
+            //
+            // person
+            //
+            .join(
+                JoinType::LeftJoin,
+                Person::Table,
+                Expr::col((Person::Table, Person::PersonId)).eq(person_id),
+            )
+            .and_where(Expr::col(Entitypeople::EntitypeoplePersonId).eq(person_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(sql.as_str())?;
+        let rows = stmt.query_map(&*values.as_params(), |row| {
+            Ok(EntitypeopleWrapper::from(row))
+        })?;
+
+        // Populate person managed entities.
+        let mut entities: Vec<chimitheque_types::entity::Entity> = vec![];
+        for row in rows {
+            let entity_people_wrapper = row?;
+            entities.push(chimitheque_types::entity::Entity {
+                entity_id: entity_people_wrapper.0.entitypeople_entity_id,
+                entity_name: entity_people_wrapper.0.entitypeople_entity_name,
+                entity_description: None,
+                managers: None,
+                entity_nb_store_locations: None,
+                entity_nb_people: None,
+            });
+        }
+
+        if !entities.is_empty() {
+            person.managed_entities = Some(entities);
+        } else {
+            person.managed_entities = None;
+        }
+    }
+
+    Ok(())
+}
+
+fn populate_permissions(
+    db_connection: &Connection,
+    people: &mut [PersonStruct],
+) -> Result<(), Box<dyn std::error::Error>> {
+    for person in people.iter_mut() {
+        let person_id = person.person_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .columns([
+                Permission::PermissionItem,
+                Permission::PermissionName,
+                Permission::PermissionEntity,
+            ])
+            .columns([Person::PersonId, Person::PersonEmail])
+            .from(Permission::Table)
+            //
+            // person
+            //
+            .join(
+                JoinType::LeftJoin,
+                Person::Table,
+                Expr::col((Person::Table, Person::PersonId)).eq(person_id),
+            )
+            .and_where(Expr::col(Permission::Person).eq(person_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(sql.as_str())?;
+        let mut rows = stmt.query(&*values.as_params())?;
+        let mut permissions = Vec::new();
+        while let Some(row) = rows.next()? {
+            let permission = PermissionWrapper::try_from(row)?;
+            permissions.push(permission.0);
+        }
+
+        if !permissions.is_empty() {
+            person.permissions = Some(permissions);
+        } else {
+            person.permissions = None;
+        }
+    }
+
+    Ok(())
 }
 
 pub fn get_people(
@@ -66,25 +266,33 @@ pub fn get_people(
             Expr::col((Alias::new("perm"), Alias::new("person")))
                 .eq(person_id)
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_item_name")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_item")))
                         .is_in(["all", "people"]),
                 )
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_perm_name")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_name")))
                         .is_in(["r", "w", "all"]),
                 )
                 .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
+                    Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                         .equals(Personentities::PersonentitiesEntityId)
                         .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity_id")))
-                                .eq(-1),
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1),
                         ),
                 ),
         )
         //
         // filters
         //
+        .conditions(
+            filter.person.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((Person::Table, Person::PersonId)).eq(filter.person.unwrap()),
+                );
+            },
+            |_| {},
+        )
         .conditions(
             filter.search.is_some(),
             |q| {
@@ -151,6 +359,10 @@ pub fn get_people(
 
         people.push(person.0);
     }
+
+    populate_entities(db_connection, &mut people)?;
+    populate_managed_entities(db_connection, &mut people)?;
+    populate_permissions(db_connection, &mut people)?;
 
     debug!("people: {:#?}", people);
 

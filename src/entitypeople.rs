@@ -21,6 +21,7 @@ impl From<&Row<'_>> for EntitypeopleWrapper {
             EntitypeopleStruct {
                 entitypeople_entity_id: row.get_unwrap("entitypeople_entity_id"),
                 entitypeople_person_id: row.get_unwrap("entitypeople_person_id"),
+                entitypeople_entity_name: row.get_unwrap("entity_name"),
                 entitypeople_person_email: row.get_unwrap("person_email"),
             }
         })
