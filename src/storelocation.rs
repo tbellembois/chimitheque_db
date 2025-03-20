@@ -166,8 +166,7 @@ pub fn get_store_locations(
                     Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                         .equals(Entity::EntityId)
                         .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-                                .eq(-1),
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1),
                         ),
                 ),
         )
@@ -190,6 +189,16 @@ pub fn get_store_locations(
                 q.and_where(
                     Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
                         .eq(filter.store_location.unwrap()),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.id.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
+                        .eq(filter.id.unwrap()),
                 );
             },
             |_| {},

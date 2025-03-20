@@ -285,11 +285,31 @@ pub fn get_people(
         // filters
         //
         .conditions(
+            filter.entity.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((
+                        Personentities::Table,
+                        Personentities::PersonentitiesEntityId,
+                    ))
+                    .eq(filter.entity.unwrap()),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
             filter.person.is_some(),
             |q| {
                 q.and_where(
                     Expr::col((Person::Table, Person::PersonId)).eq(filter.person.unwrap()),
                 );
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.id.is_some(),
+            |q| {
+                q.and_where(Expr::col((Person::Table, Person::PersonId)).eq(filter.id.unwrap()));
             },
             |_| {},
         )

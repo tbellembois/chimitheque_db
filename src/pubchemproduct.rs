@@ -116,6 +116,12 @@ pub fn create_update_product_from_pubchem(
         SimpleExpr::Value(person_id.into()),
     ];
 
+    // Set product type.
+    columns.push(Product::ProductType);
+    values.push(SimpleExpr::Value("chem".into()));
+
+    columns_values.push((Product::ProductType, SimpleExpr::Value("chem".into())));
+
     // Basic fields.
     if let Some(inchi) = pubchem_product.inchi {
         columns.push(Product::ProductInchi);

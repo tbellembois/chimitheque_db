@@ -1072,105 +1072,7 @@ pub fn get_products(
                     Expr::col((Alias::new("perm"), Alias::new("permission_name")))
                         .is_in(["r", "w", "all"]),
                 )
-                // .and(
-                //     Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-                //         .equals(Entity::EntityId)
-                //         .or( Expr::col(Entity::EntityId).is_null()) // products with no storages for non admins
-                //         .or(
-                //             Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-                //                 .eq(-1),
-                //         ),
-                // ),
         )
-
-        // .join(
-        //     // storelocation
-        //     JoinType::Join,
-        //     StoreLocation::Table,
-        //     Expr::col((Storage::Table, Storage::StoreLocation))
-        //         .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
-        // )
-        // .join(
-        //     // entity
-        //     JoinType::Join,
-        //     Entity::Table,
-        //     Expr::col((StoreLocation::Table, StoreLocation::Entity))
-        //         .equals((Entity::Table, Entity::EntityId)),
-        // )
-        // .join_as(
-        //     JoinType::InnerJoin,
-        //     Permission::Table,
-        //     Alias::new("perm"),
-        //     Expr::col((Alias::new("perm"), Alias::new("person")))
-        //         .eq(person_id)
-        //         .and(
-        //             Expr::col((Alias::new("perm"), Alias::new("permission_item")))
-        //                 .is_in(["all", "storages"]),
-        //         )
-        //         .and(
-        //             Expr::col((Alias::new("perm"), Alias::new("permission_name")))
-        //                 .is_in(["r", "w", "all"]),
-        //         )
-        //         .and(
-        //             Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-        //                 .equals(Entity::EntityId)
-        //                 .or(
-        //                     Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-        //                         .eq(-1),
-        //                 ),
-        //         ),
-        // )
-        // .conditions(
-        //     filter.entity.is_some()
-        //         || filter.store_location.is_some()
-        //         || filter.storage_barecode.is_some()
-        //         || filter.storage_to_destroy,
-        //     |q| {
-        //         q.join(
-        //             // storelocation
-        //             JoinType::Join,
-        //             StoreLocation::Table,
-        //             Expr::col((Storage::Table, Storage::StoreLocation))
-        //                 .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
-        //         );
-        //         q.join(
-        //             // entity
-        //             JoinType::Join,
-        //             Entity::Table,
-        //             Expr::col((StoreLocation::Table, StoreLocation::Entity))
-        //                 .equals((Entity::Table, Entity::EntityId)),
-        //         );
-        //         q.join_as(
-        //             // permission
-        //             JoinType::InnerJoin,
-        //             Permission::Table,
-        //             Alias::new("perm"),
-        //             Expr::col((Alias::new("perm"), Alias::new("person")))
-        //                 .eq(person_id)
-        //                 .and(
-        //                     Expr::col((Alias::new("perm"), Alias::new("permission_item")))
-        //                         .is_in(["all", "storages"]),
-        //                 )
-        //                 .and(
-        //                     Expr::col((Alias::new("perm"), Alias::new("permission_name")))
-        //                         .is_in(["r", "w", "all"]),
-        //                 )
-        //                 .and(
-        //                     Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-        //                         .equals(Entity::EntityId)
-        //                         .or(Expr::col((
-        //                             Alias::new("perm"),
-        //                             Alias::new("permission_entity"),
-        //                         ))
-        //                         .eq(-1)),
-        //                 ),
-        //         );
-        //     },
-        //     |_| {},
-        // )
-        //
-        // filters
-        //
         .conditions(
             filter.show_chem,
             |q| {
@@ -1210,6 +1112,16 @@ pub fn get_products(
                 );
             },
             |_| {},
+        )
+        .conditions(
+            filter.id.is_some(),
+                    |q| {
+                        q.and_where(
+                            Expr::col((Product::Table, Product::ProductId))
+                            .eq(filter.id.unwrap()),
+                        );
+                    },
+                    |_| {},
         )
         .conditions(
             filter.custom_name_part_of.is_some(),

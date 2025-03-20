@@ -207,6 +207,13 @@ pub fn get_entities(
                 q.and_where(Expr::col(Entity::EntityId).eq(filter.entity.unwrap()));
             },
             |_| {},
+        )
+        .conditions(
+            filter.id.is_some(),
+            |q| {
+                q.and_where(Expr::col(Entity::EntityId).eq(filter.id.unwrap()));
+            },
+            |_| {},
         );
 
     // Create count query.
