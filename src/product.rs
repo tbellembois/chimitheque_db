@@ -1141,6 +1141,13 @@ pub fn get_products(
             |_| {},
         )
         .conditions(
+            filter.cas_number_string.is_some(),
+                    |q| {
+                        q.and_where(Expr::col(CasNumber::CasNumberLabel).eq(filter.cas_number_string.unwrap()));
+                    },
+                    |_| {},
+        )
+        .conditions(
             filter.empirical_formula.is_some(),
                     |q| {
                         q.and_where(Expr::col(Product::EmpiricalFormula).eq(filter.empirical_formula.unwrap()));
