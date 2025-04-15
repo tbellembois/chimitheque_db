@@ -1225,6 +1225,15 @@ pub fn get_products(
             |_| {},
         )
         .conditions(
+            filter.storage.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col(Storage::StorageId).eq(filter.storage.unwrap()),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
             filter.borrowing,
             |q| {
                 q.join(
