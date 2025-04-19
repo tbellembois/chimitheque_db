@@ -267,7 +267,7 @@ pub fn get_people(
                 .eq(person_id)
                 .and(
                     Expr::col((Alias::new("perm"), Alias::new("permission_item")))
-                        .is_in(["all", "people"]),
+                        .is_in(["all", "entities"]),
                 )
                 .and(
                     Expr::col((Alias::new("perm"), Alias::new("permission_name")))
