@@ -818,6 +818,45 @@ pub fn get_products(
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
+    // Does the person has the permission to access the restricted products?
+    // We do not use the person::get_people function to retrieve the person as this function
+    // retrieves a lot of information.
+    let (exist_sql, exist_values) = Query::select()
+        .expr(
+            Expr::case(
+                Expr::exists(
+                    Query::select()
+                        .expr(Expr::col((Permission::Table, Permission::PermissionId)))
+                        .from(Permission::Table)
+                        .and_where(
+                            Expr::col((Permission::Table, Permission::PermissionItem))
+                                .eq("rproducts"),
+                        )
+                        .and_where(Expr::col((Permission::Table, Permission::Person)).eq(person_id))
+                        .and_where(
+                            Expr::col((Permission::Table, Permission::PermissionName)).ne("n"),
+                        )
+                        .take(),
+                ),
+                Expr::val(true),
+            )
+            .finally(Expr::val(false)),
+        )
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("exist_sql: {}", exist_sql.clone().as_str());
+    debug!("exist_values: {:?}", exist_values);
+
+    // Perform exist query.
+    let mut stmt = db_connection.prepare(exist_sql.as_str())?;
+    let mut rows = stmt.query(&*exist_values.as_params())?;
+    let has_rproducts_permission: bool = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        false
+    };
+
+    // Order_by and Order.
     let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {
         match order_by_string.as_str() {
             "name" => (Name::Table, Name::NameLabel).into_column_ref(),
@@ -1072,6 +1111,30 @@ pub fn get_products(
                     Expr::col((Alias::new("perm"), Alias::new("permission_name")))
                         .is_in(["r", "w", "all"]),
                 )
+        )
+        //
+        // restricted products?
+        //
+        // .and_where(Expr::col((Product::Table, Product::ProductRestricted)).eq(
+        //     Expr::case(
+        //         Expr::exists(
+        //             Query::select().expr(Expr::col((Permission::Table, Permission::PermissionId)))
+        //                     .from(Permission::Table)
+        //                     .and_where(Expr::col((Permission::Table, Permission::PermissionItem)).eq("rproducts"))
+        //                     .and_where(Expr::col((Permission::Table, Permission::Person)).eq(person_id))
+        //                     .and_where(Expr::col((Permission::Table, Permission::PermissionName)).ne("n")).take()
+        //         ), Expr::val(true)
+        //     ).finally(Expr::val(false))
+        // ))
+        .conditions(
+            !has_rproducts_permission,
+            |q| {
+            q.and_where(
+                Expr::col((Product::Table, Product::ProductRestricted))
+                .eq(false),
+            );
+        },
+        |_| {},
         )
         .conditions(
             filter.show_chem,
@@ -1438,15 +1501,6 @@ pub fn get_products(
             Expr::cust("GROUP_CONCAT(DISTINCT hazard_statement.hazard_statement_cmr)"),
                  Alias::new("product_hs_cmr"),
         )
-        // storage count
-        // .expr_as(
-        //     Expr::expr(Expr::case(
-        //         Expr::col((Storage::Table, Storage::StorageArchive)).eq(false),
-        //         1,
-        //     ))
-        //     .count(),
-        //     Alias::new("count_storage_not_archive"),
-        // )
         .order_by(order_by, order)
         .group_by_col((Product::Table, Product::ProductId))
         .conditions(
