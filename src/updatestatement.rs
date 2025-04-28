@@ -3,7 +3,8 @@ use regex::Regex;
 use rusqlite::Connection;
 
 pub fn update_ghs_statements(db_connection: &Connection) -> Result<(), Box<dyn std::error::Error>> {
-    let hazard_statement_re = Regex::new(r"(?P<reference>H[0-9]+)(\t)(?P<label>[^\t]+)(\t)")?;
+    let hazard_statement_re =
+        Regex::new(r"(?P<reference>(EU){0,1}H[0-9]+)(\t)(?P<label>[^\t]+)(\t)")?;
     let precautionary_statement_re =
         Regex::new(r"(?P<reference>P[0-9+]+)(\t)(?P<label>[^\t]+)(\t)")?;
 
@@ -18,7 +19,7 @@ pub fn update_ghs_statements(db_connection: &Connection) -> Result<(), Box<dyn s
             debug!("{reference}: {label}");
 
             db_connection.execute(
-            "INSERT OR IGNORE INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2)",
+            "INSERT OR REPLACE INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2)",
             (&label, &reference),
             )?;
         } else if let Some(captures) = precautionary_statement_re.captures(line) {
@@ -28,7 +29,7 @@ pub fn update_ghs_statements(db_connection: &Connection) -> Result<(), Box<dyn s
             debug!("{reference}: {label}");
 
             db_connection.execute(
-            "INSERT OR IGNORE INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
+            "INSERT OR REPLACE INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
             (&label, &reference),
             )?;
         };
