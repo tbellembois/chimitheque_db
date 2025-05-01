@@ -184,16 +184,6 @@ pub fn get_store_locations(
             |_| {},
         )
         .conditions(
-            filter.store_location.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
-                        .eq(filter.store_location.unwrap()),
-                );
-            },
-            |_| {},
-        )
-        .conditions(
             filter.id.is_some(),
             |q| {
                 q.and_where(

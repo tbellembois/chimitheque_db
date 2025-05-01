@@ -1115,17 +1115,6 @@ pub fn get_products(
         //
         // restricted products?
         //
-        // .and_where(Expr::col((Product::Table, Product::ProductRestricted)).eq(
-        //     Expr::case(
-        //         Expr::exists(
-        //             Query::select().expr(Expr::col((Permission::Table, Permission::PermissionId)))
-        //                     .from(Permission::Table)
-        //                     .and_where(Expr::col((Permission::Table, Permission::PermissionItem)).eq("rproducts"))
-        //                     .and_where(Expr::col((Permission::Table, Permission::Person)).eq(person_id))
-        //                     .and_where(Expr::col((Permission::Table, Permission::PermissionName)).ne("n")).take()
-        //         ), Expr::val(true)
-        //     ).finally(Expr::val(false))
-        // ))
         .conditions(
             !has_rproducts_permission,
             |q| {
@@ -1162,16 +1151,6 @@ pub fn get_products(
                 q.and_where(
                     Expr::col((Product::Table, Product::ProductType))
                     .eq("cons"),
-                );
-            },
-            |_| {},
-        )
-        .conditions(
-            filter.product.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((Product::Table, Product::ProductId))
-                    .eq(filter.product.unwrap()),
                 );
             },
             |_| {},
