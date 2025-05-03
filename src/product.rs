@@ -220,6 +220,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             product_number_per_bag: row.get_unwrap("product_number_per_bag"),
             product_sl: row.get_unwrap("product_sl"),
             product_hs_cmr: row.get_unwrap("product_hs_cmr"),
+            product_has_bookmark: row.get_unwrap("product_has_bookmark"),
             ..Default::default()
         }))
     }
@@ -1431,6 +1432,23 @@ pub fn get_products(
         )))
         .expr(Expr::col((Producer::Table, Producer::ProducerId)))
         .expr(Expr::col((Producer::Table, Producer::ProducerLabel)))
+        .expr_as(
+            Expr::case(
+                           Expr::exists(
+                               Query::select()
+                                   .expr(Expr::col((Bookmark::Table, Bookmark::BookmarkId)))
+                                   .from(Bookmark::Table)
+                                   .and_where(
+                                       Expr::col((Bookmark::Table, Bookmark::Product))
+                                           .equals((Product::Table, Product::ProductId)),
+                                   )
+                                   .and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id))
+                                   .take(),
+                           ),
+                           Expr::val(true),
+                       )
+                       .finally(Expr::val(false))
+            , Alias::new("product_has_bookmark"))
         .expr_as(
             Expr::col((Alias::new("unit_temperature"), Alias::new("unit_id"))),
             Alias::new("unit_temperature_unit_id"),
