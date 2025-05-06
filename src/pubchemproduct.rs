@@ -161,12 +161,16 @@ pub fn create_update_product_from_pubchem(
     }
 
     if let Some(twodpicture) = pubchem_product.twodpicture {
+        // Appending encoding.
+        let mut encoded_twodpicture = "data:image/png;base64,".to_owned();
+        encoded_twodpicture.push_str(twodpicture.as_str());
+
         columns.push(Product::ProductTwodFormula);
-        values.push(SimpleExpr::Value(twodpicture.clone().into()));
+        values.push(SimpleExpr::Value(encoded_twodpicture.clone().into()));
 
         columns_values.push((
             Product::ProductTwodFormula,
-            SimpleExpr::Value(twodpicture.into()),
+            SimpleExpr::Value(encoded_twodpicture.into()),
         ));
     }
 
