@@ -105,7 +105,7 @@ CREATE TABLE "permission" (
 	"person"	INTEGER NOT NULL,
 	"permission_name"	TEXT NOT NULL,
 	"permission_item"	TEXT NOT NULL,
-	"permission_entity"	INTEGER NOT NULL,,
+	"permission_entity"	INTEGER NOT NULL,
 	PRIMARY KEY("permission_id"),
 	FOREIGN KEY("person") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;

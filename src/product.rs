@@ -213,7 +213,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             product_threed_formula: row.get_unwrap("product_threed_formula"),
             product_disposal_comment: row.get_unwrap("product_disposal_comment"),
             product_remark: row.get_unwrap("product_remark"),
-            product_molecula_weight: row.get_unwrap("product_molecular_weight"),
+            product_molecular_weight: row.get_unwrap("product_molecular_weight"),
             product_temperature: row.get_unwrap("product_temperature"),
             product_sheet: row.get_unwrap("product_sheet"),
             product_number_per_carton: row.get_unwrap("product_number_per_carton"),
@@ -1075,6 +1075,17 @@ pub fn get_products(
                 Producttags::ProducttagsTagId,
             )),
         )
+        //
+        // bookmarks
+        //
+        .join(
+            JoinType::LeftJoin,
+            Bookmark::Table,
+            Expr::col((Bookmark::Table, Bookmark::Product)).equals((
+                Product::Table,
+                Product::ProductId,
+            )).and(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id)
+        ))
         //
         // storage -> permissions
         //

@@ -19,7 +19,7 @@ pub fn update_ghs_statements(db_connection: &Connection) -> Result<(), Box<dyn s
             debug!("{reference}: {label}");
 
             db_connection.execute(
-            "INSERT OR REPLACE INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2)",
+            "INSERT INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2) ON CONFLICT(hazard_statement_reference) DO UPDATE SET hazard_statement_label=?1;",
             (&label, &reference),
             )?;
         } else if let Some(captures) = precautionary_statement_re.captures(line) {
@@ -29,7 +29,7 @@ pub fn update_ghs_statements(db_connection: &Connection) -> Result<(), Box<dyn s
             debug!("{reference}: {label}");
 
             db_connection.execute(
-            "INSERT OR REPLACE INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
+            "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2) ON CONFLICT(precautionary_statement_reference) DO UPDATE SET precautionary_statement_label=?1;",
             (&label, &reference),
             )?;
         };
