@@ -158,10 +158,12 @@ pub fn get_many(
 
 pub fn create(
     item: &impl Searchable,
-    db_connection: &Connection,
+    db_connection: &mut Connection,
     text: &str,
 ) -> Result<u64, Box<dyn std::error::Error>> {
-    db_connection.execute(
+    let db_transaction = db_connection.transaction()?;
+
+    db_transaction.execute(
         &format!(
             "INSERT INTO {} ({}) VALUES (?1)",
             item.get_table_name(),
@@ -170,7 +172,10 @@ pub fn create(
         [clean(text, Transform::None)],
     )?;
 
-    let last_insert_id = db_connection.last_insert_rowid().try_into()?;
+    let last_insert_id = db_transaction.last_insert_rowid().try_into()?;
+
+    db_transaction.commit()?;
+
     Ok(last_insert_id)
 }
 
@@ -288,10 +293,13 @@ pub mod tests {
         assert_eq!(searchables.len(), 5);
 
         info!("- testing create for {}", table_name);
-        let mayerr_last_insert_id = create(&searchable, &db_connection, "a non existing item");
-        assert!(mayerr_last_insert_id.unwrap() > 0);
 
-        let mayerr_last_insert_id = create(&searchable, &db_connection, fake_searchables[0]);
+        let db_transaction = db_connection.transaction().unwrap();
+        let last_insert_id = create(&searchable, &db_transaction, "a non existing item").unwrap();
+        let mayerr_last_insert_id = create(&searchable, &db_transaction, fake_searchables[0]);
+        db_transaction.commit();
+
+        assert!(last_insert_id > 0);
         assert!(mayerr_last_insert_id.is_err());
     }
 }

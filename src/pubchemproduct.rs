@@ -70,7 +70,7 @@ impl Display for ImportPubchemProductError {
 impl std::error::Error for ImportPubchemProductError {}
 
 pub fn create_update_product_from_pubchem(
-    db_connection: &Connection,
+    db_connection: &mut Connection,
     pubchem_product: PubchemProduct,
     person_id: u64,
     product_id: Option<u64>,
@@ -407,7 +407,7 @@ pub fn create_update_product_from_pubchem(
             .to_string(SqliteQueryBuilder);
     }
 
-    _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
+    _ = &db_connection.execute(&sql_query, &*sql_values.as_params())?;
 
     let last_insert_update_id: u64;
 
@@ -440,7 +440,7 @@ pub fn create_update_product_from_pubchem(
             .values([last_insert_update_id.into(), symbol_id.into()])?
             .to_string(SqliteQueryBuilder);
 
-        _ = db_connection.execute(&sql_query, ())?;
+        _ = &db_connection.execute(&sql_query, ())?;
     }
 
     // Insert hazard statements.
@@ -462,7 +462,7 @@ pub fn create_update_product_from_pubchem(
             .values([last_insert_update_id.into(), hazardstatement_id.into()])?
             .to_string(SqliteQueryBuilder);
 
-        _ = db_connection.execute(&sql_query, ())?;
+        _ = &db_connection.execute(&sql_query, ())?;
     }
 
     // Insert precautionary statements.
@@ -484,7 +484,7 @@ pub fn create_update_product_from_pubchem(
             .values([last_insert_update_id.into(), precautionary_statement_id.into()])?
             .to_string(SqliteQueryBuilder);
 
-        _ = db_connection.execute(&sql_query, ())?;
+        _ = &db_connection.execute(&sql_query, ())?;
     }
 
     Ok(last_insert_update_id)
@@ -514,11 +514,11 @@ mod tests {
     fn test_create_product_from_pubchem() {
         init_logger();
 
-        let db_connection = init_test_db();
+        let mut db_connection = init_test_db();
 
         info!("testing create product from pubchem");
         assert!(create_update_product_from_pubchem(
-            &db_connection,
+            &mut db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 ..Default::default()
@@ -529,7 +529,7 @@ mod tests {
         .is_ok_and(|id| id > 0));
 
         assert!(create_update_product_from_pubchem(
-            &db_connection,
+            &mut db_connection,
             PubchemProduct {
                 ..Default::default()
             },
@@ -539,7 +539,7 @@ mod tests {
         .is_err_and(|e| e.to_string().eq("empty name")));
 
         assert!(create_update_product_from_pubchem(
-            &db_connection,
+            &mut db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 hs: Some(vec!["foo".to_string()]),
@@ -551,7 +551,7 @@ mod tests {
         .is_err_and(|e| e.to_string().eq("unknown hazard statement foo")));
 
         assert!(create_update_product_from_pubchem(
-            &db_connection,
+            &mut db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 ps: Some(vec!["foo".to_string()]),
@@ -563,7 +563,7 @@ mod tests {
         .is_err_and(|e| e.to_string().eq("unknown precautionary statement foo")));
 
         assert!(create_update_product_from_pubchem(
-            &db_connection,
+            &mut db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 signal: Some(vec!["foo".to_string()]),
@@ -575,7 +575,7 @@ mod tests {
         .is_err_and(|e| e.to_string().eq("unknown signal word foo")));
 
         assert!(create_update_product_from_pubchem(
-            &db_connection,
+            &mut db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 molecular_weight_unit: Some("foo".to_string()),
@@ -587,7 +587,7 @@ mod tests {
         .is_err_and(|e| e.to_string().eq("unknown molecular weight unit foo")));
 
         assert!(create_update_product_from_pubchem(
-            &db_connection,
+            &mut db_connection,
             PubchemProduct {
                 name: Some("aspirin".to_string()),
                 iupac_name: Some("iupac_name".to_string()),

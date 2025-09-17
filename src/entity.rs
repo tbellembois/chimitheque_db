@@ -30,6 +30,8 @@ pub struct EntityWrapper(pub EntityStruct);
 
 impl From<&Row<'_>> for EntityWrapper {
     fn from(row: &Row) -> Self {
+        debug!("-------------------");
+        debug!("row: {:?}", row);
         Self({
             EntityStruct {
                 entity_id: row.get_unwrap("entity_id"),
@@ -37,8 +39,8 @@ impl From<&Row<'_>> for EntityWrapper {
                 entity_description: row.get_unwrap("entity_description"),
 
                 managers: None,
-                entity_nb_store_locations: row.get_unwrap("entity_nb_store_locations"),
-                entity_nb_people: row.get_unwrap("entity_nb_people"),
+                entity_nb_store_locations: row.get("entity_nb_store_locations").unwrap_or_default(),
+                entity_nb_people: row.get("entity_nb_people").unwrap_or_default(),
             }
         })
     }

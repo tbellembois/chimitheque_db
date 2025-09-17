@@ -34,11 +34,13 @@ impl From<&Row<'_>> for BookmarkWrapper {
 }
 
 pub fn toggle_product_bookmark(
-    db_connection: &Connection,
+    db_connection: &mut Connection,
     person_id: u64,
     product_id: u64,
 ) -> Result<(), Box<dyn std::error::Error>> {
     debug!("person_id: {:?} product_id:{:?}", person_id, product_id);
+
+    let db_transaction = db_connection.transaction()?;
 
     // Does a bookmark exists for this product and person?
     let (exist_sql, exist_values) = Query::select()
@@ -62,13 +64,16 @@ pub fn toggle_product_bookmark(
     debug!("exist_values: {:?}", exist_values);
 
     // Perform exist query.
-    let mut stmt = db_connection.prepare(exist_sql.as_str())?;
-    let mut rows = stmt.query(&*exist_values.as_params())?;
-    let bookmark_exists: bool = if let Some(row) = rows.next()? {
-        row.get_unwrap(0)
-    } else {
-        false
-    };
+    let bookmark_exists: bool;
+    {
+        let mut stmt = db_transaction.prepare(exist_sql.as_str())?;
+        let mut rows = stmt.query(&*exist_values.as_params())?;
+        bookmark_exists = if let Some(row) = rows.next()? {
+            row.get_unwrap(0)
+        } else {
+            false
+        };
+    }
 
     debug!("bookmark_exists: {:?}", bookmark_exists);
 
@@ -86,7 +91,7 @@ pub fn toggle_product_bookmark(
             debug!("delete_values: {:?}", delete_values);
 
             // Perform delete query.
-            let mut stmt = db_connection.prepare(delete_sql.as_str())?;
+            let mut stmt = db_transaction.prepare(delete_sql.as_str())?;
             stmt.execute(&*delete_values.as_params())?;
         }
         false => {
@@ -101,10 +106,12 @@ pub fn toggle_product_bookmark(
             debug!("insert_values: {:?}", insert_values);
 
             // Perform insert query.
-            let mut stmt = db_connection.prepare(insert_sql.as_str())?;
+            let mut stmt = db_transaction.prepare(insert_sql.as_str())?;
             stmt.execute(&*insert_values.as_params())?;
         }
     }
+
+    db_transaction.commit()?;
 
     Ok(())
 }

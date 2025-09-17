@@ -6,12 +6,13 @@ use crate::{
     cenumber::CeNumber,
     classofcompound::ClassOfCompound,
     empiricalformula::EmpiricalFormula,
-    entity::Entity,
+    entity::{Entity, EntityWrapper},
+    entitypeople::Entitypeople,
     hazardstatement::HazardStatement,
     linearformula::LinearFormula,
     name::Name,
     permission::Permission,
-    person::Person,
+    person::{Person, PersonWrapper},
     physicalstate::PhysicalState,
     precautionarystatement::PrecautionaryStatement,
     producer::Producer,
@@ -37,11 +38,12 @@ use crate::{
 use chimitheque_types::{
     casnumber::CasNumber as CasNumberStruct, category::Category as CategoryStruct,
     cenumber::CeNumber as CeNumberStruct,
-    empiricalformula::EmpiricalFormula as EmpiricalFormulaStruct, error::ParseError,
-    linearformula::LinearFormula as LinearFormulaStruct, name::Name as NameStruct,
-    person::Person as PersonStruct, physicalstate::PhysicalState as PhysicalStateStruct,
-    producer::Producer as ProducerStruct, producerref::ProducerRef as ProducerRefStruct,
-    product::Product as ProductStruct, producttype::ProductType, requestfilter::RequestFilter,
+    empiricalformula::EmpiricalFormula as EmpiricalFormulaStruct, entity::Entity as EntityStruct,
+    error::ParseError, linearformula::LinearFormula as LinearFormulaStruct,
+    name::Name as NameStruct, person::Person as PersonStruct,
+    physicalstate::PhysicalState as PhysicalStateStruct, producer::Producer as ProducerStruct,
+    producerref::ProducerRef as ProducerRefStruct, product::Product as ProductStruct,
+    producttype::ProductType, requestfilter::RequestFilter,
     signalword::SignalWord as SignalWordStruct, unit::Unit as UnitStruct, unittype::UnitType,
 };
 use log::debug;
@@ -226,6 +228,170 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
     }
 }
 
+fn populate_entity_managers(
+    db_connection: &Connection,
+    entity: &mut EntityStruct,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let entity_id = entity.entity_id;
+
+    // Create select query.
+    let (sql, values) = Query::select()
+        .columns([Person::PersonId, Person::PersonEmail])
+        .order_by(Person::PersonEmail, Order::Asc)
+        .from(Entity::Table)
+        //
+        // managers
+        //
+        .join(
+            JoinType::InnerJoin,
+            Entitypeople::Table,
+            Expr::col((Entitypeople::Table, Entitypeople::EntitypeopleEntityId))
+                .equals((Entity::Table, Entity::EntityId)),
+        )
+        .join(
+            JoinType::InnerJoin,
+            Person::Table,
+            Expr::col((Entitypeople::Table, Entitypeople::EntitypeoplePersonId))
+                .equals((Person::Table, Person::PersonId)),
+        )
+        .and_where(Expr::col((Entity::Table, Entity::EntityId)).eq(entity_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("sql: {}", sql.clone().as_str());
+    debug!("values: {:?}", values);
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(sql.as_str())?;
+    let rows = stmt.query_map(&*values.as_params(), |row| Ok(PersonWrapper::from(row)))?;
+
+    // Populate managers.
+    let mut people: Vec<chimitheque_types::person::Person> = vec![];
+    for row in rows {
+        let person_wrapper = row?;
+        people.push(chimitheque_types::person::Person {
+            person_id: person_wrapper.0.person_id,
+            person_email: person_wrapper.0.person_email,
+            ..Default::default()
+        })
+    }
+
+    if !people.is_empty() {
+        entity.managers = Some(people);
+    } else {
+        entity.managers = None;
+    }
+
+    Ok(())
+}
+
+fn populate_product_availability(
+    db_connection: &Connection,
+    product: &mut [ProductStruct],
+    person_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for product in product.iter_mut() {
+        let product_id = product.product_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .columns([
+                Entity::EntityId,
+                Entity::EntityName,
+                Entity::EntityDescription,
+            ])
+            .order_by(Entity::EntityName, Order::Asc)
+            .group_by_col(Entity::EntityId)
+            .from(Storage::Table)
+            //
+            // store location
+            //
+            .join(
+                JoinType::InnerJoin,
+                StoreLocation::Table,
+                Expr::col((Storage::Table, Storage::StoreLocation))
+                    .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
+            )
+            //
+            // entity
+            //
+            .join(
+                JoinType::InnerJoin,
+                Entity::Table,
+                Expr::col((Entity::Table, Entity::EntityId))
+                    .equals((StoreLocation::Table, StoreLocation::Entity)),
+            )
+            //
+            // managers
+            //
+            .join(
+                JoinType::InnerJoin,
+                Entitypeople::Table,
+                Expr::col((Entitypeople::Table, Entitypeople::EntitypeopleEntityId))
+                    .equals((Entity::Table, Entity::EntityId)),
+            )
+            .join(
+                JoinType::InnerJoin,
+                Person::Table,
+                Expr::col((Entitypeople::Table, Entitypeople::EntitypeoplePersonId))
+                    .equals((Person::Table, Person::PersonId)),
+            )
+            //
+            // permissions
+            //
+            .join_as(
+                JoinType::InnerJoin,
+                Permission::Table,
+                Alias::new("perm"),
+                Expr::col((Alias::new("perm"), Alias::new("person")))
+                    .eq(person_id)
+                    .and(
+                        Expr::col((Alias::new("perm"), Alias::new("permission_item")))
+                            .is_in(["all", "storages"]),
+                    )
+                    .and(
+                        Expr::col((Alias::new("perm"), Alias::new("permission_name")))
+                            .is_in(["r", "w", "all"]),
+                    ),
+            )
+            //
+            // product
+            //
+            .and_where(Expr::col((Storage::Table, Storage::Product)).eq(product_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(sql.as_str())?;
+        let rows = stmt.query_map(&*values.as_params(), |row| Ok(EntityWrapper::from(row)))?;
+
+        // Populate entities.
+        let mut entities: Vec<chimitheque_types::entity::Entity> = vec![];
+        for row in rows {
+            let entity_wrapper = row?;
+            entities.push(chimitheque_types::entity::Entity {
+                entity_id: entity_wrapper.0.entity_id,
+                entity_name: entity_wrapper.0.entity_name,
+                entity_description: entity_wrapper.0.entity_description,
+                ..Default::default()
+            })
+        }
+
+        if !entities.is_empty() {
+            for entity in &mut entities {
+                populate_entity_managers(db_connection, entity)?;
+            }
+
+            product.product_availability = Some(entities);
+        } else {
+            product.product_availability = None;
+        }
+    }
+
+    Ok(())
+}
+
 fn populate_product_sc(
     db_connection: &Connection,
     product: &mut [ProductStruct],
@@ -301,7 +467,9 @@ fn populate_product_sc(
                 |q| {
                     q.and_where(Expr::col((Storage::Table, Storage::StorageArchive)).eq(archived));
                 },
-                |_| {},
+                |q| {
+                    q.and_where(Expr::col((Storage::Table, Storage::StorageArchive)).eq(false));
+                },
             )
             .and_where(Expr::col((Storage::Table, Storage::Product)).eq(product_id))
             .and_where(Expr::col((Storage::Table, Storage::Storage)).is_null())
@@ -1555,6 +1723,7 @@ pub fn get_products(
     populate_precautionary_statements(db_connection, &mut products)?;
     populate_supplier_refs(db_connection, &mut products)?;
     populate_tags(db_connection, &mut products)?;
+    populate_product_availability(db_connection, &mut products, person_id)?;
 
     populate_product_sc(db_connection, &mut products, person_id, false, false)?;
     populate_product_sc(db_connection, &mut products, person_id, true, false)?;

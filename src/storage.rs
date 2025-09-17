@@ -697,6 +697,19 @@ pub fn get_storages(
             |_| {},
         )
         .conditions(
+            filter.storage_archive,
+            |q| {
+                q.and_where(
+                    Expr::col((Storage::Table,Storage::StorageArchive)).eq(true),
+                );
+            },
+            |q| {
+                q.and_where(
+                    Expr::col((Storage::Table,Storage::StorageArchive)).eq(false),
+                );
+            },
+        )
+        .conditions(
             filter.borrowing,
             |q| {
                 q.join(
@@ -853,7 +866,7 @@ pub fn get_storages(
         .expr(Expr::col((Borrowing::Table, Borrowing::BorrowingId)))
         .expr(Expr::col((Borrowing::Table, Borrowing::BorrowingComment)))
         .order_by(order_by, order)
-        .group_by_col((Product::Table, Product::ProductId))
+        .group_by_col((Storage::Table, Storage::StorageId))
         .conditions(
             filter.limit.is_some(),
             |q| {

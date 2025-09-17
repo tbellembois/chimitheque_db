@@ -116,10 +116,12 @@ pub fn get_producers(
 }
 
 pub fn create_update_producer(
-    db_connection: &Connection,
+    db_connection: &mut Connection,
     producer: ProducerStruct,
 ) -> Result<u64, Box<dyn std::error::Error>> {
     debug!("create_update_producer: {:#?}", producer);
+
+    let db_transaction = db_connection.transaction()?;
 
     let clean_producer_label = clean(&producer.producer_label, Transform::None);
 
@@ -152,17 +154,19 @@ pub fn create_update_producer(
     debug!("sql_query: {}", sql_query.clone().as_str());
     debug!("sql_values: {:?}", sql_values);
 
-    _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
+    _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
     let last_insert_update_id: u64;
 
     if let Some(producer_id) = producer.producer_id {
         last_insert_update_id = producer_id;
     } else {
-        last_insert_update_id = db_connection.last_insert_rowid().try_into()?;
+        last_insert_update_id = db_transaction.last_insert_rowid().try_into()?;
     }
 
     debug!("last_insert_update_id: {}", last_insert_update_id);
+
+    db_transaction.commit()?;
 
     Ok(last_insert_update_id)
 }

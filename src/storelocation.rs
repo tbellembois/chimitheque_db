@@ -441,13 +441,15 @@ fn populate_store_location_full_path(
 }
 
 pub fn create_update_store_location(
-    db_connection: &Connection,
+    db_connection: &mut Connection,
     mut store_location: StoreLocationStruct,
 ) -> Result<u64, Box<dyn std::error::Error>> {
     debug!("create_update_store_location: {:#?}", store_location);
 
+    let db_transaction = db_connection.transaction()?;
+
     // Setting up the full path.
-    populate_store_location_full_path(db_connection, &mut store_location)?;
+    populate_store_location_full_path(&db_transaction, &mut store_location)?;
 
     let clean_store_location_name = clean(&store_location.store_location_name, Transform::None);
 
@@ -529,17 +531,19 @@ pub fn create_update_store_location(
     debug!("sql_query: {}", sql_query.clone().as_str());
     debug!("sql_values: {:?}", sql_values);
 
-    _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
+    _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
     let last_insert_update_id: u64;
 
     if let Some(store_location_id) = store_location.store_location_id {
         last_insert_update_id = store_location_id;
     } else {
-        last_insert_update_id = db_connection.last_insert_rowid().try_into()?;
+        last_insert_update_id = db_transaction.last_insert_rowid().try_into()?;
     }
 
     debug!("last_insert_update_id: {}", last_insert_update_id);
+
+    db_transaction.commit()?;
 
     Ok(last_insert_update_id)
 }

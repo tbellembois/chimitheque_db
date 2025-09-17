@@ -34,7 +34,7 @@ impl From<&Row<'_>> for BorrowingWrapper {
 }
 
 pub fn toggle_storage_borrowing(
-    db_connection: &Connection,
+    db_connection: &mut Connection,
     person_id: u64,
     storage_id: u64,
     borrower_id: u64,
@@ -44,6 +44,8 @@ pub fn toggle_storage_borrowing(
         "person_id: {:?} borrower_id:{:?} storage_id:{:?}",
         person_id, borrower_id, storage_id
     );
+
+    let db_transaction = db_connection.transaction()?;
 
     // Does a borrowing exists for this storage and borrower and person?
     let (exist_sql, exist_values) = Query::select()
@@ -70,13 +72,16 @@ pub fn toggle_storage_borrowing(
     debug!("exist_values: {:?}", exist_values);
 
     // Perform exist query.
-    let mut stmt = db_connection.prepare(exist_sql.as_str())?;
-    let mut rows = stmt.query(&*exist_values.as_params())?;
-    let borrowing_exists: bool = if let Some(row) = rows.next()? {
-        row.get_unwrap(0)
-    } else {
-        false
-    };
+    let borrowing_exists: bool;
+    {
+        let mut stmt = db_transaction.prepare(exist_sql.as_str())?;
+        let mut rows = stmt.query(&*exist_values.as_params())?;
+        borrowing_exists = if let Some(row) = rows.next()? {
+            row.get_unwrap(0)
+        } else {
+            false
+        };
+    }
 
     debug!("borrowing_exists: {:?}", borrowing_exists);
 
@@ -95,7 +100,7 @@ pub fn toggle_storage_borrowing(
             debug!("delete_values: {:?}", delete_values);
 
             // Perform delete query.
-            let mut stmt = db_connection.prepare(delete_sql.as_str())?;
+            let mut stmt = db_transaction.prepare(delete_sql.as_str())?;
             stmt.execute(&*delete_values.as_params())?;
         }
         false => {
@@ -120,10 +125,12 @@ pub fn toggle_storage_borrowing(
             debug!("insert_values: {:?}", insert_values);
 
             // Perform insert query.
-            let mut stmt = db_connection.prepare(insert_sql.as_str())?;
+            let mut stmt = db_transaction.prepare(insert_sql.as_str())?;
             stmt.execute(&*insert_values.as_params())?;
         }
     }
+
+    db_transaction.commit()?;
 
     Ok(())
 }
