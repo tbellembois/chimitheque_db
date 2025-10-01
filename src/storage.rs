@@ -207,7 +207,7 @@ pub fn get_storages(
                         .from(Permission::Table)
                         .and_where(
                             Expr::col((Permission::Table, Permission::PermissionItem))
-                                .eq("rproducts"),
+                                .is_in(["rproducts", "all"]),
                         )
                         .and_where(Expr::col((Permission::Table, Permission::Person)).eq(person_id))
                         .and_where(

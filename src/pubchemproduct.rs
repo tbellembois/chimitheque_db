@@ -3,7 +3,7 @@ use crate::product::Product;
 use crate::producthazardstatements::Producthazardstatements;
 use crate::productprecautionarystatements::Productprecautionarystatements;
 use crate::productsymbols::Productsymbols;
-use crate::searchable::create;
+use crate::searchable::create_update;
 use crate::searchable::parse;
 use crate::{precautionarystatement, unit};
 use chimitheque_traits::searchable::Searchable;
@@ -17,6 +17,7 @@ use chimitheque_types::symbol::Symbol;
 use chimitheque_utils::casnumber::is_cas_number;
 use chimitheque_utils::cenumber::is_ce_number;
 use chimitheque_utils::formula::sort_empirical_formula;
+use chimitheque_utils::string::Transform;
 use log::debug;
 use rusqlite::Connection;
 use sea_query::Expr;
@@ -78,7 +79,7 @@ pub fn create_update_product_from_pubchem(
     debug!("pubchem_product: {:#?}", pubchem_product);
 
     // Mandatory name.
-    let name_id: u64;
+    let name_id: Option<u64>;
 
     if let Some(name_text) = pubchem_product.name {
         let maybe_name = parse(
@@ -91,13 +92,15 @@ pub fn create_update_product_from_pubchem(
 
         name_id = match maybe_name {
             Some(name) => name.get_id(),
-            None => create(
+            None => Some(create_update(
                 &Name {
                     ..Default::default()
                 },
+                None,
                 db_connection,
                 &name_text.to_uppercase(),
-            )?,
+                Transform::None,
+            )?),
         }
     } else {
         return Err(Box::new(ImportPubchemProductError::EmptyName));
@@ -215,13 +218,15 @@ pub fn create_update_product_from_pubchem(
         )?;
 
         let casnumber_id = match maybe_casnumber {
-            Some(casnumber) => Some(casnumber.get_id()),
-            None => Some(create(
+            Some(casnumber) => casnumber.get_id(),
+            None => Some(create_update(
                 &CasNumber {
                     ..Default::default()
                 },
+                None,
                 db_connection,
                 &casnumber_text,
+                Transform::None,
             )?),
         };
 
@@ -248,13 +253,15 @@ pub fn create_update_product_from_pubchem(
         )?;
 
         let ecnumber_id = match maybe_ecnumber {
-            Some(ecnumber) => Some(ecnumber.get_id()),
-            None => Some(create(
+            Some(ecnumber) => ecnumber.get_id(),
+            None => Some(create_update(
                 &CeNumber {
                     ..Default::default()
                 },
+                None,
                 db_connection,
                 &ecnumber_text,
+                Transform::None,
             )?),
         };
 
@@ -277,13 +284,15 @@ pub fn create_update_product_from_pubchem(
         )?;
 
         let empiricalformula_id = match maybe_empiricalformula {
-            Some(empiricalformula) => Some(empiricalformula.get_id()),
-            None => Some(create(
+            Some(empiricalformula) => empiricalformula.get_id(),
+            None => Some(create_update(
                 &EmpiricalFormula {
                     ..Default::default()
                 },
+                None,
                 db_connection,
                 &empiricalformula_text,
+                Transform::None,
             )?),
         };
 
@@ -337,7 +346,7 @@ pub fn create_update_product_from_pubchem(
             )?;
 
             let symbol_id = match maybe_symbol {
-                Some(symbol) => symbol.get_id(),
+                Some(symbol) => symbol.get_id().unwrap(),
                 None => return Err(Box::new(ImportPubchemProductError::UnknownSymbol(symbol))),
             };
 
@@ -353,7 +362,7 @@ pub fn create_update_product_from_pubchem(
             let maybe_hazardstatement = hazardstatement::parse(db_connection, &hazardstatement)?;
 
             let hazardstatement_id = match maybe_hazardstatement {
-                Some(hazardstatement) => hazardstatement.hazard_statement_id,
+                Some(hazardstatement) => hazardstatement.hazard_statement_id.unwrap(),
                 None => {
                     return Err(Box::new(ImportPubchemProductError::UnknownHazardstatement(
                         hazardstatement,
@@ -374,7 +383,9 @@ pub fn create_update_product_from_pubchem(
                 precautionarystatement::parse(db_connection, &precautionarystatement)?;
 
             let precautionary_statement_id = match maybe_precautionarystatement {
-                Some(precautionarystatement) => precautionarystatement.precautionary_statement_id,
+                Some(precautionarystatement) => {
+                    precautionarystatement.precautionary_statement_id.unwrap()
+                }
                 None => {
                     return Err(Box::new(
                         ImportPubchemProductError::UnknownPrecautionarystatement(

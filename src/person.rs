@@ -91,7 +91,7 @@ fn populate_entities(
         for row in rows {
             let person_entity_wrapper = row?;
             entities.push(chimitheque_types::entity::Entity {
-                entity_id: person_entity_wrapper.0.personentities_entity_id,
+                entity_id: Some(person_entity_wrapper.0.personentities_entity_id),
                 entity_name: person_entity_wrapper.0.personentities_entity_name,
                 entity_description: None,
                 managers: None,
@@ -161,7 +161,7 @@ fn populate_managed_entities(
         for row in rows {
             let entity_people_wrapper = row?;
             entities.push(chimitheque_types::entity::Entity {
-                entity_id: entity_people_wrapper.0.entitypeople_entity_id,
+                entity_id: Some(entity_people_wrapper.0.entitypeople_entity_id),
                 entity_name: entity_people_wrapper.0.entitypeople_entity_name,
                 entity_description: None,
                 managers: None,

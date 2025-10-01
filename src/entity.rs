@@ -30,8 +30,6 @@ pub struct EntityWrapper(pub EntityStruct);
 
 impl From<&Row<'_>> for EntityWrapper {
     fn from(row: &Row) -> Self {
-        debug!("-------------------");
-        debug!("row: {:?}", row);
         Self({
             EntityStruct {
                 entity_id: row.get_unwrap("entity_id"),
@@ -97,7 +95,7 @@ fn populate_managers(
         for row in rows {
             let entity_person_wrapper = row?;
             managers.push(chimitheque_types::person::Person {
-                person_id: entity_person_wrapper.0.entitypeople_person_id,
+                person_id: Some(entity_person_wrapper.0.entitypeople_person_id),
                 person_email: entity_person_wrapper.0.entitypeople_person_email,
                 entities: None,
                 managed_entities: None,

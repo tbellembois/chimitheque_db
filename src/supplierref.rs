@@ -2,10 +2,11 @@ use chimitheque_types::{
     requestfilter::RequestFilter, supplier::Supplier as SupplierStruct,
     supplierref::SupplierRef as SupplierRefStruct,
 };
+use chimitheque_utils::string::{clean, Transform};
 use log::debug;
 use rusqlite::{Connection, Row};
-use sea_query::{Alias, Expr, Iden, Order, Query, SqliteQueryBuilder};
-use sea_query_rusqlite::RusqliteBinder;
+use sea_query::{Alias, Expr, Iden, Order, Query, SimpleExpr, SqliteQueryBuilder};
+use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
 
 use crate::supplier::Supplier;
@@ -152,6 +153,70 @@ pub fn get_supplier_refs(
     debug!("supplier_refs: {:#?}", supplier_refs);
 
     Ok((supplier_refs, count))
+}
+
+pub fn create_update_supplier_ref(
+    db_connection: &Connection,
+    supplier_ref: &SupplierRefStruct,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    debug!("create_update_supplier_ref: {:#?}", supplier_ref);
+
+    let clean_supplier_ref_label = clean(&supplier_ref.supplier_ref_label, Transform::None);
+
+    // Update request: list of (columns, values) pairs to insert.
+    let columns_values = vec![
+        (
+            SupplierRef::SupplierRefLabel,
+            clean_supplier_ref_label.clone().into(),
+        ),
+        (
+            SupplierRef::Supplier,
+            supplier_ref.supplier.supplier_id.into(),
+        ),
+    ];
+
+    // Create request: list of columns and values to insert.
+    let columns = vec![SupplierRef::SupplierRefLabel, SupplierRef::Supplier];
+    let values = vec![
+        SimpleExpr::Value(clean_supplier_ref_label.into()),
+        SimpleExpr::Value(supplier_ref.supplier.supplier_id.into()),
+    ];
+
+    let sql_query: String;
+    let mut sql_values: RusqliteValues = RusqliteValues(vec![]);
+
+    if let Some(supplier_ref_id) = supplier_ref.supplier_ref_id {
+        // Update query.
+        (sql_query, sql_values) = Query::update()
+            .table(SupplierRef::Table)
+            .values(columns_values)
+            .and_where(Expr::col(SupplierRef::SupplierRefId).eq(supplier_ref_id))
+            .build_rusqlite(SqliteQueryBuilder);
+    } else {
+        // Insert query.
+        sql_query = Query::insert()
+            .into_table(SupplierRef::Table)
+            .columns(columns)
+            .values(values)?
+            .to_string(SqliteQueryBuilder);
+    }
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
+
+    let last_insert_update_id: u64;
+
+    if let Some(supplier_ref_id) = supplier_ref.supplier_ref_id {
+        last_insert_update_id = supplier_ref_id;
+    } else {
+        last_insert_update_id = db_connection.last_insert_rowid().try_into()?;
+    }
+
+    debug!("last_insert_update_id: {}", last_insert_update_id);
+
+    Ok(last_insert_update_id)
 }
 
 #[cfg(test)]

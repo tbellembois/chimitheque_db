@@ -156,25 +156,40 @@ pub fn get_many(
     Ok((items, count))
 }
 
-pub fn create(
+pub fn create_update(
     item: &impl Searchable,
-    db_connection: &mut Connection,
+    item_id: Option<u64>,
+    db_connection: &Connection,
     text: &str,
+    transform: Transform,
 ) -> Result<u64, Box<dyn std::error::Error>> {
-    let db_transaction = db_connection.transaction()?;
+    let last_insert_id: u64;
+    let new_text = clean(text, transform);
 
-    db_transaction.execute(
-        &format!(
-            "INSERT INTO {} ({}) VALUES (?1)",
-            item.get_table_name(),
-            item.get_text_field_name()
-        ),
-        [clean(text, Transform::None)],
-    )?;
+    if let Some(item_id) = item_id {
+        db_connection.execute(
+            &format!(
+                "UPDATE {} SET ({}=(?1)) WHERE {}=(?2)",
+                item.get_table_name(),
+                item.get_text_field_name(),
+                item.get_id_field_name()
+            ),
+            [new_text, item_id.to_string()],
+        )?;
 
-    let last_insert_id = db_transaction.last_insert_rowid().try_into()?;
+        last_insert_id = item_id;
+    } else {
+        db_connection.execute(
+            &format!(
+                "INSERT INTO {} ({}) VALUES (?1)",
+                item.get_table_name(),
+                item.get_text_field_name()
+            ),
+            [new_text],
+        )?;
 
-    db_transaction.commit()?;
+        last_insert_id = db_connection.last_insert_rowid() as u64;
+    }
 
     Ok(last_insert_id)
 }
@@ -276,7 +291,7 @@ pub mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(searchables.get_text(), fake_searchables[0].to_string());
-        assert!(searchables.get_id() > 0);
+        assert!(searchables.get_id().is_some());
 
         info!("- testing count with limit for {}", table_name);
         let (searchables, count) = get_many(
@@ -294,10 +309,21 @@ pub mod tests {
 
         info!("- testing create for {}", table_name);
 
-        let db_transaction = db_connection.transaction().unwrap();
-        let last_insert_id = create(&searchable, &db_transaction, "a non existing item").unwrap();
-        let mayerr_last_insert_id = create(&searchable, &db_transaction, fake_searchables[0]);
-        db_transaction.commit();
+        let last_insert_id = create_update(
+            &searchable,
+            None,
+            &db_connection,
+            "a non existing item",
+            Transform::None,
+        )
+        .unwrap();
+        let mayerr_last_insert_id = create_update(
+            &searchable,
+            None,
+            &db_connection,
+            fake_searchables[0],
+            Transform::None,
+        );
 
         assert!(last_insert_id > 0);
         assert!(mayerr_last_insert_id.is_err());
