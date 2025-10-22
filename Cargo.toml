@@ -18,3 +18,5 @@ chimitheque_traits = { path = "../chimitheque_traits" }
 regex = "1.10.4"
 tempfile = "3.13.0"
 chrono = { version = "0.4.41", features = ["serde"] }
+qrcode-png = "0.4.1"
+image = { version = "0.25.8", default-features = false, features = ["png"] }

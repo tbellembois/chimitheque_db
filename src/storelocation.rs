@@ -7,7 +7,7 @@ use chimitheque_types::{
 };
 use chimitheque_utils::string::{clean, Transform};
 use log::debug;
-use rusqlite::{types::Null, Connection, Row};
+use rusqlite::{Connection, Row};
 use sea_query::{
     Alias, ColumnRef, CommonTableExpression, Cycle, Expr, Func, Iden, IntoColumnRef, IntoIden,
     JoinType, Order, Query, SelectStatement, SimpleExpr, SqliteQueryBuilder, UnionType, WithClause,

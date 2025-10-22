@@ -1,3 +1,10 @@
+use std::{
+    fmt::{Display, Formatter},
+    io::BufWriter,
+    rc::Rc,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use chimitheque_types::{
     borrowing::Borrowing as BorrowingStruct, entity::Entity as EntityStruct, error::ParseError,
     name::Name as NameStruct, person::Person as PersonStruct, product::Product as ProductStruct,
@@ -6,24 +13,80 @@ use chimitheque_types::{
     unit::Unit as UnitStruct,
 };
 use chrono::{DateTime, Utc};
+use image::{codecs::png, Luma};
 use log::debug;
-use rusqlite::{Connection, Row};
+use qrcode_png::{Color, QrCode, QrCodeEcc};
+use regex::Regex;
+use rusqlite::{Connection, OptionalExtension, Row, Transaction};
 use sea_query::{
-    any, Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SqliteQueryBuilder,
+    any, Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
+    SqliteQueryBuilder,
 };
-use sea_query_rusqlite::RusqliteBinder;
+use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
 
 use crate::{
-    bookmark::Bookmark, borrowing::Borrowing, casnumber::CasNumber, category::Category,
-    cenumber::CeNumber, empiricalformula::EmpiricalFormula, entity::Entity,
-    hazardstatement::HazardStatement, name::Name, permission::Permission, person::Person,
-    precautionarystatement::PrecautionaryStatement, producer::Producer, producerref::ProducerRef,
-    product::Product, producthazardstatements::Producthazardstatements,
-    productprecautionarystatements::Productprecautionarystatements, productsymbols::Productsymbols,
-    productsynonyms::Productsynonyms, producttags::Producttags, signalword::SignalWord,
-    storelocation::StoreLocation, supplier::Supplier, symbol::Symbol, tag::Tag, unit::Unit,
+    bookmark::Bookmark,
+    borrowing::Borrowing,
+    casnumber::CasNumber,
+    category::Category,
+    cenumber::CeNumber,
+    empiricalformula::EmpiricalFormula,
+    entity::Entity,
+    hazardstatement::HazardStatement,
+    name::Name,
+    permission::Permission,
+    person::Person,
+    precautionarystatement::PrecautionaryStatement,
+    producer::Producer,
+    producerref::ProducerRef,
+    product::Product,
+    producthazardstatements::Producthazardstatements,
+    productprecautionarystatements::Productprecautionarystatements,
+    productsymbols::Productsymbols,
+    productsynonyms::Productsynonyms,
+    producttags::Producttags,
+    signalword::SignalWord,
+    storelocation::{get_store_locations, StoreLocation},
+    supplier::Supplier,
+    symbol::Symbol,
+    tag::Tag,
+    unit::Unit,
 };
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum StorageError {
+    MissingProductId,
+    MissingPersonId,
+    MissingStoreLocationId,
+    MissingEntityId,
+    MissingEntity,
+    MissingUnitId,
+    MissingStorageId,
+    MissingSupplierId,
+
+    StoreLocationNotFoundForId(u64),
+}
+
+impl Display for StorageError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match self {
+            StorageError::MissingProductId => write!(f, "missing product id"),
+            StorageError::MissingStoreLocationId => write!(f, "missing store location id"),
+            StorageError::MissingEntityId => write!(f, "missing entity id"),
+            StorageError::MissingEntity => write!(f, "missing entity"),
+            StorageError::MissingPersonId => write!(f, "missing person id"),
+            StorageError::MissingUnitId => write!(f, "missing unit id"),
+            StorageError::MissingStorageId => write!(f, "missing storage id"),
+            StorageError::MissingSupplierId => write!(f, "missing supplier id"),
+            StorageError::StoreLocationNotFoundForId(id) => {
+                write!(f, "store location not found for id {}", id)
+            }
+        }
+    }
+}
+
+impl std::error::Error for StorageError {}
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -143,15 +206,20 @@ impl TryFrom<&Row<'_>> for StorageWrapper {
                 },
                 ..Default::default()
             },
-            entity: EntityStruct {
-                entity_id: row.get_unwrap("entity_id"),
-                entity_name: row.get_unwrap("entity_name"),
-                ..Default::default()
-            },
+            // entity: EntityOrId::Entity(EntityStruct {
+            //     entity_id: row.get_unwrap("entity_id"),
+            //     entity_name: row.get_unwrap("entity_name"),
+            //     ..Default::default()
+            // }),
             store_location: StoreLocationStruct {
                 store_location_id: row.get_unwrap("store_location_id"),
                 store_location_name: row.get_unwrap("store_location_name"),
                 store_location_full_path: row.get_unwrap("store_location_full_path"),
+                entity: Some(EntityStruct {
+                    entity_id: row.get_unwrap("entity_id"),
+                    entity_name: row.get_unwrap("entity_name"),
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
             supplier: maybe_supplier.map(|_| SupplierStruct {
@@ -567,11 +635,33 @@ pub fn get_storages(
             |_| {},
         )
         .conditions(
-            filter.id.is_some(),
+            filter.id.is_some()&& filter.history,
                     |q| {
                         q.and_where(
                             Expr::col((Storage::Table, Storage::StorageId))
-                            .eq(filter.id.unwrap()),
+                            .eq(filter.id.unwrap()).or(
+                                Expr::col((Storage::Table, Storage::Storage))
+                                .eq(filter.id.unwrap())
+                            ),
+                        );
+                    },
+                    |_| {},
+        )
+        .conditions(
+            // getting storages with identical barecode
+            filter.id.is_some() && !filter.history,
+                    |q| {
+                        q.and_where(
+                            Expr::col((Storage::Table, Storage::StorageId))
+                            .eq(filter.id.unwrap()).or(
+                                Expr::col((Storage::Table, Storage::StorageBarecode))
+                                .in_subquery(
+                                    Query::select()
+                                        .from(Storage::Table)
+                                        .expr(Expr::col((Storage::Table, Storage::StorageBarecode)))
+                                        .and_where(Expr::col((Storage::Table, Storage::StorageId))
+                                        .eq(filter.id.unwrap())).take())
+                            ),
                         );
                     },
                     |_| {},
@@ -691,11 +781,21 @@ pub fn get_storages(
             filter.storage.is_some(),
             |q| {
                 q.and_where(
-                    Expr::col(Storage::StorageId).eq(filter.storage.unwrap()),
+                    Expr::col((Storage::Table, Storage::StorageId)).eq(filter.storage.unwrap()),
                 );
             },
             |_| {},
         )
+        // .conditions(
+        //     !filter.history,
+        //     |q| {
+        //     q.and_where(
+        //         Expr::col((Storage::Table, Storage::Storage))
+        //         .is_null(),
+        //     );
+        // },
+        // |_| {},
+        // )
         .conditions(
             filter.storage_archive,
             |q| {
@@ -907,4 +1007,414 @@ pub fn get_storages(
     debug!("storages: {:#?}", storages);
 
     Ok((storages, count))
+}
+
+fn create_storage_qrcode(
+    db_transaction: &Transaction,
+    storage_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut qrcode = QrCode::new(storage_id.to_string(), QrCodeEcc::Medium).unwrap();
+
+    qrcode.margin(10);
+    qrcode.zoom(10);
+
+    let buffer = qrcode.generate(Color::Grayscale(0, 255)).unwrap();
+
+    let (update_sql, update_values) = Query::update()
+        .table(Storage::Table)
+        .values([(Storage::StorageQrcode, buffer.into())])
+        .and_where(Expr::col(Storage::StorageId).eq(storage_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("update_sql: {}", update_sql.clone().as_str());
+    debug!("update_values: {:?}", update_values);
+
+    _ = db_transaction.execute(update_sql.as_str(), &*update_values.as_params())?;
+
+    Ok(())
+}
+
+fn create_storage_history(
+    db_transaction: &Transaction,
+    storage: &StorageStruct,
+) -> Result<(), Box<dyn std::error::Error>> {
+    db_transaction.execute(
+        &format!(
+            "INSERT into storage (storage_creation_date,
+		storage_modification_date,
+		storage_entry_date,
+		storage_exit_date,
+		storage_opening_date,
+		storage_expiration_date,
+		storage_comment,
+		storage_reference,
+		storage_batch_number,
+		storage_quantity,
+		storage_barecode,
+		storage_to_destroy,
+		storage_archive,
+		storage_concentration,
+		storage_number_of_bag,
+		storage_number_of_carton,
+		person,
+		product,
+		store_location,
+		unit_quantity,
+		unit_concentration,
+		supplier,
+		storage) SELECT storage_creation_date,
+				storage_modification_date,
+				storage_entry_date,
+				storage_exit_date,
+				storage_opening_date,
+				storage_expiration_date,
+				storage_comment,
+				storage_reference,
+				storage_batch_number,
+				storage_quantity,
+				storage_barecode,
+				storage_to_destroy,
+				storage_archive,
+				storage_concentration,
+				storage_number_of_bag,
+				storage_number_of_carton,
+				person,
+				product,
+				store_location,
+				unit_quantity,
+				unit_concentration,
+				supplier,
+				{} FROM storage WHERE storage_id = (?1)",
+            storage.storage_id.unwrap(),
+        ),
+        [storage.storage_id.unwrap()],
+    )?;
+
+    Ok(())
+}
+
+fn compute_storage_barecode_parts(
+    db_transaction: &Transaction,
+    storage: &StorageStruct,
+    product_id: u64,
+    person_id: u64,
+) -> Result<(String, u64), Box<dyn std::error::Error>> {
+    let store_location_id = match storage.store_location.store_location_id {
+        Some(store_location_id) => store_location_id,
+        None => return Err(Box::new(StorageError::MissingStoreLocationId)),
+    };
+
+    let store_location_name = storage.store_location.store_location_name.clone();
+
+    let entity_id = match storage.store_location.entity.clone() {
+        Some(entity) => match entity.entity_id {
+            Some(entity_id) => entity_id,
+            None => return Err(Box::new(StorageError::MissingEntityId)),
+        },
+        None => {
+            let (store_locations, nb_results) = get_store_locations(
+                db_transaction,
+                RequestFilter {
+                    id: Some(store_location_id),
+                    ..Default::default()
+                },
+                person_id,
+            )?;
+
+            if nb_results == 0 {
+                return Err(format!("no store location found for id {}", store_location_id).into());
+            };
+
+            let store_location = store_locations.first().unwrap();
+
+            match store_location.entity.clone() {
+                Some(entity) => match entity.entity_id {
+                    Some(entity_id) => entity_id,
+                    None => return Err(Box::new(StorageError::MissingEntityId)),
+                },
+                None => return Err(Box::new(StorageError::MissingEntity)),
+            }
+        }
+    };
+
+    debug!("product_id: {:#?}", product_id);
+    debug!("entity_id: {:#?}", entity_id);
+
+    let re = Regex::new(r#"^\[(?P<groupone>[_a-zA-Z]+)\].*$"#)?;
+    let barecode_major = match re.captures(&store_location_name) {
+        Some(caps) => caps["groupone"].to_string(),
+        None => "_".to_string(),
+    };
+
+    debug!("barecode_major: {:#?}", barecode_major);
+
+    let barecode_minor: u64 = match db_transaction
+        .query_row(
+            r#"SELECT
+            MAX(CAST(substr(storage_barecode, instr(storage_barecode, '.')+1) AS INTEGER))
+        FROM storage
+		JOIN store_location on storage.store_location = store_location.store_location_id
+		WHERE product = (?1)
+		AND store_location.entity = (?2)
+		AND storage.storage IS NULL
+		AND regexp('^[_a-zA-Z]+[0-9]+\.[0-9]+$', '' || storage_barecode || '') = true
+		"#,
+            [product_id, entity_id],
+            |row| row.get::<usize, Option<u64>>(0),
+        )
+        .optional()?
+    {
+        Some(minor) => match minor {
+            Some(minor) => minor + 1,
+            None => 1,
+        },
+        None => 1,
+    };
+
+    debug!("barecode_minor: {:#?}", barecode_minor);
+
+    Ok((barecode_major, barecode_minor))
+}
+
+pub fn create_update_storage(
+    db_connection: &mut Connection,
+    mut storage: StorageStruct,
+    nb_items: u64,
+    identical_barecode: bool,
+) -> Result<Vec<u64>, Box<dyn std::error::Error>> {
+    debug!("create_update_storage: {:#?}", storage);
+
+    // Created storage ids
+    let mut storage_ids = vec![];
+
+    let product_id = match storage.product.product_id {
+        Some(product_id) => product_id,
+        None => return Err(Box::new(StorageError::MissingProductId)),
+    };
+
+    let person_id = match storage.person.person_id {
+        Some(person_id) => person_id,
+        None => return Err(Box::new(StorageError::MissingPersonId)),
+    };
+
+    let store_location_id = match storage.store_location.store_location_id {
+        Some(store_location_id) => store_location_id,
+        None => return Err(Box::new(StorageError::MissingStoreLocationId)),
+    };
+
+    let db_transaction = db_connection.transaction()?;
+
+    //
+    // Create history on update.
+    //
+    if storage.storage_id.is_some() {
+        create_storage_history(&db_transaction, &storage)?;
+    }
+
+    //
+    // Generate barcode if empty.
+    //
+    let mut barecode_major: String = "".to_string();
+    let mut barecode_minor: u64 = 1;
+    if storage.storage_barecode.is_none() {
+        (barecode_major, barecode_minor) =
+            compute_storage_barecode_parts(&db_transaction, &storage, product_id, person_id)?;
+
+        storage.storage_barecode = Some(format!(
+            "{}{}.{}",
+            barecode_major, product_id, barecode_minor
+        ));
+    }
+
+    // Create nb_items storages.
+    let mut nb_items_created = 0;
+    while nb_items_created < nb_items {
+        let mut columns = vec![
+            Storage::Product,
+            Storage::Person,
+            Storage::StoreLocation,
+            Storage::StorageCreationDate,
+            Storage::StorageModificationDate,
+            Storage::StorageQrcode,
+            Storage::StorageToDestroy,
+            Storage::StorageArchive,
+        ];
+        let mut values = vec![
+            SimpleExpr::Value(product_id.into()),
+            SimpleExpr::Value(person_id.into()),
+            SimpleExpr::Value(store_location_id.into()),
+            SimpleExpr::Value(storage.storage_creation_date.timestamp().into()),
+            SimpleExpr::Value(
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+                    .into(),
+            ),
+            SimpleExpr::Value(storage.storage_qrcode.clone().into()),
+            SimpleExpr::Value(storage.storage_to_destroy.into()),
+            SimpleExpr::Value(storage.storage_archive.into()),
+        ];
+
+        if let Some(storage_entry_date) = &storage.storage_entry_date {
+            columns.push(Storage::StorageEntryDate);
+            values.push(SimpleExpr::Value(storage_entry_date.timestamp().into()));
+        }
+
+        if let Some(storage_exit_date) = &storage.storage_exit_date {
+            columns.push(Storage::StorageExitDate);
+            values.push(SimpleExpr::Value(storage_exit_date.timestamp().into()));
+        }
+
+        if let Some(storage_opening_date) = &storage.storage_opening_date {
+            columns.push(Storage::StorageOpeningDate);
+            values.push(SimpleExpr::Value(storage_opening_date.timestamp().into()));
+        }
+
+        if let Some(storage_expiration_date) = &storage.storage_expiration_date {
+            columns.push(Storage::StorageExpirationDate);
+            values.push(SimpleExpr::Value(
+                storage_expiration_date.timestamp().into(),
+            ));
+        }
+
+        if let Some(storage_comment) = &storage.storage_comment {
+            columns.push(Storage::StorageComment);
+            values.push(SimpleExpr::Value(storage_comment.into()));
+        }
+
+        if let Some(storage_reference) = &storage.storage_reference {
+            columns.push(Storage::StorageReference);
+            values.push(SimpleExpr::Value(storage_reference.into()));
+        }
+
+        if let Some(storage_batch_number) = &storage.storage_batch_number {
+            columns.push(Storage::StorageBatchNumber);
+            values.push(SimpleExpr::Value(storage_batch_number.into()));
+        }
+
+        if let Some(storage_quantity) = storage.storage_quantity {
+            columns.push(Storage::StorageQuantity);
+            values.push(SimpleExpr::Value(storage_quantity.into()));
+        }
+
+        if let Some(storage_barecode) = &storage.storage_barecode {
+            columns.push(Storage::StorageBarecode);
+            values.push(SimpleExpr::Value(storage_barecode.into()));
+        }
+
+        if let Some(storage_concentration) = storage.storage_concentration {
+            columns.push(Storage::StorageConcentration);
+            values.push(SimpleExpr::Value(storage_concentration.into()));
+        }
+
+        if let Some(storage_number_of_bag) = storage.storage_number_of_bag {
+            columns.push(Storage::StorageNumberOfBag);
+            values.push(SimpleExpr::Value(storage_number_of_bag.into()));
+        }
+
+        if let Some(storage_number_of_carton) = storage.storage_number_of_carton {
+            columns.push(Storage::StorageNumberOfCarton);
+            values.push(SimpleExpr::Value(storage_number_of_carton.into()));
+        }
+
+        if let Some(supplier) = &storage.supplier {
+            let supplier_id = match supplier.supplier_id {
+                Some(supplier_id) => supplier_id,
+                None => return Err(Box::new(StorageError::MissingSupplierId)),
+            };
+
+            columns.push(Storage::Supplier);
+            values.push(SimpleExpr::Value(supplier_id.into()));
+        }
+
+        if let Some(unit_quantity) = storage.unit_quantity.clone() {
+            let unit_id = match unit_quantity.unit_id {
+                Some(unit_id) => unit_id,
+                None => return Err(Box::new(StorageError::MissingUnitId)),
+            };
+
+            columns.push(Storage::UnitQuantity);
+            values.push(SimpleExpr::Value(unit_id.into()));
+        }
+
+        if let Some(unit_concentration) = storage.unit_concentration.clone() {
+            let unit_id = match unit_concentration.unit_id {
+                Some(unit_id) => unit_id,
+                None => return Err(Box::new(StorageError::MissingUnitId)),
+            };
+
+            columns.push(Storage::UnitConcentration);
+            values.push(SimpleExpr::Value(unit_id.into()));
+        }
+
+        if let Some(storage) = storage.storage.clone() {
+            let storage_id = match storage.storage_id {
+                Some(storage_id) => storage_id,
+                None => return Err(Box::new(StorageError::MissingStorageId)),
+            };
+
+            columns.push(Storage::Storage);
+            values.push(SimpleExpr::Value(storage_id.into()));
+        }
+
+        let sql_query: String;
+        let sql_values: RusqliteValues = RusqliteValues(vec![]);
+
+        if let Some(storage_id) = storage.storage_id {
+            // Update query - nb_items is supposed to be == 1.
+            columns.push(Storage::StorageId);
+            values.push(SimpleExpr::Value(storage_id.into()));
+
+            sql_query = Query::insert()
+                .replace()
+                .into_table(Storage::Table)
+                .columns(columns)
+                .values(values)?
+                .to_string(SqliteQueryBuilder);
+        } else {
+            // Insert query.
+            sql_query = Query::insert()
+                .into_table(Storage::Table)
+                .columns(columns)
+                .values(values)?
+                .to_string(SqliteQueryBuilder);
+        }
+
+        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_values: {:?}", sql_values);
+
+        _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+
+        let last_insert_update_id: u64;
+
+        if let Some(storage_id) = storage.storage_id {
+            last_insert_update_id = storage_id;
+        } else {
+            last_insert_update_id = db_transaction.last_insert_rowid().try_into()?;
+
+            create_storage_qrcode(&db_transaction, last_insert_update_id)?;
+        }
+
+        debug!("last_insert_update_id: {}", last_insert_update_id);
+
+        storage_ids.push(last_insert_update_id);
+
+        create_storage_qrcode(&db_transaction, last_insert_update_id)?;
+
+        if !identical_barecode {
+            barecode_minor += 1;
+
+            storage.storage_barecode = Some(format!(
+                "{}{}.{}",
+                barecode_major, product_id, barecode_minor
+            ));
+        }
+
+        nb_items_created += 1;
+    }
+
+    db_transaction.commit()?;
+
+    Ok(storage_ids)
 }
