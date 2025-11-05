@@ -1,7 +1,5 @@
 use std::{
     fmt::{Display, Formatter},
-    io::BufWriter,
-    rc::Rc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -13,13 +11,12 @@ use chimitheque_types::{
     unit::Unit as UnitStruct,
 };
 use chrono::{DateTime, Utc};
-use image::{codecs::png, Luma};
 use log::debug;
 use qrcode_png::{Color, QrCode, QrCodeEcc};
 use regex::Regex;
 use rusqlite::{Connection, OptionalExtension, Row, Transaction};
 use sea_query::{
-    any, Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
+    any, Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
     SqliteQueryBuilder,
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
@@ -108,7 +105,7 @@ pub enum Storage {
     StorageArchive,
     StorageQrcode,
     StorageConcentration,
-    StorageNumberOfUnit,
+    // StorageNumberOfUnit,
     StorageNumberOfBag,
     StorageNumberOfCarton,
     Person,
@@ -193,9 +190,7 @@ impl TryFrom<&Row<'_>> for StorageWrapper {
             person: PersonStruct {
                 person_id: row.get_unwrap("person_id"),
                 person_email: row.get_unwrap("person_email"),
-                entities: None,
-                managed_entities: None,
-                permissions: None,
+                ..Default::default()
             },
             product: ProductStruct {
                 product_id: row.get_unwrap("product_id"),
@@ -206,11 +201,6 @@ impl TryFrom<&Row<'_>> for StorageWrapper {
                 },
                 ..Default::default()
             },
-            // entity: EntityOrId::Entity(EntityStruct {
-            //     entity_id: row.get_unwrap("entity_id"),
-            //     entity_name: row.get_unwrap("entity_name"),
-            //     ..Default::default()
-            // }),
             store_location: StoreLocationStruct {
                 store_location_id: row.get_unwrap("store_location_id"),
                 store_location_name: row.get_unwrap("store_location_name"),
@@ -246,13 +236,48 @@ impl TryFrom<&Row<'_>> for StorageWrapper {
             borrowing: maybe_borrowing.map(|_| BorrowingStruct {
                 borrowing_id: row.get_unwrap("borrowing_id"),
                 borrowing_comment: row.get_unwrap("borrowing_comment"),
+                borrower: PersonStruct {
+                    person_id: row.get_unwrap("borrower_person_id"),
+                    person_email: row.get_unwrap("borrower_person_email"),
+                    ..Default::default()
+                },
                 ..Default::default()
             }),
-            ..Default::default() // storage_nb_items: row.get_unwrap("storage_nb_items"),
-                                 // storage_identical_barecode: row.get_unwrap("storage_identical_barecode"),
-                                 // storage_hc: row.get_unwrap("storage_hc"),
+            ..Default::default() // storage_hc: row.get_unwrap("storage_hc"),
         }))
     }
+}
+
+fn populate_history_count(
+    db_connection: &Connection,
+    storage: &mut [StorageStruct],
+) -> Result<(), Box<dyn std::error::Error>> {
+    for storage in storage.iter_mut() {
+        let storage_id = storage.storage_id;
+
+        // Create count query.
+        let (count_sql, count_values) = Query::select()
+            .expr(Expr::col((Storage::Table, Storage::StorageId)).count_distinct())
+            .from(Storage::Table)
+            .and_where(Expr::col((Storage::Table, Storage::Storage)).eq(storage_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("count_sql: {}", count_sql.clone().as_str());
+        debug!("count_values: {:?}", count_values);
+
+        // Perform count query.
+        let mut stmt = db_connection.prepare(count_sql.as_str())?;
+        let mut rows = stmt.query(&*count_values.as_params())?;
+        let count: u64 = if let Some(row) = rows.next()? {
+            row.get_unwrap(0)
+        } else {
+            0
+        };
+
+        storage.storage_hc = count;
+    }
+
+    Ok(())
 }
 
 pub fn get_storages(
@@ -549,7 +574,7 @@ pub fn get_storages(
             )).and(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id)
         ))
         //
-        // borrowing
+        // borrowing, borrower
         //
         .join(
             JoinType::LeftJoin,
@@ -559,8 +584,12 @@ pub fn get_storages(
                 Storage::StorageId,
             )).and(Expr::col((Borrowing::Table, Borrowing::Person)).eq(person_id)),
         )
-        //
-        // storage -> permissions
+        .join_as(
+            JoinType::LeftJoin,
+            Person::Table,
+            Alias::new("borrower"),
+            Expr::col((Alias::new("borrower"), Person::PersonId))
+        .equals((Borrowing::Table, Borrowing::Borrower)))
         //
         .join(
             // storelocation
@@ -635,7 +664,17 @@ pub fn get_storages(
             |_| {},
         )
         .conditions(
-            filter.id.is_some()&& filter.history,
+            !filter.history,
+            |q| {
+            q.and_where(
+                Expr::col((Storage::Table, Storage::Storage))
+                .is_null(),
+            );
+        },
+        |_| {},
+        )
+        .conditions(
+            filter.id.is_some() && filter.history,
                     |q| {
                         q.and_where(
                             Expr::col((Storage::Table, Storage::StorageId))
@@ -777,24 +816,14 @@ pub fn get_storages(
             },
             |_| {},
         )
-        .conditions(
-            filter.storage.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((Storage::Table, Storage::StorageId)).eq(filter.storage.unwrap()),
-                );
-            },
-            |_| {},
-        )
         // .conditions(
-        //     !filter.history,
+        //     filter.storage.is_some(),
         //     |q| {
-        //     q.and_where(
-        //         Expr::col((Storage::Table, Storage::Storage))
-        //         .is_null(),
-        //     );
-        // },
-        // |_| {},
+        //         q.and_where(
+        //             Expr::col((Storage::Table, Storage::StorageId)).eq(filter.storage.unwrap()),
+        //         );
+        //     },
+        //     |_| {},
         // )
         .conditions(
             filter.storage_archive,
@@ -963,6 +992,24 @@ pub fn get_storages(
             Expr::col((Alias::new("parent"), Alias::new("storage_id"))),
             Alias::new("parent_storage_id"),
         )
+        // .expr(SimpleExpr::SubQuery(SelectStatement(
+        //     Query::select()
+        //         .expr(Expr::col((Storage::Table, Storage::StorageId)).count_distinct())
+        //         .from(Storage::Table)
+        //         .and_where(
+        //             Expr::col((Storage::Table, Storage::Storage))
+        //                 .equals((Storage::Table, Storage::StorageId)),
+        //         )
+        //         .into(),
+        // )))
+        .expr_as(
+            Expr::col((Alias::new("borrower"), Alias::new("person_id"))),
+            Alias::new("borrower_person_id"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("borrower"), Alias::new("person_email"))),
+            Alias::new("borrower_person_email"),
+        )
         .expr(Expr::col((Borrowing::Table, Borrowing::BorrowingId)))
         .expr(Expr::col((Borrowing::Table, Borrowing::BorrowingComment)))
         .order_by(order_by, order)
@@ -1003,6 +1050,8 @@ pub fn get_storages(
         let storage = StorageWrapper::try_from(row)?;
         storages.push(storage.0);
     }
+
+    populate_history_count(db_connection, &mut storages)?;
 
     debug!("storages: {:#?}", storages);
 
@@ -1417,4 +1466,78 @@ pub fn create_update_storage(
     db_transaction.commit()?;
 
     Ok(storage_ids)
+}
+
+pub fn delete_storage(
+    db_connection: &mut Connection,
+    storage_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("delete_storage: {:#?}", storage_id);
+
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Storage::Table)
+        .cond_where(
+            Cond::any()
+                .add(Expr::col(Storage::StorageId).eq(storage_id))
+                .add(Expr::col(Storage::Storage).eq(storage_id)),
+        )
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_connection.execute(delete_sql.as_str(), &*delete_values.as_params())?;
+
+    Ok(())
+}
+
+pub fn archive_storage(
+    db_connection: &mut Connection,
+    storage_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("archive_storage: {:#?}", storage_id);
+
+    // Update request: list of (columns, values) pairs to insert.
+    let columns_values = vec![(Storage::StorageArchive, true.into())];
+
+    let (sql_query, sql_values) = Query::update()
+        .table(Storage::Table)
+        .values(columns_values)
+        .cond_where(
+            Cond::any()
+                .add(Expr::col(Storage::StorageId).eq(storage_id))
+                .add(Expr::col(Storage::Storage).eq(storage_id)),
+        )
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
+
+    Ok(())
+}
+
+pub fn unarchive_storage(
+    db_connection: &mut Connection,
+    storage_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("unarchive_storage: {:#?}", storage_id);
+
+    // Update request: list of (columns, values) pairs to insert.
+    let columns_values = vec![(Storage::StorageArchive, false.into())];
+
+    let (sql_query, sql_values) = Query::update()
+        .table(Storage::Table)
+        .values(columns_values)
+        .cond_where(
+            Cond::any()
+                .add(Expr::col(Storage::StorageId).eq(storage_id))
+                .add(Expr::col(Storage::Storage).eq(storage_id)),
+        )
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
+
+    Ok(())
 }

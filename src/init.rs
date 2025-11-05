@@ -8,6 +8,15 @@ use crate::define::{
     SUPPLIERS, SYMBOLS, TAGS,
 };
 
+// Temporary function to connect and initialize the database.
+// Called from Go code.
+// Remove me after Rust code is ready.
+pub fn connect_and_init_db(db_path: &str) -> Result<(), rusqlite::Error> {
+    let mut db_connection = connect(db_path)?;
+    init_db(&mut db_connection)?;
+    Ok(())
+}
+
 pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
     let sql_extension_dir = match env::var("SQLITE_EXTENSION_DIR") {
         Ok(val) => val,
@@ -27,8 +36,7 @@ pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
 }
 
 pub fn insert_fake_values(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
-    let sql =
-        fs::read_to_string("./src/resources/sample.sql").expect("Can not read sample.sql file.");
+    let sql = fs::read_to_string("/tmp/sample.sql").expect("Can not read sample.sql file.");
 
     info!("adding fake database values");
 
@@ -47,8 +55,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
     // TEXT
     // BLOB
     // ANY
-    let sql =
-        fs::read_to_string("./src/resources/shema.sql").expect("Can not read shema.sql file.");
+    let sql = fs::read_to_string("/tmp/shema.sql").expect("Can not read shema.sql file.");
 
     info!("creating database structure");
 
@@ -185,6 +192,10 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
     info!("- adding chimitheque admin");
     tx.execute(
         "INSERT INTO person (person_id, person_email) VALUES (1, 'admin@chimitheque.fr')",
+        (),
+    )?;
+    tx.execute(
+        "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'all', 'all', -1)",
         (),
     )?;
 

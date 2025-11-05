@@ -144,9 +144,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             person: PersonStruct {
                 person_id: row.get_unwrap("person_id"),
                 person_email: row.get_unwrap("person_email"),
-                entities: None,
-                managed_entities: None,
-                permissions: None,
+                ..Default::default()
             },
             cas_number: maybe_cas_number.map(|_| CasNumberStruct {
                 cas_number_id: row.get_unwrap("cas_number_id"),
@@ -1259,14 +1257,14 @@ pub fn get_products(
         //
         // bookmarks
         //
-        .join(
-            JoinType::LeftJoin,
-            Bookmark::Table,
-            Expr::col((Bookmark::Table, Bookmark::Product)).equals((
-                Product::Table,
-                Product::ProductId,
-            )).and(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id)
-        ))
+        // .join(
+        //     JoinType::LeftJoin,
+        //     Bookmark::Table,
+        //     Expr::col((Bookmark::Table, Bookmark::Product)).equals((
+        //         Product::Table,
+        //         Product::ProductId,
+        //     )).and(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id)
+        // ))
         //
         // storage -> permissions
         //
@@ -1501,7 +1499,16 @@ pub fn get_products(
                 );
                 q.and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id));
             },
-            |_| {},)
+            |q| {
+                q.join(
+                    // bookmark
+                    JoinType::LeftJoin,
+                    Bookmark::Table,
+                    Expr::col((Bookmark::Table, Bookmark::Product))
+                    .equals((Product::Table, Product::ProductId)),
+                );
+                // q.and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id));
+            },)
         .conditions(
             filter.tags.is_some(),
             |q| {
@@ -2696,6 +2703,22 @@ fn create_update_product_classes_of_compound(
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
     }
+
+    Ok(())
+}
+
+pub fn delete_product(
+    db_connection: &mut Connection,
+    product_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("delete_product: {:#?}", product_id);
+
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Product::Table)
+        .and_where(Expr::col(Product::ProductId).eq(product_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_connection.execute(delete_sql.as_str(), &*delete_values.as_params())?;
 
     Ok(())
 }

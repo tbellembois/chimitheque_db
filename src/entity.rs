@@ -1,20 +1,40 @@
+use std::fmt::{Display, Formatter};
+
 use chimitheque_types::{entity::Entity as EntityStruct, requestfilter::RequestFilter};
 use log::debug;
-use rusqlite::{Connection, Row};
+use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
-    Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SqliteQueryBuilder,
+    Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
+    SqliteQueryBuilder,
 };
 
-use sea_query_rusqlite::RusqliteBinder;
+use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
 
 use crate::{
     entitypeople::{Entitypeople, EntitypeopleWrapper},
     permission::Permission,
-    person::Person,
+    person::{set_person_manager, Person},
     personentities::Personentities,
     storelocation::StoreLocation,
 };
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum EntityError {
+    MissingEntityId,
+    MissingPersonId,
+}
+
+impl Display for EntityError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match self {
+            EntityError::MissingEntityId => write!(f, "missing entity id"),
+            EntityError::MissingPersonId => write!(f, "missing person id"),
+        }
+    }
+}
+
+impl std::error::Error for EntityError {}
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -97,9 +117,7 @@ fn populate_managers(
             managers.push(chimitheque_types::person::Person {
                 person_id: Some(entity_person_wrapper.0.entitypeople_person_id),
                 person_email: entity_person_wrapper.0.entitypeople_person_email,
-                entities: None,
-                managed_entities: None,
-                permissions: None,
+                ..Default::default()
             });
         }
 
@@ -282,4 +300,117 @@ pub fn get_entities(
     debug!("entities: {:#?}", entities);
 
     Ok((entities, count))
+}
+
+fn create_update_entity_managers(
+    db_transaction: &Transaction,
+    entity: &EntityStruct,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("create_update_entity_managers: {:#?}", entity);
+
+    let entity_id = match entity.entity_id {
+        Some(entity_id) => entity_id,
+        None => return Err(Box::new(EntityError::MissingEntityId)),
+    };
+
+    // Lazily remove all entity managers.
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Permission::Table)
+        .and_where(Expr::col(Permission::PermissionItem).eq("all"))
+        .and_where(Expr::col(Permission::PermissionName).eq("all"))
+        .and_where(Expr::col(Permission::PermissionEntity).eq(entity_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_transaction.execute(delete_sql.as_str(), &*delete_values.as_params())?;
+
+    // Adding new ones.
+    if let Some(managers) = &entity.managers {
+        for manager in managers {
+            let person_id = match manager.person_id {
+                Some(person_id) => person_id,
+                None => return Err(Box::new(EntityError::MissingPersonId)),
+            };
+
+            set_person_manager(db_transaction, person_id, entity_id)?;
+        }
+    };
+
+    Ok(())
+}
+
+pub fn create_update_entity(
+    db_connection: &mut Connection,
+    mut entity: EntityStruct,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    debug!("create_update_entity: {:#?}", entity);
+
+    let db_transaction = db_connection.transaction()?;
+
+    // Create request: list of columns and values to insert.
+    let mut columns = vec![Entity::EntityName, Entity::EntityDescription];
+    let mut values = vec![
+        SimpleExpr::Value(entity.entity_name.clone().into()),
+        SimpleExpr::Value(entity.entity_description.clone().into()),
+    ];
+
+    let sql_query: String;
+    let sql_values: RusqliteValues = RusqliteValues(vec![]);
+
+    if let Some(entity_id) = entity.entity_id {
+        // Update query.
+        columns.push(Entity::EntityId);
+        values.push(SimpleExpr::Value(entity_id.into()));
+
+        sql_query = Query::insert()
+            .replace()
+            .into_table(Entity::Table)
+            .columns(columns)
+            .values(values)?
+            .to_string(SqliteQueryBuilder);
+    } else {
+        // Insert query.
+        sql_query = Query::insert()
+            .into_table(Entity::Table)
+            .columns(columns)
+            .values(values)?
+            .to_string(SqliteQueryBuilder);
+    }
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+
+    let last_insert_update_id: u64;
+
+    if let Some(entity_id) = entity.entity_id {
+        last_insert_update_id = entity_id;
+    } else {
+        last_insert_update_id = db_transaction.last_insert_rowid().try_into()?;
+        entity.entity_id = Some(last_insert_update_id)
+    }
+
+    debug!("last_insert_update_id: {}", last_insert_update_id);
+
+    create_update_entity_managers(&db_transaction, &entity)?;
+
+    db_transaction.commit()?;
+
+    Ok(last_insert_update_id)
+}
+
+pub fn delete_entity(
+    db_connection: &mut Connection,
+    entity_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("delete_entity: {:#?}", entity_id);
+
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Entity::Table)
+        .and_where(Expr::col(Entity::EntityId).eq(entity_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_connection.execute(delete_sql.as_str(), &*delete_values.as_params())?;
+
+    Ok(())
 }

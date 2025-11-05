@@ -1,8 +1,12 @@
-use chimitheque_types::{person::Person as PersonStruct, requestfilter::RequestFilter};
+use chimitheque_types::{
+    permission::{Permission as PermissionStruct, PermissionItem, PermissionName},
+    person::Person as PersonStruct,
+    requestfilter::RequestFilter,
+};
 use log::debug;
-use rusqlite::{Connection, Row};
-use sea_query::{Alias, Expr, Iden, JoinType, Order, Query, SqliteQueryBuilder};
-use sea_query_rusqlite::RusqliteBinder;
+use rusqlite::{Connection, Row, Transaction};
+use sea_query::{Alias, Expr, Iden, JoinType, Order, Query, SimpleExpr, SqliteQueryBuilder};
+use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
 
 use crate::{
@@ -32,6 +36,7 @@ impl From<&Row<'_>> for PersonWrapper {
                 entities: None,
                 managed_entities: None,
                 permissions: None,
+                is_admin: row.get("is_admin").unwrap_or_default(),
             }
         })
     }
@@ -305,6 +310,16 @@ pub fn get_people(
             |_| {},
         )
         .conditions(
+            filter.person_email.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((Person::Table, Person::PersonEmail))
+                        .eq(filter.person_email.unwrap()),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
             filter.search.is_some(),
             |q| {
                 q.and_where(
@@ -327,6 +342,29 @@ pub fn get_people(
     // Create select query.
     let (select_sql, select_values) = expression
         .columns([Person::PersonId, Person::PersonEmail])
+        .expr_as(
+            Expr::case(
+                Expr::exists(
+                    Query::select()
+                        .expr(Expr::col((Permission::Table, Permission::PermissionId)))
+                        .from(Permission::Table)
+                        .and_where(
+                            Expr::col((Permission::Table, Permission::PermissionItem)).eq("all"),
+                        )
+                        .and_where(
+                            Expr::col((Permission::Table, Permission::PermissionName)).eq("all"),
+                        )
+                        .and_where(
+                            Expr::col((Permission::Table, Permission::Person))
+                                .equals((Person::Table, Person::PersonId)),
+                        )
+                        .take(),
+                ),
+                Expr::val(true),
+            )
+            .finally(Expr::val(false)),
+            Alias::new("is_admin"),
+        )
         .conditions(
             filter.limit.is_some(),
             |q| {
@@ -378,6 +416,428 @@ pub fn get_people(
     debug!("people: {:#?}", people);
 
     Ok((people, count))
+}
+
+fn create_update_person_permissions(
+    db_transaction: &Transaction,
+    person: &PersonStruct,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Lazily deleting former permissions.
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Permission::Table)
+        .and_where(Expr::col(Permission::Person).eq(person.person_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_transaction.execute(delete_sql.as_str(), &*delete_values.as_params())?;
+
+    // Creating new permissions to append default and managed entities permissions.
+    let mut new_permissions = if let Some(permissions) = &person.permissions {
+        permissions.clone()
+    } else {
+        vec![]
+    };
+
+    // Appending default read products permissions.
+    new_permissions.push(PermissionStruct {
+        person: PersonStruct {
+            person_id: person.person_id,
+            ..Default::default()
+        },
+        permission_name: PermissionName::Read,
+        permission_item: PermissionItem::Products,
+        permission_entity: -1,
+    });
+
+    // Appending permissions for the managed entities.
+    if let Some(managed_entities) = &person.managed_entities {
+        for entity in managed_entities {
+            new_permissions.push(PermissionStruct {
+                person: PersonStruct {
+                    person_id: person.person_id,
+                    ..Default::default()
+                },
+                permission_name: PermissionName::All,
+                permission_item: PermissionItem::All,
+                permission_entity: entity.entity_id.unwrap() as i64,
+            });
+        }
+    }
+
+    // Inserting permissions.
+    for perm in new_permissions {
+        let mut values: Vec<SimpleExpr> = vec![];
+        let columns = [
+            Permission::Person,
+            Permission::PermissionName,
+            Permission::PermissionItem,
+            Permission::PermissionEntity,
+        ];
+
+        values.push(person.person_id.into());
+        values.push(perm.permission_name.to_string().into());
+        values.push(perm.permission_item.to_string().into());
+        values.push(perm.permission_entity.into());
+
+        let sql_values: RusqliteValues = RusqliteValues(vec![]);
+        let sql_query = Query::insert()
+            .into_table(Permission::Table)
+            .columns(columns)
+            .values(values)?
+            .to_string(SqliteQueryBuilder);
+
+        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_values: {:?}", sql_values);
+
+        _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+    }
+
+    Ok(())
+}
+
+fn create_update_person_membership(
+    db_transaction: &Transaction,
+    person: &PersonStruct,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Lazily deleting former membership.
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Personentities::Table)
+        .and_where(Expr::col(Personentities::PersonentitiesPersonId).eq(person.person_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_transaction.execute(delete_sql.as_str(), &*delete_values.as_params())?;
+
+    // Inserting new membership.
+    if let Some(entities) = &person.entities {
+        for entity in entities {
+            let mut values: Vec<SimpleExpr> = vec![];
+            let columns = [
+                Personentities::PersonentitiesPersonId,
+                Personentities::PersonentitiesEntityId,
+            ];
+
+            values.push(person.person_id.into());
+            values.push(entity.entity_id.into());
+
+            let sql_values: RusqliteValues = RusqliteValues(vec![]);
+            let sql_query = Query::insert()
+                .into_table(Personentities::Table)
+                .columns(columns)
+                .values(values)?
+                .to_string(SqliteQueryBuilder);
+
+            debug!("sql_query: {}", sql_query.clone().as_str());
+            debug!("sql_values: {:?}", sql_values);
+
+            _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+        }
+    }
+    Ok(())
+}
+
+pub fn create_update_person(
+    db_connection: &mut Connection,
+    mut person: PersonStruct,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    debug!("create_update_person: {:#?}", person);
+
+    let db_transaction = db_connection.transaction()?;
+
+    // Create request: list of columns and values to insert.
+    let mut columns = vec![Person::PersonEmail];
+    let mut values = vec![SimpleExpr::Value(person.person_email.clone().into())];
+
+    let sql_query: String;
+    let sql_values: RusqliteValues = RusqliteValues(vec![]);
+
+    if let Some(person_id) = person.person_id {
+        // Update query.
+        columns.push(Person::PersonId);
+        values.push(SimpleExpr::Value(person_id.into()));
+
+        sql_query = Query::insert()
+            .replace()
+            .into_table(Person::Table)
+            .columns(columns)
+            .values(values)?
+            .to_string(SqliteQueryBuilder);
+    } else {
+        // Insert query.
+        sql_query = Query::insert()
+            .into_table(Person::Table)
+            .columns(columns)
+            .values(values)?
+            .to_string(SqliteQueryBuilder);
+    }
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+
+    let last_insert_update_id: u64;
+
+    if let Some(person_id) = person.person_id {
+        last_insert_update_id = person_id;
+    } else {
+        last_insert_update_id = db_transaction.last_insert_rowid().try_into()?;
+        person.person_id = Some(last_insert_update_id);
+    }
+
+    debug!("last_insert_update_id: {}", last_insert_update_id);
+
+    create_update_person_permissions(&db_transaction, &person)?;
+    create_update_person_membership(&db_transaction, &person)?;
+
+    db_transaction.commit()?;
+
+    Ok(last_insert_update_id)
+}
+
+pub fn unset_person_manager(
+    db_transaction: &Transaction,
+    person_id: u64,
+    entity_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("unset_person_manager: {:#?} {:#?}", person_id, entity_id);
+
+    // Unsetting the person manager.
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Entitypeople::Table)
+        .and_where(Expr::col(Entitypeople::EntitypeoplePersonId).eq(person_id))
+        .and_where(Expr::col(Entitypeople::EntitypeopleEntityId).eq(entity_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_transaction.execute(delete_sql.as_str(), &*delete_values.as_params())?;
+
+    // Removing the manager permissions.
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Permission::Table)
+        .and_where(Expr::col(Permission::Person).eq(person_id))
+        .and_where(Expr::col(Permission::PermissionItem).eq("all"))
+        .and_where(Expr::col(Permission::PermissionName).eq("all"))
+        .and_where(Expr::col(Permission::PermissionEntity).eq(entity_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_transaction.execute(delete_sql.as_str(), &*delete_values.as_params())?;
+
+    Ok(())
+}
+
+pub fn set_person_manager(
+    db_transaction: &Transaction,
+    person_id: u64,
+    entity_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("set_person_manager: {:#?} {:#?}", person_id, entity_id);
+
+    // Adding the manager to the entity.
+    let columns = vec![
+        Personentities::PersonentitiesPersonId,
+        Personentities::PersonentitiesEntityId,
+    ];
+    let values = vec![
+        SimpleExpr::Value(person_id.into()),
+        SimpleExpr::Value(entity_id.into()),
+    ];
+
+    let sql_values: RusqliteValues = RusqliteValues(vec![]);
+    let sql_query = Query::insert()
+        .replace()
+        .into_table(Personentities::Table)
+        .columns(columns)
+        .values(values)?
+        .to_string(SqliteQueryBuilder);
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+
+    // Setting the person manager.
+    let columns = vec![
+        Entitypeople::EntitypeoplePersonId,
+        Entitypeople::EntitypeopleEntityId,
+    ];
+    let values = vec![
+        SimpleExpr::Value(person_id.into()),
+        SimpleExpr::Value(entity_id.into()),
+    ];
+
+    let sql_values: RusqliteValues = RusqliteValues(vec![]);
+    let sql_query = Query::insert()
+        .replace()
+        .into_table(Entitypeople::Table)
+        .columns(columns)
+        .values(values)?
+        .to_string(SqliteQueryBuilder);
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+
+    // Setting the manager permissions.
+    let columns = vec![
+        Permission::PermissionItem,
+        Permission::PermissionName,
+        Permission::PermissionEntity,
+        Permission::Person,
+    ];
+    let values = vec![
+        SimpleExpr::Value("all".into()),
+        SimpleExpr::Value("all".into()),
+        SimpleExpr::Value(entity_id.into()),
+        SimpleExpr::Value(person_id.into()),
+    ];
+
+    let sql_values: RusqliteValues = RusqliteValues(vec![]);
+    let sql_query = Query::insert()
+        .replace()
+        .into_table(Permission::Table)
+        .columns(columns)
+        .values(values)?
+        .to_string(SqliteQueryBuilder);
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+
+    Ok(())
+}
+
+pub fn get_admins(
+    db_connection: &mut Connection,
+) -> Result<Vec<PersonStruct>, Box<dyn std::error::Error>> {
+    debug!("get_admins");
+    // Create select query.
+    let (select_sql, select_values) = Query::select()
+        .columns([Person::PersonId, Person::PersonEmail])
+        .expr_as(
+            Expr::case(
+                Expr::exists(
+                    Query::select()
+                        .expr(Expr::col((Permission::Table, Permission::PermissionId)))
+                        .from(Permission::Table)
+                        .and_where(
+                            Expr::col((Permission::Table, Permission::PermissionItem)).eq("all"),
+                        )
+                        .and_where(
+                            Expr::col((Permission::Table, Permission::PermissionName)).eq("all"),
+                        )
+                        .and_where(
+                            Expr::col((Permission::Table, Permission::Person))
+                                .equals((Person::Table, Person::PersonId)),
+                        )
+                        .take(),
+                ),
+                Expr::val(true),
+            )
+            .finally(Expr::val(false)),
+            Alias::new("is_admin"),
+        )
+        .join_as(
+            JoinType::InnerJoin,
+            Permission::Table,
+            Alias::new("perm"),
+            Expr::col((Alias::new("perm"), Alias::new("person")))
+                .equals((Person::Table, Person::PersonId))
+                .and(Expr::col((Alias::new("perm"), Alias::new("permission_item"))).eq("all"))
+                .and(Expr::col((Alias::new("perm"), Alias::new("permission_name"))).eq("all"))
+                .and(Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1)),
+        )
+        .order_by(Person::PersonEmail, Order::Asc)
+        .group_by_col((Person::Table, Person::PersonId))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {:?}", select_values);
+
+    // Perform select query.
+    let mut stmt = db_connection.prepare(select_sql.as_str())?;
+    let rows = stmt.query_map(&*select_values.as_params(), |row| {
+        Ok(PersonWrapper::from(row))
+    })?;
+
+    // Build select result.
+    let mut people = Vec::new();
+    for maybe_person in rows {
+        let person = maybe_person?;
+
+        people.push(person.0);
+    }
+
+    Ok(people)
+}
+
+pub fn set_person_admin(
+    db_connection: &mut Connection,
+    person_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("set_person_admin: {:#?}", person_id);
+
+    let columns = vec![
+        Permission::PermissionItem,
+        Permission::PermissionName,
+        Permission::PermissionEntity,
+        Permission::Person,
+    ];
+    let values = vec![
+        SimpleExpr::Value("all".into()),
+        SimpleExpr::Value("all".into()),
+        SimpleExpr::Value((-1 as i64).into()),
+        SimpleExpr::Value(person_id.into()),
+    ];
+
+    let sql_values: RusqliteValues = RusqliteValues(vec![]);
+    let sql_query = Query::insert()
+        .replace()
+        .into_table(Permission::Table)
+        .columns(columns)
+        .values(values)?
+        .to_string(SqliteQueryBuilder);
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
+
+    Ok(())
+}
+
+pub fn unset_person_admin(
+    db_connection: &mut Connection,
+    person_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("unset_person_admin: {:#?}", person_id);
+
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Permission::Table)
+        .and_where(Expr::col(Permission::Person).eq(person_id))
+        .and_where(Expr::col(Permission::PermissionItem).eq("all"))
+        .and_where(Expr::col(Permission::PermissionName).eq("all"))
+        .and_where(Expr::col(Permission::PermissionEntity).eq(-1))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_connection.execute(delete_sql.as_str(), &*delete_values.as_params())?;
+
+    Ok(())
+}
+
+pub fn delete_person(
+    db_connection: &mut Connection,
+    person_id: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("delete_person: {:#?}", person_id);
+
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Person::Table)
+        .and_where(Expr::col(Person::PersonId).eq(person_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    _ = db_connection.execute(delete_sql.as_str(), &*delete_values.as_params())?;
+
+    Ok(())
 }
 
 #[cfg(test)]

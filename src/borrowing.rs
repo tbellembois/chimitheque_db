@@ -1,4 +1,4 @@
-use chimitheque_types::borrowing::Borrowing as BorrowingStruct;
+use chimitheque_types::{borrowing::Borrowing as BorrowingStruct, person::Person as PersonStruct};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
@@ -26,8 +26,12 @@ impl From<&Row<'_>> for BorrowingWrapper {
                 borrowing_id: row.get_unwrap("borrowing_id"),
                 borrowing_comment: row.get_unwrap("borrowing_comment"),
                 person: row.get_unwrap("person"),
-                borrower: row.get_unwrap("borrower"),
                 storage: row.get_unwrap("storage"),
+                borrower: PersonStruct {
+                    person_id: row.get_unwrap("borrower_person_id"),
+                    person_email: row.get_unwrap("borrower_person_email"),
+                    ..Default::default()
+                },
             }
         })
     }
