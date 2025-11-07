@@ -507,7 +507,7 @@ mod tests {
     use std::vec;
 
     use super::*;
-    use crate::init::init_db;
+    use crate::init::{connect_test, init_db, insert_fake_values};
     use log::info;
 
     fn init_logger() {
@@ -515,9 +515,9 @@ mod tests {
     }
 
     fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
+        let mut db_connection = connect_test();
         init_db(&mut db_connection).unwrap();
-
+        insert_fake_values(&mut db_connection).unwrap();
         db_connection
     }
 

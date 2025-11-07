@@ -183,7 +183,7 @@ pub fn get_precautionary_statements(
 mod tests {
 
     use super::*;
-    use crate::init::init_db;
+    use crate::init::{connect_test, init_db, insert_fake_values};
     use chimitheque_types::requestfilter::RequestFilter;
     use log::info;
     use rusqlite::Connection;
@@ -193,35 +193,9 @@ mod tests {
     }
 
     fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
+        let mut db_connection = connect_test();
         init_db(&mut db_connection).unwrap();
-
-        // insert fake precautionary_statements.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
-                [String::from("precautionary_statement1"), String::from("precautionary_statement1-ref")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
-                [String::from("aa precautionary_statement1"), String::from("aa precautionary_statement1-ref")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
-                [String::from("precautionary_statement2"), String::from("precautionary_statement2-ref")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
-                [String::from("precautionary_statement3"), String::from("precautionary_statement3-ref")],
-            )
-            .unwrap();
-
+        insert_fake_values(&mut db_connection).unwrap();
         db_connection
     }
 

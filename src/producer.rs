@@ -174,7 +174,7 @@ pub fn get_producers(
 mod tests {
 
     use super::*;
-    use crate::init::init_db;
+    use crate::init::{connect_test, init_db, insert_fake_values};
     use log::info;
 
     fn init_logger() {
@@ -182,53 +182,9 @@ mod tests {
     }
 
     fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
+        let mut db_connection = connect_test();
         init_db(&mut db_connection).unwrap();
-
-        // insert fake producers.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer (producer_label) VALUES (?1)",
-                [String::from("FAKE_PRODUCER")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer (producer_label) VALUES (?1)",
-                [String::from("FAKE_PRODUCER ONE")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer (producer_label) VALUES (?1)",
-                [String::from("FAKE_PRODUCER TWO")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer (producer_label) VALUES (?1)",
-                [String::from("FAKE_PRODUCER THREE")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer (producer_label) VALUES (?1)",
-                [String::from("AAA FAKE_PRODUCER")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer (producer_label) VALUES (?1)",
-                [String::from("YET ANOTHER PRODUCER")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer (producer_label) VALUES (?1)",
-                [String::from("12345")],
-            )
-            .unwrap();
-
+        insert_fake_values(&mut db_connection).unwrap();
         db_connection
     }
 
@@ -255,7 +211,7 @@ mod tests {
         let (producers, count) = get_producers(&db_connection, filter).unwrap();
 
         // expected number of results.
-        assert_eq!(count, 5);
+        assert_eq!(count, 7);
         // expected exact match appears first.
         assert!(producers[0].producer_label.eq("FAKE_PRODUCER"))
     }

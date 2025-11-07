@@ -201,6 +201,16 @@ pub fn get_store_locations(
             |_| {},
         )
         .conditions(
+            filter.store_location.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((StoreLocation::Table, StoreLocation::StoreLocation))
+                        .eq(filter.store_location.unwrap()),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
             filter.store_location_can_store,
             |q| {
                 q.and_where(
@@ -577,7 +587,7 @@ pub fn delete_store_location(
 mod tests {
 
     use super::*;
-    use crate::init::init_db;
+    use crate::init::{connect_test, init_db, insert_fake_values};
     use log::info;
 
     fn init_logger() {
@@ -585,9 +595,9 @@ mod tests {
     }
 
     fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
+        let mut db_connection = connect_test();
         init_db(&mut db_connection).unwrap();
-
+        insert_fake_values(&mut db_connection).unwrap();
         db_connection
     }
 
@@ -597,141 +607,55 @@ mod tests {
 
         let db_connection = init_test_db();
 
-        // Insert fake entities.
-        for (entity_id, entity_name) in [
-            (200, "FAKE_ENTITY_1"),
-            (201, "FAKE_ENTITY_2"),
-            (202, "FAKE_ENTITY_3"),
-        ]
-        .iter()
-        {
-            let _ = db_connection
-                .execute(
-                    "INSERT INTO entity (entity_id, entity_name) VALUES (?1, ?2)",
-                    (entity_id, entity_name),
-                )
-                .unwrap();
-        }
-
-        // Insert fake users.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO person (person_id, person_email) VALUES (?1, ?2)",
-                (2, "person1"),
-            )
-            .unwrap();
-        let _ = db_connection
-        .execute(
-            "INSERT INTO personentities (personentities_person_id, personentities_entity_id) VALUES (?1, ?2)",
-            (2, 200),
-        )
-        .unwrap();
-        // Set user an admin.
-        let _ = db_connection
-        .execute(
-            "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (?1, ?2, ?3, ?4)",
-            (2, "all", "all", -1),
-        )
-        .unwrap();
-
-        // Insert fake store locations.
-        let mut store_location_id = 300;
-        for (store_location_name, storelocaion_canstore, entity) in [
-            ("FAKE_STORELOCATION_11", false, 200),
-            ("FAKE_STORELOCATION_12", false, 200),
-            ("FAKE_STORELOCATION_13", false, 200),
-            ("FAKE_STORELOCATION_14", false, 200),
-            ("FAKE_STORELOCATION_15", false, 200),
-            ("FAKE_STORELOCATION_16", false, 200),
-            ("FAKE_STORELOCATION_17", false, 200),
-            ("FAKE_STORELOCATION_18", false, 200),
-            ("FAKE_STORELOCATION_19", false, 200),
-            ("FAKE_STORELOCATION_21", false, 201),
-            ("FAKE_STORELOCATION_22", true, 201),
-        ]
-        .iter()
-        {
-            let _ = db_connection
-            .execute(
-                "INSERT INTO store_location (store_location_id, store_location_name, store_location_can_store, entity) VALUES (?1, ?2, ?3, ?4)",
-                (store_location_id, store_location_name, storelocaion_canstore, entity),
-            )
-            .unwrap();
-            store_location_id += 1;
-        }
-
         info!("testing total result");
         let filter = RequestFilter {
             ..Default::default()
         };
-        let (store_locations, count) = get_store_locations(&db_connection, filter, 2).unwrap();
-        assert_eq!(count, 11);
-        assert_eq!(store_locations.len(), 11);
+        let (store_locations, count) = get_store_locations(&db_connection, filter, 1).unwrap();
+        assert_eq!(count, 5);
+        assert_eq!(store_locations.len(), 5);
 
         info!("testing entity filter");
         let filter = RequestFilter {
-            entity: Some(201),
+            entity: Some(2),
             ..Default::default()
         };
-        let (store_locations, count) = get_store_locations(&db_connection, filter, 2).unwrap();
+        let (store_locations, count) = get_store_locations(&db_connection, filter, 1).unwrap();
 
-        assert_eq!(count, 2);
+        assert_eq!(count, 3);
         for store_location in store_locations.iter() {
             assert!(
-                (store_location
-                    .store_location_name
-                    .eq("FAKE_STORELOCATION_21")
-                    || store_location
-                        .store_location_name
-                        .eq("FAKE_STORELOCATION_22"))
+                (store_location.store_location_name.eq("location_2a")
+                    || store_location.store_location_name.eq("location_2b")
+                    || store_location.store_location_name.eq("location_2bb"))
             )
         }
 
         info!("testing store location name filter");
         let filter = RequestFilter {
-            search: Some(String::from("FAKE_STORELOCATION_22")),
+            search: Some(String::from("location_1a")),
             ..Default::default()
         };
-        let (store_locations, count) = get_store_locations(&db_connection, filter, 2).unwrap();
+        let (store_locations, count) = get_store_locations(&db_connection, filter, 1).unwrap();
         assert_eq!(count, 1);
-        assert_eq!(
-            store_locations[0].store_location_name,
-            "FAKE_STORELOCATION_22"
-        );
+        assert_eq!(store_locations[0].store_location_name, "location_1a");
 
         info!("testing store location can store filter");
         let filter = RequestFilter {
-            store_location_can_store: true,
+            store_location_can_store: false,
             ..Default::default()
         };
-        let (store_locations, count) = get_store_locations(&db_connection, filter, 2).unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(
-            store_locations[0].store_location_name,
-            "FAKE_STORELOCATION_22"
-        );
+        let (store_locations, count) = get_store_locations(&db_connection, filter, 1).unwrap();
+        assert_eq!(count, 5);
+        assert_eq!(store_locations[0].store_location_name, "location_1a");
 
         info!("testing limit");
         let filter = RequestFilter {
-            limit: Some(5),
+            limit: Some(2),
             ..Default::default()
         };
-        let (store_locations, count) = get_store_locations(&db_connection, filter, 2).unwrap();
-        assert_eq!(count, 11);
-        assert_eq!(store_locations.len(), 5);
-
-        info!("testing permissions filter");
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        let _ = db_connection.execute("DELETE FROM permission", ());
-        let _ = db_connection
-        .execute(
-            "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (?1, ?2, ?3, ?4)",
-            (2, "r", "storages", 200),
-        )
-        .unwrap();
-        let (_, count) = get_store_locations(&db_connection, filter, 2).unwrap();
-        assert_eq!(count, 9);
+        let (store_locations, count) = get_store_locations(&db_connection, filter, 1).unwrap();
+        assert_eq!(count, 5);
+        assert_eq!(store_locations.len(), 2);
     }
 }

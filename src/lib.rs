@@ -1,5 +1,6 @@
 pub mod bookmark;
 pub mod borrowing;
+pub mod casbin;
 pub mod casnumber;
 pub mod category;
 pub mod cenumber;

@@ -175,7 +175,7 @@ pub fn get_suppliers(
 mod tests {
 
     use super::*;
-    use crate::init::init_db;
+    use crate::init::{connect_test, init_db, insert_fake_values};
     use log::info;
 
     fn init_logger() {
@@ -183,53 +183,9 @@ mod tests {
     }
 
     fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
+        let mut db_connection = connect_test();
         init_db(&mut db_connection).unwrap();
-
-        // insert fake suppliers.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("FAKE_SUPPLIER")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("FAKE_SUPPLIER ONE")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("FAKE_SUPPLIER TWO")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("FAKE_SUPPLIER THREE")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("AAA FAKE_SUPPLIER")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("YET ANOTHER SUPPLIER")],
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO supplier (supplier_label) VALUES (?1)",
-                [String::from("12345")],
-            )
-            .unwrap();
-
+        insert_fake_values(&mut db_connection).unwrap();
         db_connection
     }
 
@@ -256,7 +212,7 @@ mod tests {
         let (suppliers, count) = get_suppliers(&db_connection, filter).unwrap();
 
         // expected number of results.
-        assert_eq!(count, 5);
+        assert_eq!(count, 7);
         // expected exact match appears first.
         assert!(suppliers[0].supplier_label.eq("FAKE_SUPPLIER"))
     }

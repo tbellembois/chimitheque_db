@@ -222,7 +222,7 @@ pub fn create_update_producer_ref(
 mod tests {
 
     use super::*;
-    use crate::init::init_db;
+    use crate::init::{connect_test, init_db, insert_fake_values};
     use log::info;
 
     fn init_logger() {
@@ -230,70 +230,9 @@ mod tests {
     }
 
     fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
+        let mut db_connection = connect_test();
         init_db(&mut db_connection).unwrap();
-
-        // insert fake producers.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer (producer_id, producer_label) VALUES (?1, ?2)",
-                (300, String::from("FAKE_PRODUCER_1")),
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer (producer_id, producer_label) VALUES (?1, ?2)",
-                (301, String::from("FAKE_PRODUCER_2")),
-            )
-            .unwrap();
-
-        // insert fake producer_refs.
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
-                (String::from("1_ref1"), 300),
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
-                (String::from("1_ref2"), 301),
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
-                (String::from("1234"), 300),
-            )
-            .unwrap();
-        let _ = db_connection.execute(
-            "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
-            (String::from("12"), 300),
-        );
-
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
-                (String::from("2_ref1"), 301),
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
-                (String::from("2_ref2"), 301),
-            )
-            .unwrap();
-        let _ = db_connection
-            .execute(
-                "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
-                (String::from("1234"), 301),
-            )
-            .unwrap();
-        let _ = db_connection.execute(
-            "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?1, ?2)",
-            (String::from("22"), 301),
-        );
-
+        insert_fake_values(&mut db_connection).unwrap();
         db_connection
     }
 

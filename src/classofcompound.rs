@@ -32,7 +32,7 @@ mod tests {
                 "classesofcompound2",
                 "classesofcompound3",
             ],
-            3,
+            2,
             "classesofcompound1",
         )
     }

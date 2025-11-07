@@ -2727,7 +2727,7 @@ pub fn delete_product(
 mod tests {
 
     use super::*;
-    use crate::init::{init_db, insert_fake_values};
+    use crate::init::{connect_test, init_db, insert_fake_values};
     use log::info;
 
     fn init_logger() {
@@ -2735,9 +2735,9 @@ mod tests {
     }
 
     fn init_test_db() -> Connection {
-        let mut db_connection = Connection::open_in_memory().unwrap();
+        let mut db_connection = connect_test();
         init_db(&mut db_connection).unwrap();
-
+        insert_fake_values(&mut db_connection).unwrap();
         db_connection
     }
 
@@ -2745,8 +2745,7 @@ mod tests {
     fn test_get_products() {
         init_logger();
 
-        let mut db_connection = init_test_db();
-        insert_fake_values(&mut db_connection).unwrap();
+        let db_connection = init_test_db();
 
         // info!("testing total result");
         // let filter = RequestFilter {

@@ -8,13 +8,22 @@ use crate::define::{
     SUPPLIERS, SYMBOLS, TAGS,
 };
 
-// Temporary function to connect and initialize the database.
-// Called from Go code.
-// Remove me after Rust code is ready.
-pub fn connect_and_init_db(db_path: &str) -> Result<(), rusqlite::Error> {
-    let mut db_connection = connect(db_path)?;
-    init_db(&mut db_connection)?;
-    Ok(())
+pub fn connect_test() -> Connection {
+    let sql_extension_dir = match env::var("SQLITE_EXTENSION_DIR") {
+        Ok(val) => val,
+        Err(_) => panic!("Missing SQLITE_EXTENSION_DIR environment variable."),
+    };
+
+    let sql_extension_regex = Path::new(sql_extension_dir.as_str()).join("regexp.so");
+
+    let db_connection = Connection::open_in_memory().unwrap();
+    unsafe {
+        db_connection
+            .load_extension(sql_extension_regex, None)
+            .expect("Unable to load regexp extension.")
+    };
+
+    db_connection
 }
 
 pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
@@ -188,6 +197,10 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (22,'X',1.0,'concentration',NULL)",
         (),
     )?;
+    tx.execute(
+        "INSERT INTO unit (unit_label, unit_multiplier, unit_type) VALUES ('g/mol', 1, 'molecular_weight');",
+        (),
+    )?;
 
     info!("- adding chimitheque admin");
     tx.execute(
@@ -196,11 +209,6 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
     )?;
     tx.execute(
         "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'all', 'all', -1)",
-        (),
-    )?;
-
-    tx.execute(
-        "INSERT INTO unit (unit_label, unit_multiplier, unit_type) VALUES ('g/mol', 1, 'molecularweight');",
         (),
     )?;
 
