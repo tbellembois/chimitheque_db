@@ -7,6 +7,7 @@ use chimitheque_types::{
     entity::Entity, person::Person, requestfilter::RequestFilter, storage::Storage,
     storelocation::StoreLocation,
 };
+use log::debug;
 use rusqlite::Connection;
 
 use crate::{
@@ -185,11 +186,24 @@ pub fn match_person_is_in_entity(
     person_id: u64,
     entity_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!("match_person_is_in_entity: {} {}", person_id, entity_id);
+
+    // Get person.
+    let person = get_person_by_id(db_connection, person_id)?;
+
+    if person.is_admin {
+        return Ok(true);
+    }
+
     // Get the person entities ids.
     let person_entities_ids = get_person_entities_ids(db_connection, person_id)?;
 
     // Check if the entity_id is in the person entities ids.
-    Ok(person_entities_ids.contains(&entity_id))
+    let result = person_entities_ids.contains(&entity_id);
+
+    debug!("result: {}", result);
+
+    Ok(result)
 }
 
 /// Checks if two persons are associated with the same entity.
@@ -208,6 +222,18 @@ pub fn match_person_is_in_person_entity(
     person_id: u64,
     other_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!(
+        "match_person_is_in_person_entity: {} {}",
+        person_id, other_person_id
+    );
+
+    // Get person.
+    let person = get_person_by_id(db_connection, person_id)?;
+
+    if person.is_admin {
+        return Ok(true);
+    }
+
     // Get the person and other person the entities ids.
     let person_entities_ids = get_person_entities_ids(db_connection, person_id)?;
     let other_person_entities_ids = get_person_entities_ids(db_connection, other_person_id)?;
@@ -217,10 +243,11 @@ pub fn match_person_is_in_person_entity(
     let set_other_person_entities_ids: HashSet<u64> =
         other_person_entities_ids.into_iter().collect();
 
-    Ok(has_common_elements(
-        &set_person_entities_ids,
-        &set_other_person_entities_ids,
-    ))
+    let result = has_common_elements(&set_person_entities_ids, &set_other_person_entities_ids);
+
+    debug!("result: {}", result);
+
+    Ok(result)
 }
 
 /// Checks if a person is associated with the entity of the store location.
@@ -239,6 +266,18 @@ pub fn match_person_is_in_store_location_entity(
     person_id: u64,
     store_location_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!(
+        "match_person_is_in_store_location_entity: {} {}",
+        person_id, store_location_id
+    );
+
+    // Get person.
+    let person = get_person_by_id(db_connection, person_id)?;
+
+    if person.is_admin {
+        return Ok(true);
+    }
+
     // Get the person entities ids.
     let person_entities_ids = get_person_entities_ids(db_connection, person_id)?;
 
@@ -256,7 +295,11 @@ pub fn match_person_is_in_store_location_entity(
     };
 
     // Check if the entity_id is in the person entities ids.
-    Ok(person_entities_ids.contains(&entity_id))
+    let result = person_entities_ids.contains(&entity_id);
+
+    debug!("result: {}", result);
+
+    Ok(result)
 }
 
 pub fn match_person_is_in_storage_entity(
@@ -264,6 +307,18 @@ pub fn match_person_is_in_storage_entity(
     person_id: u64,
     storage_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!(
+        "match_person_is_in_storage_entity: {} {}",
+        person_id, storage_id
+    );
+
+    // Get person.
+    let person = get_person_by_id(db_connection, person_id)?;
+
+    if person.is_admin {
+        return Ok(true);
+    }
+
     // Get the person entities ids.
     let person_entities_ids = get_person_entities_ids(db_connection, person_id)?;
 
@@ -284,13 +339,19 @@ pub fn match_person_is_in_storage_entity(
     };
 
     // Check if the storage_id is in the person entities ids.
-    Ok(person_entities_ids.contains(&entity_id))
+    let result = person_entities_ids.contains(&entity_id);
+
+    debug!("result: {}", result);
+
+    Ok(result)
 }
 
 pub fn match_product_has_storages(
     db_connection: &Connection,
     product_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!("match_product_has_storages: {}", product_id);
+
     // Get the product from the database.
     let (products, nb_results) = get_products(
         db_connection,
@@ -308,13 +369,19 @@ pub fn match_product_has_storages(
     let product = products.first().ok_or(CasbinError::MissingProduct)?;
     let nb_storages = product.product_tsc.unwrap_or_default();
 
-    Ok(nb_storages > 0)
+    let result = nb_storages > 0;
+
+    debug!("result: {}", result);
+
+    Ok(result)
 }
 
 pub fn match_store_location_has_children(
     db_connection: &Connection,
     store_location_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!("match_store_location_has_children: {}", store_location_id);
+
     // Get the number of store location children.
     let (_, nb_results) = get_store_locations(
         db_connection,
@@ -325,13 +392,19 @@ pub fn match_store_location_has_children(
         1,
     )?;
 
-    Ok(nb_results > 0)
+    let result = nb_results > 0;
+
+    debug!("result: {}", result);
+
+    Ok(result)
 }
 
 pub fn match_store_location_has_storages(
     db_connection: &Connection,
     store_location_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!("match_store_location_has_storages: {}", store_location_id);
+
     // Get the store location from the database.
     let store_location = get_store_location_by_id(db_connection, store_location_id)?;
 
@@ -339,53 +412,140 @@ pub fn match_store_location_has_storages(
         .store_location_nb_storages
         .unwrap_or_default();
 
-    Ok(nb_storages > 0)
+    let result = nb_storages > 0;
+
+    debug!("result: {}", result);
+
+    Ok(result)
 }
 
 pub fn match_person_is_admin(
     db_connection: &Connection,
     person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!("match_person_is_admin: {}", person_id);
+
     // Get the person from the database.
     let person = get_person_by_id(db_connection, person_id)?;
 
-    Ok(person.is_admin)
+    let result = person.is_admin;
+
+    debug!("result: {}", result);
+
+    Ok(result)
 }
 
 pub fn match_person_is_manager(
     db_connection: &Connection,
     person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!("match_person_is_manager: {}", person_id);
+
     // Get the person from the database.
     let person = get_person_by_id(db_connection, person_id)?;
 
     let managed_entities = person.managed_entities.unwrap_or_default();
 
-    Ok(!managed_entities.is_empty())
+    let result = !managed_entities.is_empty();
+
+    debug!("result: {}", result);
+
+    Ok(result)
 }
 
 pub fn match_entity_has_members(
     db_connection: &Connection,
     entity_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!("match_entity_has_members: {}", entity_id);
+
     // Get the entity from the database.
     let entity = get_entity_by_id(db_connection, entity_id)?;
 
     let nb_members = entity.entity_nb_people.unwrap_or_default();
 
-    Ok(nb_members > 0)
+    let result = nb_members > 0;
+
+    debug!("result: {}", result);
+
+    Ok(result)
 }
 
 pub fn match_entity_has_store_locations(
     db_connection: &Connection,
     entity_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!("match_entity_has_store_locations: {}", entity_id);
+
     // Get the entity from the database.
     let entity = get_entity_by_id(db_connection, entity_id)?;
 
     let nb_store_locations = entity.entity_nb_store_locations.unwrap_or_default();
 
-    Ok(nb_store_locations > 0)
+    let result = nb_store_locations > 0;
+
+    debug!("result: {}", result);
+
+    Ok(result)
+}
+
+pub fn match_storage_is_in_entity(
+    db_connection: &Connection,
+    storage_id: u64,
+    entity_id: u64,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!("match_storage_is_in_entity: {} {}", storage_id, entity_id);
+
+    // Get the storage from the database.
+    let storage = get_storage_by_id(db_connection, storage_id)?;
+
+    if let Some(store_location_id) = storage.store_location.store_location_id {
+        let store_location = get_store_location_by_id(db_connection, store_location_id)?;
+
+        if let Some(entity) = store_location.entity {
+            if let Some(this_entity_id) = entity.entity_id {
+                let result = this_entity_id == entity_id;
+
+                debug!("result: {}", result);
+
+                Ok(result)
+            } else {
+                Err(Box::new(CasbinError::MissingEntityId))
+            }
+        } else {
+            Err(Box::new(CasbinError::MissingEntity))
+        }
+    } else {
+        Err(Box::new(CasbinError::MissingStoreLocationId))
+    }
+}
+
+pub fn match_store_location_is_in_entity(
+    db_connection: &Connection,
+    store_location_id: u64,
+    entity_id: u64,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    debug!(
+        "match_store_location_is_in_entity: {} {}",
+        store_location_id, entity_id
+    );
+
+    // Get store location from the database.
+    let store_location = get_store_location_by_id(db_connection, store_location_id)?;
+
+    if let Some(entity) = store_location.entity {
+        if let Some(this_entity_id) = entity.entity_id {
+            let result = this_entity_id == entity_id;
+
+            debug!("result: {}", result);
+
+            Ok(result)
+        } else {
+            Err(Box::new(CasbinError::MissingEntityId))
+        }
+    } else {
+        Err(Box::new(CasbinError::MissingEntity))
+    }
 }
 
 #[cfg(test)]
@@ -393,7 +553,6 @@ mod tests {
 
     use super::*;
     use crate::init::{connect_test, init_db, insert_fake_values};
-    use log::info;
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -428,7 +587,28 @@ mod tests {
         assert!(match_product_has_storages(&db_connection, 2).unwrap());
         assert!(!match_product_has_storages(&db_connection, 5).unwrap());
 
-        assert!(!match_store_location_has_children(&db_connection, 1).unwrap());
         assert!(match_store_location_has_children(&db_connection, 4).unwrap());
+        assert!(!match_store_location_has_children(&db_connection, 1).unwrap());
+
+        assert!(match_store_location_has_storages(&db_connection, 4).unwrap());
+        assert!(!match_store_location_has_storages(&db_connection, 5).unwrap());
+
+        assert!(match_person_is_admin(&db_connection, 1).unwrap());
+        assert!(!match_person_is_admin(&db_connection, 2).unwrap());
+
+        assert!(match_person_is_manager(&db_connection, 2).unwrap());
+        assert!(!match_person_is_manager(&db_connection, 4).unwrap());
+
+        assert!(match_entity_has_members(&db_connection, 2).unwrap());
+        assert!(!match_entity_has_members(&db_connection, 3).unwrap());
+
+        assert!(match_entity_has_store_locations(&db_connection, 2).unwrap());
+        assert!(!match_entity_has_store_locations(&db_connection, 3).unwrap());
+
+        assert!(match_store_location_is_in_entity(&db_connection, 1, 1).unwrap());
+        assert!(!match_store_location_is_in_entity(&db_connection, 1, 2).unwrap());
+
+        assert!(match_storage_is_in_entity(&db_connection, 1, 1).unwrap());
+        assert!(!match_storage_is_in_entity(&db_connection, 1, 3).unwrap());
     }
 }

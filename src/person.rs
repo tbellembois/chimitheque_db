@@ -355,6 +355,9 @@ pub fn get_people(
                             Expr::col((Permission::Table, Permission::PermissionName)).eq("all"),
                         )
                         .and_where(
+                            Expr::col((Permission::Table, Permission::PermissionEntity)).eq(-1),
+                        )
+                        .and_where(
                             Expr::col((Permission::Table, Permission::Person))
                                 .equals((Person::Table, Person::PersonId)),
                         )
@@ -480,6 +483,7 @@ fn create_update_person_permissions(
 
         let sql_values: RusqliteValues = RusqliteValues(vec![]);
         let sql_query = Query::insert()
+            .replace()
             .into_table(Permission::Table)
             .columns(columns)
             .values(values)?
@@ -712,30 +716,9 @@ pub fn get_admins(
     debug!("get_admins");
     // Create select query.
     let (select_sql, select_values) = Query::select()
+        .from(Person::Table)
         .columns([Person::PersonId, Person::PersonEmail])
-        .expr_as(
-            Expr::case(
-                Expr::exists(
-                    Query::select()
-                        .expr(Expr::col((Permission::Table, Permission::PermissionId)))
-                        .from(Permission::Table)
-                        .and_where(
-                            Expr::col((Permission::Table, Permission::PermissionItem)).eq("all"),
-                        )
-                        .and_where(
-                            Expr::col((Permission::Table, Permission::PermissionName)).eq("all"),
-                        )
-                        .and_where(
-                            Expr::col((Permission::Table, Permission::Person))
-                                .equals((Person::Table, Person::PersonId)),
-                        )
-                        .take(),
-                ),
-                Expr::val(true),
-            )
-            .finally(Expr::val(false)),
-            Alias::new("is_admin"),
-        )
+        .expr_as(true, Alias::new("is_admin"))
         .join_as(
             JoinType::InnerJoin,
             Permission::Table,
@@ -744,6 +727,10 @@ pub fn get_admins(
                 .equals((Person::Table, Person::PersonId))
                 .and(Expr::col((Alias::new("perm"), Alias::new("permission_item"))).eq("all"))
                 .and(Expr::col((Alias::new("perm"), Alias::new("permission_name"))).eq("all"))
+                .and(
+                    Expr::col((Alias::new("perm"), Alias::new("person")))
+                        .equals((Person::Table, Person::PersonId)),
+                )
                 .and(Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1)),
         )
         .order_by(Person::PersonEmail, Order::Asc)
@@ -862,7 +849,7 @@ mod tests {
     fn test_get_people() {
         init_logger();
 
-        let db_connection = init_test_db();
+        let mut db_connection = init_test_db();
 
         info!("testing total result");
         let filter = RequestFilter {
@@ -872,6 +859,11 @@ mod tests {
         info!("people: {:?}", people);
         info!("count: {:?}", count);
 
-        assert_eq!(count, 5)
+        assert_eq!(count, 5);
+
+        info!("testing get admins");
+        let maybe_admins = get_admins(&mut db_connection);
+        assert!(maybe_admins.is_ok());
+        info!("maybe_admins: {:?}", maybe_admins);
     }
 }
