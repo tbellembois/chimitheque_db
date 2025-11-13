@@ -346,7 +346,7 @@ pub fn get_people(
             Expr::case(
                 Expr::exists(
                     Query::select()
-                        .expr(Expr::col((Permission::Table, Permission::PermissionId)))
+                        .expr(Expr::col((Permission::Table, Permission::PermissionItem)))
                         .from(Permission::Table)
                         .and_where(
                             Expr::col((Permission::Table, Permission::PermissionItem)).eq("all"),

@@ -12,7 +12,6 @@ use std::str::FromStr;
 #[derive(Iden)]
 pub enum Permission {
     Table,
-    PermissionId,
     Person,
     PermissionEntity,
     PermissionName,
