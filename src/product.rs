@@ -50,6 +50,7 @@ use chimitheque_types::{
     tag::Tag as TagStruct, unit::Unit as UnitStruct, unittype::UnitType,
 };
 use chimitheque_utils::string::Transform;
+use csv::WriterBuilder;
 use log::debug;
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
@@ -58,7 +59,10 @@ use sea_query::{
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
-use std::str::FromStr;
+use std::{
+    io::{self, BufWriter, Read, Write},
+    str::FromStr,
+};
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -988,6 +992,66 @@ fn populate_tags(
     }
 
     Ok(())
+}
+
+pub fn export_products(
+    db_connection: &Connection,
+    filter: RequestFilter,
+    person_id: u64,
+) -> Result<String, Box<dyn std::error::Error>> {
+    debug!("filter:{:?}", filter);
+    debug!("person_id:{:?}", person_id);
+
+    let (products, _) = get_products(db_connection, filter, person_id)?;
+
+    let vec: Vec<u8> = vec![];
+    let buffer = BufWriter::new(vec);
+
+    let mut wtr = WriterBuilder::new().has_headers(false).from_writer(buffer);
+
+    wtr.write_record([
+        "NAME",
+        "PRODUCT_SPECIFICITY",
+        "PRODUCT_TYPE",
+        "CAS_NUMBER",
+        "CE_NUMBER",
+        "EMPIRICAL_FORMULA",
+        "SYMBOLS",
+    ])?;
+
+    for product in products {
+        let mut product_symbols: String = String::new();
+        if let Some(symbols) = product.symbols {
+            for symbol in symbols {
+                product_symbols += format!("{} ", symbol.symbol_label).as_str();
+            }
+        }
+
+        wtr.serialize((
+            product.name.name_label,
+            product.product_specificity,
+            product.product_type,
+            product.cas_number.unwrap_or_default().cas_number_label,
+            product.ce_number.unwrap_or_default().ce_number_label,
+            product
+                .empirical_formula
+                .unwrap_or_default()
+                .empirical_formula_label,
+            product_symbols,
+        ))?;
+    }
+    wtr.flush()?;
+
+    let inner_buffer_content = match wtr.into_inner() {
+        Ok(inner_buffer) => inner_buffer,
+        Err(err) => return Err(err.into()),
+    };
+
+    let csv = String::from_utf8(inner_buffer_content.into_inner()?).unwrap();
+
+    debug!("csv:{:?}", csv);
+
+    Ok(csv)
 }
 
 pub fn get_products(
@@ -2758,17 +2822,24 @@ mod tests {
         //
         // info!("count: {}", count);
         // assert!(count > 0);
+    }
 
-        info!("testing storage and permission join");
-        let filter = RequestFilter {
-            storage_to_destroy: true,
-            ..Default::default()
-        };
-        let products: Vec<chimitheque_types::product::Product>;
-        let count: usize;
-        (products, count) = get_products(&db_connection, filter, 143).unwrap();
+    #[test]
+    fn test_export_products() {
+        init_logger();
 
-        info!("count: {}", count);
-        info!("products: {:?}", products);
+        let db_connection = init_test_db();
+
+        info!("testing products export");
+
+        let export = export_products(
+            &db_connection,
+            RequestFilter {
+                ..Default::default()
+            },
+            1,
+        );
+
+        info!("export: {:?}", export);
     }
 }
