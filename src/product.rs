@@ -59,10 +59,7 @@ use sea_query::{
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
-use std::{
-    io::{self, BufWriter, Read, Write},
-    str::FromStr,
-};
+use std::{io::BufWriter, str::FromStr};
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -2811,17 +2808,16 @@ mod tests {
 
         let db_connection = init_test_db();
 
-        // info!("testing total result");
-        // let filter = RequestFilter {
-        //     order_by: Some("name".to_string()),
-        //     ..Default::default()
-        // };
-        // let products: Vec<chimitheque_types::product::Product>;
-        // let count: usize;
-        // (products, count) = get_products(&db_connection, filter, 143).unwrap();
-        //
-        // info!("count: {}", count);
-        // assert!(count > 0);
+        info!("testing total result");
+        let filter = RequestFilter {
+            order_by: Some("name".to_string()),
+            ..Default::default()
+        };
+        let count: usize;
+        (_, count) = get_products(&db_connection, filter, 143).unwrap();
+
+        info!("count: {}", count);
+        assert!(count > 0);
     }
 
     #[test]

@@ -510,7 +510,7 @@ fn create_update_person_membership(
 
     _ = db_transaction.execute(delete_sql.as_str(), &*delete_values.as_params())?;
 
-    // Inserting new membership.
+    // Inserting new membership and the permission to read the entity..
     if let Some(entities) = &person.entities {
         for entity in entities {
             let mut values: Vec<SimpleExpr> = vec![];
@@ -525,6 +525,34 @@ fn create_update_person_membership(
             let sql_values: RusqliteValues = RusqliteValues(vec![]);
             let sql_query = Query::insert()
                 .into_table(Personentities::Table)
+                .columns(columns)
+                .values(values)?
+                .to_string(SqliteQueryBuilder);
+
+            debug!("sql_query: {}", sql_query.clone().as_str());
+            debug!("sql_values: {:?}", sql_values);
+
+            _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+
+            // --
+
+            let mut values: Vec<SimpleExpr> = vec![];
+            let columns = [
+                Permission::Person,
+                Permission::PermissionName,
+                Permission::PermissionItem,
+                Permission::PermissionEntity,
+            ];
+
+            values.push(person.person_id.into());
+            values.push(PermissionName::Read.to_string().into());
+            values.push(PermissionItem::Entities.to_string().into());
+            values.push(entity.entity_id.into());
+
+            let sql_values: RusqliteValues = RusqliteValues(vec![]);
+            let sql_query = Query::insert()
+                .replace()
+                .into_table(Permission::Table)
                 .columns(columns)
                 .values(values)?
                 .to_string(SqliteQueryBuilder);
@@ -772,7 +800,7 @@ pub fn set_person_admin(
     let values = vec![
         SimpleExpr::Value("all".into()),
         SimpleExpr::Value("all".into()),
-        SimpleExpr::Value((-1 as i64).into()),
+        SimpleExpr::Value((-1_i64).into()),
         SimpleExpr::Value(person_id.into()),
     ];
 

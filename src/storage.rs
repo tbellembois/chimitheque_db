@@ -1,5 +1,6 @@
 use std::{
     fmt::{Display, Formatter},
+    io::BufWriter,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -11,6 +12,7 @@ use chimitheque_types::{
     unit::Unit as UnitStruct,
 };
 use chrono::{DateTime, Utc};
+use csv::WriterBuilder;
 use log::debug;
 use qrcode_png::{Color, QrCode, QrCodeEcc};
 use regex::Regex;
@@ -278,6 +280,46 @@ fn populate_history_count(
     }
 
     Ok(())
+}
+
+pub fn export_storages(
+    db_connection: &Connection,
+    filter: RequestFilter,
+    person_id: u64,
+) -> Result<String, Box<dyn std::error::Error>> {
+    debug!("filter:{:?}", filter);
+    debug!("person_id:{:?}", person_id);
+
+    let (storages, _) = get_storages(db_connection, filter, person_id)?;
+
+    let vec: Vec<u8> = vec![];
+    let buffer = BufWriter::new(vec);
+
+    let mut wtr = WriterBuilder::new().has_headers(false).from_writer(buffer);
+
+    wtr.write_record(["BARECODE", "QUANTITY", "UNIT", "SUPPLIER", "STORE_LOCATION"])?;
+
+    for storage in storages {
+        wtr.serialize((
+            storage.storage_barecode,
+            storage.storage_quantity,
+            storage.unit_quantity.unwrap_or_default().unit_label,
+            storage.supplier.unwrap_or_default().supplier_label,
+            storage.store_location.store_location_name,
+        ))?;
+    }
+    wtr.flush()?;
+
+    let inner_buffer_content = match wtr.into_inner() {
+        Ok(inner_buffer) => inner_buffer,
+        Err(err) => return Err(err.into()),
+    };
+
+    let csv = String::from_utf8(inner_buffer_content.into_inner()?).unwrap();
+
+    debug!("csv:{:?}", csv);
+
+    Ok(csv)
 }
 
 pub fn get_storages(
@@ -1213,6 +1255,8 @@ fn compute_storage_barecode_parts(
         )
         .optional()?
     {
+        // Some(Ok(minor)) => minor + 1,
+        // _ => 1,
         Some(minor) => match minor {
             Some(minor) => minor + 1,
             None => 1,
