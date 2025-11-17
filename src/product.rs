@@ -2814,7 +2814,7 @@ mod tests {
             ..Default::default()
         };
         let count: usize;
-        (_, count) = get_products(&db_connection, filter, 143).unwrap();
+        (_, count) = get_products(&db_connection, filter, 1).unwrap();
 
         info!("count: {}", count);
         assert!(count > 0);
