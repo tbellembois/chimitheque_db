@@ -460,13 +460,5 @@ FROM Y.unit;
 
 INSERT INTO unit (unit_label, unit_multiplier, unit_type) VALUES ('g/mol', 1, 'molecular_weight');
 
-INSERT INTO welcome_announce (
-	welcome_announce_id,
-	welcome_announce_text
-)
-SELECT welcomeannounce_id,
-	welcomeannounce_text
-FROM Y.welcomeannounce;
-
 PRAGMA user_version=10;
 PRAGMA foreign_keys=on;

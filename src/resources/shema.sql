@@ -287,13 +287,6 @@ CREATE TABLE "storage" (
 	FOREIGN KEY("unit_quantity") REFERENCES "unit"("unit_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "welcome_announce";
-CREATE TABLE "welcome_announce" (
-	"welcome_announce_id"	INTEGER,
-	"welcome_announce_text"	TEXT,
-	PRIMARY KEY("welcome_announce_id")
-) STRICT;
-
 DROP TABLE IF EXISTS "productclassesofcompounds";
 CREATE TABLE "productclassesofcompounds" (
 	"productclassesofcompounds_product_id"	INTEGER NOT NULL,
@@ -375,44 +368,95 @@ CREATE TABLE "personentities" (
 	FOREIGN KEY("personentities_person_id") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP INDEX IF EXISTS "idx_entitypeople";
-CREATE UNIQUE INDEX "idx_entitypeople" ON "entitypeople" (
-	"entitypeople_entity_id",
-	"entitypeople_person_id"
+CREATE INDEX "idx_bookmark" ON "bookmark" (
+	"person","product"
 );
-DROP INDEX IF EXISTS "idx_personentities";
-CREATE UNIQUE INDEX "idx_personentities" ON "personentities" (
-	"personentities_person_id",
-	"personentities_entity_id"
+CREATE INDEX "idx_borrowing" ON "borrowing" (
+	"person","storage"
 );
-DROP INDEX IF EXISTS "idx_product_casnumber";
-CREATE UNIQUE INDEX "idx_product_casnumber" ON "product" (
-	"product_id",
+CREATE INDEX "idx_cas_number" ON "cas_number" (
+	"cas_number_label"
+);
+CREATE INDEX "idx_ce_number" ON "ce_number" (
+	"ce_number_label"
+);
+CREATE INDEX "idx_category" ON "category" (
+	"category_label"
+);
+CREATE INDEX "idx_class_of_compound" ON "class_of_compound" (
+	"class_of_compound_label"
+);
+CREATE INDEX "idx_empirical_formula" ON "empirical_formula" (
+	"empirical_formula_label"
+);
+CREATE INDEX "idx_linear_formula" ON "linear_formula" (
+	"linear_formula_label"
+);
+CREATE INDEX "idx_hazard_statement" ON "hazard_statement" (
+	"hazard_statement_reference"
+);
+CREATE INDEX "idx_precautionary_statement" ON "precautionary_statement" (
+	"precautionary_statement_reference"
+);
+CREATE INDEX "idx_physical_state" ON "physical_state" (
+	"physical_state_label"
+);
+CREATE INDEX "idx_signal_word" ON "signal_word" (
+	"signal_word_label"
+);
+CREATE INDEX "idx_symbol" ON "symbol" (
+	"symbol_label"
+);
+CREATE INDEX "idx_tag" ON "tag" (
+	"tag_label"
+);
+CREATE INDEX "idx_producer" ON "producer" (
+	"producer_label"
+);
+CREATE INDEX "idx_producer_ref" ON "producer_ref" (
+	"producer","producer_ref_label"
+);
+CREATE INDEX "idx_supplier" ON "supplier" (
+	"supplier_label"
+);
+CREATE INDEX "idx_supplier_ref" ON "supplier_ref" (
+	"supplier","supplier_ref_label"
+);
+CREATE INDEX "idx_name" ON "name" (
+	"name_label"
+);
+CREATE INDEX "idx_unit" ON "unit" (
+	"unit_label"
+);
+CREATE INDEX "idx_permission" ON "permission" (
+	"person"
+);
+CREATE INDEX "idx_entity" ON "entity" (
+	"entity_name"
+);
+CREATE INDEX "idx_person" ON "person" (
+	"person_email"
+);
+CREATE INDEX "idx_product_cas_number" ON "product" (
 	"cas_number"
 );
-DROP INDEX IF EXISTS "idx_product_cenumber";
-CREATE UNIQUE INDEX "idx_product_cenumber" ON "product" (
-	"product_id",
-	"ce_number"
-);
-DROP INDEX IF EXISTS "idx_product_empiricalformula";
-CREATE UNIQUE INDEX "idx_product_empiricalformula" ON "product" (
-	"product_id",
+CREATE INDEX "idx_product_empirical_formula" ON "product" (
 	"empirical_formula"
 );
-DROP INDEX IF EXISTS "idx_productsymbols";
-CREATE UNIQUE INDEX "idx_productsymbols" ON "productsymbols" (
-	"productsymbols_product_id",
-	"productsymbols_symbol_id"
+CREATE INDEX "idx_product_name" ON "product" (
+	"name"
 );
-DROP INDEX IF EXISTS "idx_productsynonyms";
-CREATE UNIQUE INDEX "idx_productsynonyms" ON "productsynonyms" (
-	"productsynonyms_product_id",
-	"productsynonyms_name_id"
+CREATE INDEX "idx_product_type" ON "product" (
+	"product_type"
 );
-DROP INDEX IF EXISTS "idx_producttags";
-CREATE UNIQUE INDEX "idx_producttags" ON "producttags" (
-	"producttags_product_id",
-	"producttags_tag_id"
+CREATE INDEX "idx_store_location_name" ON "store_location" (
+	"store_location_name"
 );
+CREATE INDEX "idx_store_location_entity" ON "store_location" (
+	"entity"
+);
+CREATE INDEX "idx_storage" ON "storage" (
+	"product"
+);
+
 COMMIT;
