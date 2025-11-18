@@ -1,12 +1,10 @@
-use log::info;
-use rusqlite::{Batch, Connection};
+use log::{debug, info};
+use regex::Regex;
+use rusqlite::{Batch, Connection, Transaction};
 use std::path::Path;
 use std::{env, fs};
 
-use crate::define::{
-    CATEGORIES, CMR_CAS, HAZARD_STATEMENTS, PRECAUTIONARY_STATEMENTS, PRODUCERS, SIGNAL_WORDS,
-    SUPPLIERS, SYMBOLS, TAGS,
-};
+use crate::define::{CATEGORIES, CMR_CAS, PRODUCERS, SIGNAL_WORDS, SUPPLIERS, SYMBOLS, TAGS};
 
 pub fn connect_test() -> Connection {
     let sql_extension_dir = match env::var("SQLITE_EXTENSION_DIR") {
@@ -57,7 +55,7 @@ pub fn insert_fake_values(db_connection: &mut Connection) -> Result<(), rusqlite
     Ok(())
 }
 
-pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
+pub fn init_db(db_connection: &mut Connection) -> Result<(), Box<dyn std::error::Error>> {
     // https://sqlite.org/stricttables.html
     // INTEGER
     // REAL
@@ -117,23 +115,8 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         tx.execute("INSERT INTO symbol (symbol_label) VALUES (?1)", [symbol])?;
     }
 
-    info!("- adding precautionary statements");
-    for precautionary_statement in PRECAUTIONARY_STATEMENTS {
-        let (label, reference) = precautionary_statement;
-        tx.execute(
-            "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2)",
-            [label, reference],
-        )?;
-    }
-
-    info!("- adding hazard statements");
-    for hazard_statement in HAZARD_STATEMENTS {
-        let (label, reference) = hazard_statement;
-        tx.execute(
-            "INSERT INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2)",
-            [label, reference],
-        )?;
-    }
+    info!("- adding GHS statements");
+    update_ghs_statements(&tx)?;
 
     info!("- adding CMR CAS numbers");
     for cmr_cas in CMR_CAS {
@@ -212,7 +195,49 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
         (),
     )?;
 
-    tx.commit()
+    tx.commit()?;
+
+    Ok(())
+}
+
+// https://pubchem.ncbi.nlm.nih.gov/ghs/
+pub fn update_ghs_statements(
+    db_transaction: &Transaction,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let hazard_statement_re =
+        Regex::new(r"(?P<reference>(EU){0,1}H[0-9]+)(\t)(?P<label>[^\t]+)(\t)")?;
+    let precautionary_statement_re = Regex::new(r"(?P<reference>P[0-9+]+)(\t)(?P<label>[^\t]+)")?;
+
+    let file = include_str!("resources/ghscode_11.txt");
+    for line in file.lines() {
+        // debug!("{:?}", line);
+
+        if let Some(captures) = hazard_statement_re.captures(line) {
+            let reference = captures.name("reference").unwrap().as_str();
+            let label = captures.name("label").unwrap().as_str();
+
+            debug!("reference: {reference}");
+            debug!("label: {label}");
+
+            db_transaction.execute(
+            "INSERT OR REPLACE INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2);",
+            (&label, &reference),
+            )?;
+        } else if let Some(captures) = precautionary_statement_re.captures(line) {
+            let reference = captures.name("reference").unwrap().as_str();
+            let label = captures.name("label").unwrap().as_str();
+
+            debug!("reference: {reference}");
+            debug!("label: {label}");
+
+            db_transaction.execute(
+            "INSERT OR REPLACE INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2);",
+            (&label, &reference),
+            )?;
+        };
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

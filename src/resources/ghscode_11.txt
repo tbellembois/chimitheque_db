@@ -1,12 +1,12 @@
-H-Code	Hazard Statement	GHS Hazard Class	GHS Hazard Category	UN Model Regulations class or Division	GHS Pictogram	GHS Signal Word	P-Code
+H-Code	Hazard Statement	GHS Hazard Class	GHS Hazard Category	UN Model Regulations class or Division	GHS Pictogram	GHSSignalWord	P-Code
 H200	(Deleted) Unstable Explosive	Explosives	Unstable Explosive		GHS01	Danger	P201,P202,P281,P372,P373,P380,P401,P501
-H201	(Deleted) Explosive; mass explosion hazard	Explosives	Div 1.1		GHS01	Danger	P210,P230,P240,P250,P280,P370+P380,P372,P373,P401,P501
-H202	(Deleted) Explosive; severe projection hazard	Explosives	Div 1.2		GHS01	Danger	P210,P230,P240,P250,P280,P370+P380,P372,P373,P401,P501
-H203	(Deleted) Explosive; fire, blast or projection hazard	Explosives	Div 1.3		GHS01	Danger	P210,P230,P240,P250,P280,P370+P380,P372,P373,P401,P501
+H201	(Deleted) Explosive; mass explosion hazard	Explosives		Div 1.1	GHS01	Danger	P210,P230,P240,P250,P280,P370+P380,P372,P373,P401,P501
+H202	(Deleted) Explosive; severe projection hazard	Explosives		Div 1.2	GHS01	Danger	P210,P230,P240,P250,P280,P370+P380,P372,P373,P401,P501
+H203	(Deleted) Explosive; fire, blast or projection hazard	Explosives		Div 1.3	GHS01	Danger	P210,P230,P240,P250,P280,P370+P380,P372,P373,P401,P501
 H204	Fire or projection hazard	Explosives	Category 2B	Div 1.4	GHS01	Warning	P203,P210,P230,P234,P236,P240,P250,P280,P370+P372+P380+P373,P401,P503
 H204	Fire or projection hazard	Explosives	Category 2C	Div 1.4	GHS07	Warning	P210,P230,P234,P236,P240,P250,P280,P370+P380+P375,P401,P503
-H205	(Deleted) May mass explode in fire	Explosives	Div 1.5		GHS02	Danger	P210,P230,P240,P250,P280,P370+P380,P372,P373,P401,P501
-	(Deleted) 	Explosives	Div 1.6
+H205	(Deleted) May mass explode in fire	Explosives		Div 1.5	GHS02	Danger	P210,P230,P240,P250,P280,P370+P380,P372,P373,P401,P501
+	(Deleted) 	Explosives		Div 1.6
 H206	Fire, blast or projection hazard; increased risk of explosion if desensitizing agent is reduced	Desensitized explosives	Category 1	Class 3 or Div 4.1	GHS02	Danger	P210,P212,P230,P233,P280,P370+P380+P375,P401,P501
 H207	Fire or projection hazard; increased risk of explosion if desensitizing agent is reduced	Desensitized explosives	Category 2	Class 3 or Div 4.1	GHS02	Danger	P210,P212,P230,P233,P280,P370+P380+P375,P401,P501
 H207	Fire or projection hazard; increased risk of explosion if desensitizing agent is reduced	Desensitized explosives	Category 3	Class 3 or Div 4.1	GHS02	Warning	P210,P212,P230,P233,P280,P370+P380+P375,P401,P501
@@ -37,8 +37,8 @@ H232	May ignite spontaneously if exposed to air	Flammable gases 	1A, Pyrophoric 
 H240	Heating may cause an explosion	Self-reactive substances and mixtures; Organic peroxides	Type A	Div 4.1, 5.2 Type A	GHS01	Danger	P210,P234,P235,P240,P280,P370+P372+P380+P373,P403,P410,P411,P420,P501
 H241	Heating may cause a fire or explosion	Self-reactive substances and mixtures; Organic peroxides	Type B	Div 4.1, 5.2 Type B	GHS01,GHS02	Danger	P210,P234,P235,P240,P280,P370+P380+P375[+P378],P403,P410,P411,P420,P501
 H242	Heating may cause a fire	Self-reactive substances and mixtures; Organic peroxides	Type C, D	Div 4.1, 5.2 Type C, D	GHS02	Danger	P210,P234,P235,P240,P280,P370+P378,P403,P410,P411,P420,P501
-H242	Heating may cause a fire	Self-reactive substances and mixtures; Organic peroxides	Type E, F	Div 4.1, 5.2 Type E, F	GHS02	Warning	P210,P234,P235,P240,P280,P370+P378,P403,P410,P411,P420,P501
 		Self-reactive substances and mixtures; Organic peroxides	Type G
+
 H250	Catches fire spontaneously if exposed to air	Pyrophoric liquids	Category 1	Div 4.2	GHS02	Danger	P210,P222,P231,P233,P280,P302+P334,P370+P378
 H250	Catches fire spontaneously if exposed to air	Pyrophoric solids	Category 1	Div 4.2	GHS02	Danger	P210,P222,P231,P233,P280,P302+P335+P334,P370+P378
 H251	Self-heating; may catch fire	Self-heating substances and mixtures	Category 1	Div 4.2	GHS02	Danger	P235,P280,P407,P410,P413,P420
@@ -110,6 +110,7 @@ H411	Toxic to aquatic life with long lasting effects	Hazardous to the aquatic en
 H412	Harmful to aquatic life with long lasting effects	Hazardous to the aquatic environment, long-term hazard	Category 3				P273,P501
 H413	May cause long lasting harmful effects to aquatic life	Hazardous to the aquatic environment, long-term hazard	Category 4				P273,P501
 H420	Harms public health and the environment by destroying ozone in the upper atmosphere	Hazardous to the ozone layer	Category 1		GHS07	Warning	P502
+H421	Harms public health and the environment by contributing to global warming	Hazardous by contributing to global warming	Category 1		GHS07	Warning	P502
 
 H300+H310	Fatal if swallowed or in contact with skin	Acute toxicity, oral; acute toxicity, dermal	Category 1, 2		GHS06	Danger
 H300+H330	Fatal if swallowed or if inhaled	Acute toxicity, oral; acute toxicity, inhalation	Category 1, 2		GHS06	Danger
@@ -127,8 +128,8 @@ H303+H313	May be harmful if swallowed or in contact with skin	Acute toxicity, or
 H303+H333	May be harmful if swallowed or if inhaled	Acute toxicity, oral; acute toxicity, inhalation	Category 5			Warning
 H313+H333	May be harmful in contact with skin or if inhaled	Acute toxicity, dermal; acute toxicity, inhalation	Category 5			Warning
 H303+H313+H333	May be harmful if swallowed, in contact with skin or if inhaled	Acute toxicity, oral; acute toxicity, dermal; acute toxicity, inhalation	Category 5			Warning
+H315+319	Cause skin irritation and serious eys irritation	Skin corrosion/irritation and serious eye damage/eye irritation	Category 2, 2A		GHS07	Warning
 H315+H320	Cause skin and eye irritation	Skin corrosion/irritation and serious eye damage/eye irritation	Category 2, 2B		GHS07	Warning
-
 
 P101	If medical advice is needed, have product container or label at hand.
 P102	Keep out of reach of children.
@@ -143,7 +144,7 @@ P220	Keep away from clothing and other combustible materials.
 P221	(Deleted) Take any precaution to avoid mixing with combustibles/...
 P222	Do not allow contact with air.
 P223	Do not allow contact with water.
-P230	Keep wetted with ...
+P230	Keep diluted with ...
 P231	Handle and store contents under inert gas/...
 P232	Protect from moisture.
 P233	Keep container tightly closed.
@@ -196,17 +197,19 @@ P317	Get emergency medical help.
 P318	if exposed or concerned, get medical advice.
 P319	Get medical help if you feel unwell.
 P320	Specific treatment is urgent (see ... on this label).
-P321	Specific treatment (see ... on this label).
-P322	(Deleted) Specific measures (see ...on this label).
+P321	Specific treatment (see information on this label and safety datasheet)).
+P322	Specific treatment is urgent (see information on the safety datasheet)
+P323	Specific measures (see information on the safety datasheet).
 P330	Rinse mouth.
 P331	Do NOT induce vomiting.
 P332	IF SKIN irritation occurs:
 P333	If skin irritation or rash occurs:
 P334	Immerse in cool water [or wrap in wet bandages].
 P335	Brush off loose particles from skin.
-P336	Thaw frosted parts with lukewarm water. Do not rub affected area.
+P336	Immediately thaw frosted parts with lukewarm water. Do not rub affected area.
 P337	If eye irritation persists:
 P338	Remove contact lenses, if present and easy to do. Continue rinsing.
+
 P340	Remove person to fresh air and keep comfortable for breathing.
 P341	(Deleted) If breathing is difficult, remove victim to fresh air and keep at rest in a position comfortable for breathing.
 P342	If experiencing respiratory symptoms:
@@ -220,6 +223,7 @@ P361	Take off immediately all contaminated clothing.
 P362	Take off contaminated clothing.
 P363	Wash contaminated clothing before reuse.
 P364	And wash it before reuse.
+
 P370	In case of fire:
 P371	In case of major fire and large quantities:
 P372	Explosion risk.
@@ -238,7 +242,7 @@ P301+P312	(Deleted) IF SWALLOWED: call a POISON CENTER/doctor/... IF you feel un
 P301+P316	IF SWALLOWED: Get emergency medical help immediately.
 P301+P317	IF SWALLOWED: Get medical help.
 P301+P330+P331	IF SWALLOWED: Rinse mouth. Do NOT induce vomiting.
-P302+P317	IF ON SKIN: Get medical help.
+P302+P317	(Deleted) IF ON SKIN: Get medical help.
 P302+P334	IF ON SKIN: Immerse in cool water or wrap in wet bandages.
 P302+P335+P334	Brush off loose particles from skin. Immerse in cool water [or wrap in wet bandages].
 P302+P350	(Deleted) IF ON SKIN: Gently wash with plenty of soap and water.
@@ -246,7 +250,7 @@ P302+P352	IF ON SKIN: wash with plenty of water/...
 P302+P361+P354	IF ON SKIN: Take off Immediately all contaminated clothing. Immediately rinse with water for several minutes.
 P303+P361+P353	IF ON SKIN (or hair): Take off Immediately all contaminated clothing. Rinse SKIN with water [or shower].
 P304+P312	(Deleted) IF INHALED: Call a POISON CENTER/doctor/... if you feel unwell.
-P304+P317	IF INHALED: Get medical help.
+P304+P317	(Deleted) IF INHALED: Get medical help.
 P304+P340	IF INHALED: Remove person to fresh air and keep comfortable for breathing.
 P304+P341	(Deleted) IF INHALED: If breathing is difficult, remove victim to fresh air and keep at rest in a position comfortable for breathing.
 P305+P351+P338	IF IN EYES: Rinse cautiously with water for several minutes. Remove contact lenses if present and easy to do - continue rinsing.
@@ -299,27 +303,3 @@ P411+P235	(Deleted) Store at temperatures not exceeding ... °C/...°F. Keep coo
 P501	Dispose of contents/container to ...
 P502	Refer to manufacturer or supplier for information on recovery or recycling
 P503	Refer to manufacturer/supplier... for information on disposal/recovery/recycling.
-EUH001  Explosive when dry.
-EUH014  Reacts violently with water.
-EUH018  In use may form flammable/explosive vapour-air mixture.
-EUH019  May form explosive peroxides.
-EUH044  Risk of explosion if heated under confinement.
-EUH029  Contact with water liberates toxic gas.
-EUH031  Contact with acids liberates toxic gas.
-EUH032  Contact with acids liberates very toxic gas.
-EUH066  Repeated exposure may cause skin dryness or cracking.
-EUH070  Toxic by eye contact
-EUH071  Corrosive to the respiratory tract.
-EUH201  Contains lead. Should not be used on surfaces liable to be chewed or sucked by children.
-EUH201A Warning! Contains lead.
-EUH202  Cyanoacrylate. Danger. Bonds skin and eyes in seconds. Keep out of the reach of children.
-EUH203  Contains chromium (VI). May produce an allergic reaction.
-EUH204  Contains isocyanates. May produce an allergic reaction.
-EUH205  Contains epoxy constituents. May produce an allergic reaction.
-EUH206  Warning! Do not use together with other products. May release dangerous gases (chlorine).
-EUH207  Warning! Contains cadmium. Dangerous fumes are formed during use. See information supplied by the manufacturer. Comply with the safety instructions.
-EUH208  Contains (name of sensitising substance). May produce an allergic reaction.
-EUH209  Can become highly flammable in use.
-EUH209A Can become flammable in use.
-EUH210  Safety data sheet available on request.
-EUH401  To avoid risks to human health and the environment, comply with the instructions for use.
