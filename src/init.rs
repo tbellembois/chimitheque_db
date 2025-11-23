@@ -4,7 +4,10 @@ use rusqlite::{Batch, Connection, Transaction};
 use std::path::Path;
 use std::{env, fs};
 
-use crate::define::{CATEGORIES, CMR_CAS, PRODUCERS, SIGNAL_WORDS, SUPPLIERS, SYMBOLS, TAGS};
+use crate::define::{
+    CATEGORIES, CLASSES_OF_COMPOUNDS, CMR_CAS, PHYSICAL_STATES, PRODUCERS, SIGNAL_WORDS, SUPPLIERS,
+    SYMBOLS, TAGS,
+};
 
 pub fn connect_test() -> Connection {
     let sql_extension_dir = match env::var("SQLITE_EXTENSION_DIR") {
@@ -115,6 +118,22 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), Box<dyn std::error:
         tx.execute("INSERT INTO symbol (symbol_label) VALUES (?1)", [symbol])?;
     }
 
+    info!("- adding physical states");
+    for physical_state in PHYSICAL_STATES {
+        tx.execute(
+            "INSERT INTO physical_state (physical_state_label) VALUES (?1)",
+            [physical_state],
+        )?;
+    }
+
+    info!("- adding classes of compounds");
+    for class_of_compound in CLASSES_OF_COMPOUNDS {
+        tx.execute(
+            "INSERT INTO class_of_compound (class_of_compound_label) VALUES (?1)",
+            [class_of_compound],
+        )?;
+    }
+
     info!("- adding GHS statements");
     update_ghs_statements(&tx)?;
 
@@ -194,6 +213,8 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), Box<dyn std::error:
         "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'all', 'all', -1)",
         (),
     )?;
+
+    update_ghs_statements(&tx)?;
 
     tx.commit()?;
 

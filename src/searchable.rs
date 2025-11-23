@@ -90,6 +90,8 @@ pub fn get_many(
         select_query.push_str(&format!(" OFFSET {}", offset))
     }
 
+    debug!("select_query:{:?}", select_query);
+
     // Count query statement.
     let mut count_query = format!(
         "SELECT COUNT(DISTINCT {}) FROM {}",
@@ -106,6 +108,8 @@ pub fn get_many(
     } else if let Some(id) = filter.id {
         count_query.push_str(&format!(" WHERE {} = {}", item.get_id_field_name(), id))
     }
+
+    debug!("count_query:{:?}", count_query);
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_query.as_str())?;

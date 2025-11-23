@@ -191,6 +191,12 @@ pub fn match_person_is_in_entity(
     // Get person.
     let person = get_person_by_id(db_connection, person_id)?;
 
+    // Return true on orphans.
+    if person.entities.is_none() {
+        return Ok(true);
+    }
+
+    // Return true on admins.
     if person.is_admin {
         return Ok(true);
     }
