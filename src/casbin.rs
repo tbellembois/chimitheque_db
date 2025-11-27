@@ -9,10 +9,12 @@ use chimitheque_types::{
 };
 use log::debug;
 use rusqlite::Connection;
+use sea_query::{Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
 use crate::{
-    entity::get_entities, person::get_people, product::get_products, storage::get_storages,
-    storelocation::get_store_locations,
+    entity::get_entities, permission::Permission, person::get_people, product::get_products,
+    storage::get_storages, storelocation::get_store_locations,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -44,7 +46,7 @@ impl Display for CasbinError {
 
 impl std::error::Error for CasbinError {}
 
-// Helper function to check if two sets of u64 have common values.
+/// Helper function to check if two sets of u64 have common values.
 fn has_common_elements(set1: &HashSet<u64>, set2: &HashSet<u64>) -> bool {
     for &value in set1 {
         if set2.contains(&value) {
@@ -170,17 +172,42 @@ fn get_entity_by_id(
     Ok((*entity).clone())
 }
 
+/// Returns a string policy for the casbin adapter.
+/// https://docs.rs/casbin/latest/casbin/struct.StringAdapter.html
+pub fn to_string_adapter(db_connection: &Connection) -> Result<String, Box<dyn std::error::Error>> {
+    let mut result = String::new();
+
+    let (sql_query, sql_values) = Query::select()
+        .from(Permission::Table)
+        .columns([
+            Permission::Person,
+            Permission::PermissionName,
+            Permission::PermissionItem,
+            Permission::PermissionEntity,
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("select_sql: {}", sql_query.clone().as_str());
+    debug!("select_values: {:?}", sql_values);
+
+    let mut stmt = db_connection.prepare(sql_query.as_str())?;
+    let mut rows = stmt.query(&*sql_values.as_params())?;
+
+    while let Some(row) = rows.next()? {
+        result += format!(
+            "p, {}, {}, {}, {}",
+            row.get_unwrap::<_, u64>("person"),
+            row.get_unwrap::<_, String>("permission_name"),
+            row.get_unwrap::<_, String>("permission_item"),
+            row.get_unwrap::<_, i64>("permission_entity")
+        )
+        .as_str();
+    }
+
+    Ok(result)
+}
+
 /// Checks if a person is associated with an entity.
-///
-/// # Arguments
-/// * `db_connection` - A reference to the database connection.
-/// * `person_id` - The ID of the person.
-/// * `entity_id` - The ID of the entity.
-///
-/// # Returns
-/// * `Ok(true)` if the person is associated with the entity.
-/// * `Ok(false)` otherwise.
-/// * `Err(CasbinError)` if there is an error.
 pub fn match_person_is_in_entity(
     db_connection: &Connection,
     person_id: u64,
@@ -213,16 +240,6 @@ pub fn match_person_is_in_entity(
 }
 
 /// Checks if two persons are associated with the same entity.
-///
-/// # Arguments
-/// * `db_connection` - A reference to the database connection.
-/// * `person_id` - The ID of the first person.
-/// * `other_person_id` - The ID of the second person.
-///
-/// # Returns
-/// * `Ok(true)` if the two persons are associated with the same entity.
-/// * `Ok(false)` otherwise.
-/// * `Err(CasbinError)` if there is an error.
 pub fn match_person_is_in_person_entity(
     db_connection: &Connection,
     person_id: u64,
@@ -257,16 +274,6 @@ pub fn match_person_is_in_person_entity(
 }
 
 /// Checks if a person is associated with the entity of the store location.
-///
-/// # Arguments
-/// * `db_connection` - A reference to the database connection.
-/// * `person_id` - The ID of the person.
-/// * `store_location_id` - The ID of the store location.
-///
-/// # Returns
-/// * `Ok(true)` if the person is associated with the entity of the store location.
-/// * `Ok(false)` otherwise.
-/// * `Err(CasbinError)` if there is an error.
 pub fn match_person_is_in_store_location_entity(
     db_connection: &Connection,
     person_id: u64,
@@ -308,6 +315,7 @@ pub fn match_person_is_in_store_location_entity(
     Ok(result)
 }
 
+/// Checks if a person is associated with the entity of the storage.
 pub fn match_person_is_in_storage_entity(
     db_connection: &Connection,
     person_id: u64,
@@ -352,6 +360,7 @@ pub fn match_person_is_in_storage_entity(
     Ok(result)
 }
 
+/// Checks if a product has storages.
 pub fn match_product_has_storages(
     db_connection: &Connection,
     product_id: u64,
@@ -382,6 +391,7 @@ pub fn match_product_has_storages(
     Ok(result)
 }
 
+/// Checks if a store location has children.
 pub fn match_store_location_has_children(
     db_connection: &Connection,
     store_location_id: u64,
@@ -405,6 +415,7 @@ pub fn match_store_location_has_children(
     Ok(result)
 }
 
+/// Checks if a store location has storages.
 pub fn match_store_location_has_storages(
     db_connection: &Connection,
     store_location_id: u64,
@@ -425,6 +436,7 @@ pub fn match_store_location_has_storages(
     Ok(result)
 }
 
+/// Checks if a person is an admin.
 pub fn match_person_is_admin(
     db_connection: &Connection,
     person_id: u64,
@@ -441,6 +453,7 @@ pub fn match_person_is_admin(
     Ok(result)
 }
 
+/// Checks if a person is a manager.
 pub fn match_person_is_manager(
     db_connection: &Connection,
     person_id: u64,
@@ -459,6 +472,7 @@ pub fn match_person_is_manager(
     Ok(result)
 }
 
+/// Checks if an entity has members.
 pub fn match_entity_has_members(
     db_connection: &Connection,
     entity_id: u64,
@@ -477,6 +491,7 @@ pub fn match_entity_has_members(
     Ok(result)
 }
 
+/// Checks if an entity has store locations.
 pub fn match_entity_has_store_locations(
     db_connection: &Connection,
     entity_id: u64,
@@ -495,6 +510,7 @@ pub fn match_entity_has_store_locations(
     Ok(result)
 }
 
+/// Checks if a storage is in an entity.
 pub fn match_storage_is_in_entity(
     db_connection: &Connection,
     storage_id: u64,
@@ -526,6 +542,7 @@ pub fn match_storage_is_in_entity(
     }
 }
 
+/// Checks if a store location is in an entity.
 pub fn match_store_location_is_in_entity(
     db_connection: &Connection,
     store_location_id: u64,
