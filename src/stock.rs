@@ -51,7 +51,7 @@ pub fn compute_stock(
     db_connection: &Connection,
     product_id: u64,
     person_id: u64,
-) -> Result<Vec<Stock>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Stock>, Box<dyn std::error::Error + Send + Sync>> {
     debug!("product_id:{:?}", product_id);
     debug!("person_id:{:?}", person_id);
 
@@ -141,8 +141,7 @@ pub fn compute_stock(
                         .equals(Entity::EntityId)
                         .or(Expr::col(Entity::EntityId).is_null()) // products with no storages for non admins
                         .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-                                .eq(-1),
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1),
                         ),
                 ),
         )

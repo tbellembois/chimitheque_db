@@ -43,7 +43,7 @@ pub fn toggle_storage_borrowing(
     storage_id: u64,
     borrower_id: u64,
     borrowing_comment: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!(
         "person_id: {:?} borrower_id:{:?} storage_id:{:?}",
         person_id, borrower_id, storage_id

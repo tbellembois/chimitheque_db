@@ -37,7 +37,7 @@ pub fn toggle_product_bookmark(
     db_connection: &mut Connection,
     person_id: u64,
     product_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("person_id: {:?} product_id:{:?}", person_id, product_id);
 
     let db_transaction = db_connection.transaction()?;

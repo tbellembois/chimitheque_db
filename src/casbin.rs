@@ -60,7 +60,7 @@ fn has_common_elements(set1: &HashSet<u64>, set2: &HashSet<u64>) -> bool {
 fn get_person_entities_ids(
     db_connection: &Connection,
     person_id: u64,
-) -> Result<Vec<u64>, Box<dyn std::error::Error>> {
+) -> Result<Vec<u64>, Box<dyn std::error::Error + Send + Sync>> {
     // Get the person from the database.
     let person = get_person_by_id(db_connection, person_id)?;
 
@@ -86,7 +86,7 @@ fn get_person_entities_ids(
 fn get_person_by_id(
     db_connection: &Connection,
     person_id: u64,
-) -> Result<Person, Box<dyn std::error::Error>> {
+) -> Result<Person, Box<dyn std::error::Error + Send + Sync>> {
     let (people, nb_results) = get_people(
         db_connection,
         RequestFilter {
@@ -108,7 +108,7 @@ fn get_person_by_id(
 fn get_store_location_by_id(
     db_connection: &Connection,
     store_location_id: u64,
-) -> Result<StoreLocation, Box<dyn std::error::Error>> {
+) -> Result<StoreLocation, Box<dyn std::error::Error + Send + Sync>> {
     let (store_locations, nb_results) = get_store_locations(
         db_connection,
         RequestFilter {
@@ -132,7 +132,7 @@ fn get_store_location_by_id(
 fn get_storage_by_id(
     db_connection: &Connection,
     storage_id: u64,
-) -> Result<Storage, Box<dyn std::error::Error>> {
+) -> Result<Storage, Box<dyn std::error::Error + Send + Sync>> {
     let (storages, nb_results) = get_storages(
         db_connection,
         RequestFilter {
@@ -154,7 +154,7 @@ fn get_storage_by_id(
 fn get_entity_by_id(
     db_connection: &Connection,
     entity_id: u64,
-) -> Result<Entity, Box<dyn std::error::Error>> {
+) -> Result<Entity, Box<dyn std::error::Error + Send + Sync>> {
     let (entities, nb_results) = get_entities(
         db_connection,
         RequestFilter {
@@ -174,7 +174,9 @@ fn get_entity_by_id(
 
 /// Returns a string policy for the casbin adapter.
 /// https://docs.rs/casbin/latest/casbin/struct.StringAdapter.html
-pub fn to_string_adapter(db_connection: &Connection) -> Result<String, Box<dyn std::error::Error>> {
+pub fn to_string_adapter(
+    db_connection: &Connection,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let mut result = String::new();
 
     let (sql_query, sql_values) = Query::select()
@@ -212,7 +214,7 @@ pub fn match_person_is_in_entity(
     db_connection: &Connection,
     person_id: u64,
     entity_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_person_is_in_entity: {} {}", person_id, entity_id);
 
     // Get person.
@@ -244,7 +246,7 @@ pub fn match_person_is_in_person_entity(
     db_connection: &Connection,
     person_id: u64,
     other_person_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!(
         "match_person_is_in_person_entity: {} {}",
         person_id, other_person_id
@@ -278,7 +280,7 @@ pub fn match_person_is_in_store_location_entity(
     db_connection: &Connection,
     person_id: u64,
     store_location_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!(
         "match_person_is_in_store_location_entity: {} {}",
         person_id, store_location_id
@@ -320,7 +322,7 @@ pub fn match_person_is_in_storage_entity(
     db_connection: &Connection,
     person_id: u64,
     storage_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!(
         "match_person_is_in_storage_entity: {} {}",
         person_id, storage_id
@@ -364,7 +366,7 @@ pub fn match_person_is_in_storage_entity(
 pub fn match_product_has_storages(
     db_connection: &Connection,
     product_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_product_has_storages: {}", product_id);
 
     // Get the product from the database.
@@ -395,7 +397,7 @@ pub fn match_product_has_storages(
 pub fn match_store_location_has_children(
     db_connection: &Connection,
     store_location_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_store_location_has_children: {}", store_location_id);
 
     // Get the number of store location children.
@@ -419,7 +421,7 @@ pub fn match_store_location_has_children(
 pub fn match_store_location_has_storages(
     db_connection: &Connection,
     store_location_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_store_location_has_storages: {}", store_location_id);
 
     // Get the store location from the database.
@@ -440,7 +442,7 @@ pub fn match_store_location_has_storages(
 pub fn match_person_is_admin(
     db_connection: &Connection,
     person_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_person_is_admin: {}", person_id);
 
     // Get the person from the database.
@@ -457,7 +459,7 @@ pub fn match_person_is_admin(
 pub fn match_person_is_manager(
     db_connection: &Connection,
     person_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_person_is_manager: {}", person_id);
 
     // Get the person from the database.
@@ -476,7 +478,7 @@ pub fn match_person_is_manager(
 pub fn match_entity_has_members(
     db_connection: &Connection,
     entity_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_entity_has_members: {}", entity_id);
 
     // Get the entity from the database.
@@ -495,7 +497,7 @@ pub fn match_entity_has_members(
 pub fn match_entity_has_store_locations(
     db_connection: &Connection,
     entity_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_entity_has_store_locations: {}", entity_id);
 
     // Get the entity from the database.
@@ -515,7 +517,7 @@ pub fn match_storage_is_in_entity(
     db_connection: &Connection,
     storage_id: u64,
     entity_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_storage_is_in_entity: {} {}", storage_id, entity_id);
 
     // Get the storage from the database.
@@ -547,7 +549,7 @@ pub fn match_store_location_is_in_entity(
     db_connection: &Connection,
     store_location_id: u64,
     entity_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!(
         "match_store_location_is_in_entity: {} {}",
         store_location_id, entity_id

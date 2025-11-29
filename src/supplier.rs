@@ -30,7 +30,7 @@ impl From<&Row<'_>> for SupplierWrapper {
 pub fn get_suppliers(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<SupplierStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<SupplierStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
@@ -118,7 +118,7 @@ pub fn get_suppliers(
 // pub fn create_update_supplier(
 //     db_connection: &mut Connection,
 //     supplier: SupplierStruct,
-// ) -> Result<u64, Box<dyn std::error::Error>> {
+// ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
 //     debug!("create_update_supplier: {:#?}", supplier);
 
 //     let db_transaction = db_connection.transaction()?;

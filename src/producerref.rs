@@ -43,7 +43,7 @@ impl From<&Row<'_>> for ProducerRefWrapper {
 pub fn get_producer_refs(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<ProducerRefStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<ProducerRefStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
@@ -157,7 +157,7 @@ pub fn get_producer_refs(
 pub fn create_update_producer_ref(
     db_connection: &Connection,
     producer_ref: &ProducerRefStruct,
-) -> Result<u64, Box<dyn std::error::Error>> {
+) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_producer_ref: {:#?}", producer_ref);
 
     let clean_producer_ref_label = clean(&producer_ref.producer_ref_label, Transform::None);

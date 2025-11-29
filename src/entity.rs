@@ -67,7 +67,7 @@ impl From<&Row<'_>> for EntityWrapper {
 fn populate_managers(
     db_connection: &Connection,
     entity: &mut [EntityStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for entity in entity.iter_mut() {
         let entity_id = entity.entity_id;
 
@@ -135,7 +135,7 @@ pub fn get_entities(
     db_connection: &Connection,
     filter: RequestFilter,
     person_id: u64,
-) -> Result<(Vec<EntityStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<EntityStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
@@ -305,7 +305,7 @@ pub fn get_entities(
 fn create_update_entity_managers(
     db_transaction: &Transaction,
     entity: &EntityStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_entity_managers: {:#?}", entity);
 
     let entity_id = match entity.entity_id {
@@ -341,7 +341,7 @@ fn create_update_entity_managers(
 pub fn create_update_entity(
     db_connection: &mut Connection,
     mut entity: EntityStruct,
-) -> Result<u64, Box<dyn std::error::Error>> {
+) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_entity: {:#?}", entity);
 
     let db_transaction = db_connection.transaction()?;
@@ -402,7 +402,7 @@ pub fn create_update_entity(
 pub fn delete_entity(
     db_connection: &mut Connection,
     entity_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("delete_entity: {:#?}", entity_id);
 
     let (delete_sql, delete_values) = Query::delete()

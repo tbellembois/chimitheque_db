@@ -253,7 +253,7 @@ impl TryFrom<&Row<'_>> for StorageWrapper {
 fn populate_history_count(
     db_connection: &Connection,
     storage: &mut [StorageStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for storage in storage.iter_mut() {
         let storage_id = storage.storage_id;
 
@@ -286,7 +286,7 @@ pub fn export_storages(
     db_connection: &Connection,
     filter: RequestFilter,
     person_id: u64,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
@@ -326,7 +326,7 @@ pub fn get_storages(
     db_connection: &Connection,
     filter: RequestFilter,
     person_id: u64,
-) -> Result<(Vec<StorageStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<StorageStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
@@ -1103,7 +1103,7 @@ pub fn get_storages(
 fn create_storage_qrcode(
     db_transaction: &Transaction,
     storage_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut qrcode = QrCode::new(storage_id.to_string(), QrCodeEcc::Medium).unwrap();
 
     qrcode.margin(10);
@@ -1128,7 +1128,7 @@ fn create_storage_qrcode(
 fn create_storage_history(
     db_transaction: &Transaction,
     storage: &StorageStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     db_transaction.execute(
         &format!(
             "INSERT into storage (storage_creation_date,
@@ -1189,7 +1189,7 @@ fn compute_storage_barecode_parts(
     storage: &StorageStruct,
     product_id: u64,
     person_id: u64,
-) -> Result<(String, u64), Box<dyn std::error::Error>> {
+) -> Result<(String, u64), Box<dyn std::error::Error + Send + Sync>> {
     let store_location_id = match storage.store_location.store_location_id {
         Some(store_location_id) => store_location_id,
         None => return Err(Box::new(StorageError::MissingStoreLocationId)),
@@ -1274,7 +1274,7 @@ pub fn create_update_storage(
     mut storage: StorageStruct,
     nb_items: u64,
     identical_barecode: bool,
-) -> Result<Vec<u64>, Box<dyn std::error::Error>> {
+) -> Result<Vec<u64>, Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_storage: {:#?}", storage);
 
     // Created storage ids
@@ -1515,7 +1515,7 @@ pub fn create_update_storage(
 pub fn delete_storage(
     db_connection: &mut Connection,
     storage_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("delete_storage: {:#?}", storage_id);
 
     let (delete_sql, delete_values) = Query::delete()
@@ -1535,7 +1535,7 @@ pub fn delete_storage(
 pub fn archive_storage(
     db_connection: &mut Connection,
     storage_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("archive_storage: {:#?}", storage_id);
 
     // Update request: list of (columns, values) pairs to insert.
@@ -1562,7 +1562,7 @@ pub fn archive_storage(
 pub fn unarchive_storage(
     db_connection: &mut Connection,
     storage_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("unarchive_storage: {:#?}", storage_id);
 
     // Update request: list of (columns, values) pairs to insert.

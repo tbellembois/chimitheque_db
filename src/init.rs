@@ -10,11 +10,8 @@ use crate::define::{
 };
 
 pub fn connect_test() -> Connection {
-    let sql_extension_dir = match env::var("SQLITE_EXTENSION_DIR") {
-        Ok(val) => val,
-        Err(_) => panic!("Missing SQLITE_EXTENSION_DIR environment variable."),
-    };
-
+    let sql_extension_dir = env::var("SQLITE_EXTENSION_DIR")
+        .expect("Missing SQLITE_EXTENSION_DIR environment variable.");
     let sql_extension_regex = Path::new(sql_extension_dir.as_str()).join("regexp.so");
 
     let db_connection = Connection::open_in_memory().unwrap();
@@ -28,11 +25,8 @@ pub fn connect_test() -> Connection {
 }
 
 pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
-    let sql_extension_dir = match env::var("SQLITE_EXTENSION_DIR") {
-        Ok(val) => val,
-        Err(_) => panic!("Missing SQLITE_EXTENSION_DIR environment variable."),
-    };
-
+    let sql_extension_dir = env::var("SQLITE_EXTENSION_DIR")
+        .expect("Missing SQLITE_EXTENSION_DIR environment variable.");
     let sql_extension_regex = Path::new(sql_extension_dir.as_str()).join("regexp.so");
 
     let db_connection = Connection::open(db_path)?;
@@ -58,7 +52,9 @@ pub fn insert_fake_values(db_connection: &mut Connection) -> Result<(), rusqlite
     Ok(())
 }
 
-pub fn init_db(db_connection: &mut Connection) -> Result<(), Box<dyn std::error::Error>> {
+pub fn init_db(
+    db_connection: &mut Connection,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // https://sqlite.org/stricttables.html
     // INTEGER
     // REAL
@@ -224,7 +220,7 @@ pub fn init_db(db_connection: &mut Connection) -> Result<(), Box<dyn std::error:
 // https://pubchem.ncbi.nlm.nih.gov/ghs/
 pub fn update_ghs_statements(
     db_transaction: &Transaction,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let hazard_statement_re =
         Regex::new(r"(?P<reference>(EU){0,1}H[0-9]+)(\t)(?P<label>[^\t]+)(\t)")?;
     let precautionary_statement_re = Regex::new(r"(?P<reference>P[0-9+]+)(\t)(?P<label>[^\t]+)")?;

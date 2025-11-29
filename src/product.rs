@@ -235,7 +235,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
 fn populate_entity_managers(
     db_connection: &Connection,
     entity: &mut EntityStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let entity_id = entity.entity_id;
 
     // Create select query.
@@ -292,7 +292,7 @@ fn populate_product_availability(
     db_connection: &Connection,
     product: &mut [ProductStruct],
     person_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for product in product.iter_mut() {
         let product_id = product.product_id;
 
@@ -402,7 +402,7 @@ fn populate_product_sc(
     person_id: u64,
     total: bool,
     archived: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("person_id:{:?}", person_id);
     debug!("archived:{:?}", archived);
 
@@ -507,7 +507,7 @@ fn populate_product_sc(
 fn populate_synonyms(
     db_connection: &Connection,
     product: &mut [ProductStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for product in product.iter_mut() {
         let product_id = product.product_id;
 
@@ -567,7 +567,7 @@ fn populate_synonyms(
 fn populate_classes_of_compound(
     db_connection: &Connection,
     product: &mut [ProductStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for product in product.iter_mut() {
         let product_id = product.product_id;
 
@@ -637,7 +637,7 @@ fn populate_classes_of_compound(
 fn populate_symbols(
     db_connection: &Connection,
     product: &mut [ProductStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for product in product.iter_mut() {
         let product_id = product.product_id;
 
@@ -697,7 +697,7 @@ fn populate_symbols(
 fn populate_hazard_statements(
     db_connection: &Connection,
     product: &mut [ProductStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for product in product.iter_mut() {
         let product_id = product.product_id;
 
@@ -774,7 +774,7 @@ fn populate_hazard_statements(
 fn populate_precautionary_statements(
     db_connection: &Connection,
     product: &mut [ProductStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for product in product.iter_mut() {
         let product_id = product.product_id;
 
@@ -850,7 +850,7 @@ fn populate_precautionary_statements(
 fn populate_supplier_refs(
     db_connection: &Connection,
     product: &mut [ProductStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for product in product.iter_mut() {
         let product_id = product.product_id;
 
@@ -937,7 +937,7 @@ fn populate_supplier_refs(
 fn populate_tags(
     db_connection: &Connection,
     product: &mut [ProductStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for product in product.iter_mut() {
         let product_id = product.product_id;
 
@@ -995,7 +995,7 @@ pub fn export_products(
     db_connection: &Connection,
     filter: RequestFilter,
     person_id: u64,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
@@ -1055,7 +1055,7 @@ pub fn get_products(
     db_connection: &Connection,
     filter: RequestFilter,
     person_id: u64,
-) -> Result<(Vec<ProductStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<ProductStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
@@ -1818,7 +1818,7 @@ pub fn get_products(
 pub fn create_update_product(
     db_connection: &mut Connection,
     mut product: ProductStruct,
-) -> Result<u64, Box<dyn std::error::Error>> {
+) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_product: {:#?}", product);
 
     let db_transaction = db_connection.transaction()?;
@@ -2379,7 +2379,7 @@ pub fn create_update_product(
 fn create_update_product_symbols(
     db_transaction: &Transaction,
     product: &ProductStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_product_symbols: {:#?}", product);
 
     let mut product_symbols_ids: Vec<u64> = Vec::new();
@@ -2433,7 +2433,7 @@ fn create_update_product_symbols(
 fn create_update_product_tags(
     db_transaction: &Transaction,
     product: &ProductStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_product_tags: {:#?}", product);
 
     let mut product_tags_ids: Vec<u64> = Vec::new();
@@ -2484,7 +2484,7 @@ fn create_update_product_tags(
 fn create_update_product_synonyms(
     db_transaction: &Transaction,
     product: &ProductStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_product_synonyms: {:#?}", product);
 
     let mut product_synonyms_ids: Vec<u64> = Vec::new();
@@ -2538,7 +2538,7 @@ fn create_update_product_synonyms(
 fn create_update_product_supplier_refs(
     db_transaction: &Transaction,
     product: &ProductStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_product_supplier_ref: {:#?}", product);
 
     let mut product_supplier_refs_ids: Vec<u64> = Vec::new();
@@ -2595,7 +2595,7 @@ fn create_update_product_supplier_refs(
 fn create_update_product_hazard_statements(
     db_transaction: &Transaction,
     product: &ProductStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_product_hazard_statement: {:#?}", product);
 
     let mut product_hazard_statements_ids: Vec<u64> = Vec::new();
@@ -2652,7 +2652,7 @@ fn create_update_product_hazard_statements(
 fn create_update_product_precautionary_statements(
     db_transaction: &Transaction,
     product: &ProductStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!(
         "create_update_product_precautionary_statement: {:#?}",
         product
@@ -2712,7 +2712,7 @@ fn create_update_product_precautionary_statements(
 fn create_update_product_classes_of_compound(
     db_transaction: &Transaction,
     product: &ProductStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_product_classes_of_compound: {:#?}", product);
 
     let mut product_classes_of_compounds_ids: Vec<u64> = Vec::new();
@@ -2771,7 +2771,7 @@ fn create_update_product_classes_of_compound(
 pub fn delete_product(
     db_connection: &mut Connection,
     product_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("delete_product: {:#?}", product_id);
 
     let (delete_sql, delete_values) = Query::delete()

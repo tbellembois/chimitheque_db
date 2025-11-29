@@ -37,7 +37,7 @@ impl From<&Row<'_>> for PrecautionaryStatementWrapper {
 pub fn parse(
     db_connection: &Connection,
     s: &str,
-) -> Result<Option<PrecautionaryStatementStruct>, Box<dyn std::error::Error>> {
+) -> Result<Option<PrecautionaryStatementStruct>, Box<dyn std::error::Error + Send + Sync>> {
     debug!("s:{:?}", s);
 
     let (select_sql, select_values) = Query::select()
@@ -76,7 +76,7 @@ pub fn parse(
 pub fn get_precautionary_statements(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<PrecautionaryStatementWrapper>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<PrecautionaryStatementWrapper>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.

@@ -29,7 +29,7 @@ impl From<&Row<'_>> for ProducerWrapper {
 pub fn get_producers(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<ProducerStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<ProducerStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
@@ -117,7 +117,7 @@ pub fn get_producers(
 // pub fn create_update_producer(
 //     db_connection: &mut Connection,
 //     producer: ProducerStruct,
-// ) -> Result<u64, Box<dyn std::error::Error>> {
+// ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
 //     debug!("create_update_producer: {:#?}", producer);
 
 //     let db_transaction = db_connection.transaction()?;

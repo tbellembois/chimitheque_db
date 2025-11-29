@@ -43,7 +43,7 @@ impl From<&Row<'_>> for SupplierRefWrapper {
 pub fn get_supplier_refs(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<SupplierRefStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<SupplierRefStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
@@ -158,7 +158,7 @@ pub fn get_supplier_refs(
 pub fn create_update_supplier_ref(
     db_connection: &Connection,
     supplier_ref: &SupplierRefStruct,
-) -> Result<u64, Box<dyn std::error::Error>> {
+) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_supplier_ref: {:#?}", supplier_ref);
 
     let clean_supplier_ref_label = clean(&supplier_ref.supplier_ref_label, Transform::None);

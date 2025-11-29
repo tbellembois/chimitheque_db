@@ -46,7 +46,7 @@ fn populate_orphans(
     db_connection: &Connection,
     filter: RequestFilter,
     people: &mut Vec<PersonStruct>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
 
     let order = if filter.order.eq_ignore_ascii_case("desc") {
@@ -152,7 +152,7 @@ fn populate_orphans(
 fn populate_entities(
     db_connection: &Connection,
     people: &mut [PersonStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for person in people.iter_mut() {
         let person_id = person.person_id;
 
@@ -225,7 +225,7 @@ fn populate_entities(
 fn populate_managed_entities(
     db_connection: &Connection,
     people: &mut [PersonStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for person in people.iter_mut() {
         let person_id = person.person_id;
 
@@ -295,7 +295,7 @@ fn populate_managed_entities(
 fn populate_permissions(
     db_connection: &Connection,
     people: &mut [PersonStruct],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for person in people.iter_mut() {
         let person_id = person.person_id;
 
@@ -345,7 +345,7 @@ pub fn get_people(
     db_connection: &Connection,
     filter: RequestFilter,
     person_id: u64,
-) -> Result<(Vec<PersonStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<PersonStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
@@ -529,7 +529,7 @@ pub fn get_people(
 fn create_update_person_permissions(
     db_transaction: &Transaction,
     person: &PersonStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Lazily deleting former permissions.
     let (delete_sql, delete_values) = Query::delete()
         .from_table(Permission::Table)
@@ -606,7 +606,7 @@ fn create_update_person_permissions(
 fn create_update_person_membership(
     db_transaction: &Transaction,
     person: &PersonStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Lazily deleting former membership.
     let (delete_sql, delete_values) = Query::delete()
         .from_table(Personentities::Table)
@@ -674,7 +674,7 @@ fn create_update_person_membership(
 pub fn create_update_person(
     db_connection: &mut Connection,
     mut person: PersonStruct,
-) -> Result<u64, Box<dyn std::error::Error>> {
+) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_person: {:#?}", person);
 
     let db_transaction = db_connection.transaction()?;
@@ -734,7 +734,7 @@ pub fn unset_person_manager(
     db_transaction: &Transaction,
     person_id: u64,
     entity_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("unset_person_manager: {:#?} {:#?}", person_id, entity_id);
 
     // Unsetting the person manager.
@@ -764,7 +764,7 @@ pub fn set_person_manager(
     db_transaction: &Transaction,
     person_id: u64,
     entity_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("set_person_manager: {:#?} {:#?}", person_id, entity_id);
 
     // Adding the manager to the entity.
@@ -845,7 +845,7 @@ pub fn set_person_manager(
 
 pub fn get_admins(
     db_connection: &mut Connection,
-) -> Result<Vec<PersonStruct>, Box<dyn std::error::Error>> {
+) -> Result<Vec<PersonStruct>, Box<dyn std::error::Error + Send + Sync>> {
     debug!("get_admins");
     // Create select query.
     let (select_sql, select_values) = Query::select()
@@ -893,7 +893,7 @@ pub fn get_admins(
 pub fn set_person_admin(
     db_connection: &mut Connection,
     person_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("set_person_admin: {:#?}", person_id);
 
     let columns = vec![
@@ -928,7 +928,7 @@ pub fn set_person_admin(
 pub fn unset_person_admin(
     db_connection: &mut Connection,
     person_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("unset_person_admin: {:#?}", person_id);
 
     let (delete_sql, delete_values) = Query::delete()
@@ -947,7 +947,7 @@ pub fn unset_person_admin(
 pub fn delete_person(
     db_connection: &mut Connection,
     person_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("delete_person: {:#?}", person_id);
 
     let (delete_sql, delete_values) = Query::delete()

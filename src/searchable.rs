@@ -10,7 +10,7 @@ pub fn parse(
     item: &(impl Searchable + Debug + Default + Serialize),
     db_connection: &Connection,
     s: &str,
-) -> Result<Option<impl Searchable + Serialize>, Box<dyn std::error::Error>> {
+) -> Result<Option<impl Searchable + Serialize>, Box<dyn std::error::Error + Send + Sync>> {
     debug!("s:{:?}", s);
 
     // Select query statement.
@@ -56,7 +56,7 @@ pub fn get_many(
     item: &(impl Searchable + Debug + Default + Serialize),
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<impl Searchable + Serialize>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<impl Searchable + Serialize>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
 
     // Select query statement.
@@ -166,7 +166,7 @@ pub fn create_update(
     db_connection: &Connection,
     text: &str,
     transform: Transform,
-) -> Result<u64, Box<dyn std::error::Error>> {
+) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     let last_insert_id: u64;
     let new_text = clean(text, transform);
 

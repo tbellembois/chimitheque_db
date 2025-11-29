@@ -84,7 +84,7 @@ pub fn get_store_locations(
     db_connection: &Connection,
     filter: RequestFilter,
     person_id: u64,
-) -> Result<(Vec<StoreLocationStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<StoreLocationStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
     debug!("person_id:{:?}", person_id);
 
@@ -337,7 +337,7 @@ pub fn get_store_locations(
 fn populate_store_location_full_path(
     db_connection: &Connection,
     store_location: &mut StoreLocationStruct,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // If the store location has no parent setting its name as full path.
     if store_location.store_location.is_none() {
         store_location.store_location_full_path = Some(store_location.store_location_name.clone());
@@ -453,7 +453,7 @@ fn populate_store_location_full_path(
 pub fn create_update_store_location(
     db_connection: &mut Connection,
     mut store_location: StoreLocationStruct,
-) -> Result<u64, Box<dyn std::error::Error>> {
+) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_store_location: {:#?}", store_location);
 
     let db_transaction = db_connection.transaction()?;
@@ -570,7 +570,7 @@ pub fn create_update_store_location(
 pub fn delete_store_location(
     db_connection: &Connection,
     store_location_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("store_location_id: {}", store_location_id);
 
     let (sql_query, sql_values) = Query::delete()

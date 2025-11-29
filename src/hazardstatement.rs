@@ -37,7 +37,7 @@ impl From<&Row<'_>> for HazardStatementWrapper {
 pub fn parse(
     db_connection: &Connection,
     s: &str,
-) -> Result<Option<HazardStatementStruct>, Box<dyn std::error::Error>> {
+) -> Result<Option<HazardStatementStruct>, Box<dyn std::error::Error + Send + Sync>> {
     debug!("s:{:?}", s);
 
     let (select_sql, select_values) = Query::select()
@@ -78,7 +78,7 @@ pub fn parse(
 pub fn get_hazard_statements(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<HazardStatementStruct>, usize), Box<dyn std::error::Error>> {
+) -> Result<(Vec<HazardStatementStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.

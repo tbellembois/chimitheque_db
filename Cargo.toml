@@ -13,12 +13,13 @@ sea-query = "0.31.0"
 sea-query-rusqlite = "0.6.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.145"
-chimitheque_types = { path = "../chimitheque_types" }
-chimitheque_utils = { path = "../chimitheque_utils" }
-chimitheque_traits = { path = "../chimitheque_traits" }
 regex = "1.10.4"
 tempfile = "3.13.0"
 chrono = { version = "0.4.41", features = ["serde"] }
 qrcode-png = "0.4.1"
 image = { version = "0.25.8", default-features = false, features = ["png"] }
 csv = "1.4.0"
+
+chimitheque_types = { path = "../chimitheque_types" }
+chimitheque_utils = { path = "../chimitheque_utils" }
+chimitheque_traits = { path = "../chimitheque_traits" }

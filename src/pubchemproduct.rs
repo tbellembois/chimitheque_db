@@ -75,7 +75,7 @@ pub fn create_update_product_from_pubchem(
     pubchem_product: PubchemProduct,
     person_id: u64,
     product_id: Option<u64>,
-) -> Result<u64, Box<dyn std::error::Error>> {
+) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     debug!("pubchem_product: {:#?}", pubchem_product);
 
     // Mandatory name.
