@@ -197,7 +197,7 @@ pub fn to_string_adapter(
 
     while let Some(row) = rows.next()? {
         result += format!(
-            "p, {}, {}, {}, {}",
+            "p, {}, {}, {}, {}\n",
             row.get_unwrap::<_, u64>("person"),
             row.get_unwrap::<_, String>("permission_name"),
             row.get_unwrap::<_, String>("permission_item"),
