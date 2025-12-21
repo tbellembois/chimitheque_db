@@ -35,7 +35,7 @@ pub enum ImportPubchemProductError {
     UnknownSignalword(String),
     UnknownMolecularWeightUnit(String),
     InvalidCasnumber(String),
-    InvalidEcnumber(String),
+    InvalidCenumber(String),
     EmptyName,
 }
 
@@ -58,8 +58,8 @@ impl Display for ImportPubchemProductError {
             ImportPubchemProductError::InvalidCasnumber(s) => {
                 write!(f, "invalid cas number {s}")
             }
-            ImportPubchemProductError::InvalidEcnumber(s) => {
-                write!(f, "invalid ec number {s}")
+            ImportPubchemProductError::InvalidCenumber(s) => {
+                write!(f, "invalid ce number {s}")
             }
             ImportPubchemProductError::EmptyName => {
                 write!(f, "empty name")
@@ -203,9 +203,9 @@ pub fn create_update_product_from_pubchem(
 
     // Cas number.
     if let Some(casnumber_text) = pubchem_product.cas {
-        if !is_cas_number(&casnumber_text)? {
+        if let Err(err) = is_cas_number(&casnumber_text) {
             return Err(Box::new(ImportPubchemProductError::InvalidCasnumber(
-                casnumber_text,
+                format!("{}: {}", casnumber_text, err),
             )));
         };
 
@@ -237,10 +237,10 @@ pub fn create_update_product_from_pubchem(
     }
 
     // Ec number.
-    if let Some(ecnumber_text) = pubchem_product.ec {
-        if !is_ce_number(&ecnumber_text)? {
-            return Err(Box::new(ImportPubchemProductError::InvalidEcnumber(
-                ecnumber_text,
+    if let Some(cenumber_text) = pubchem_product.ec {
+        if let Err(err) = is_ce_number(&cenumber_text) {
+            return Err(Box::new(ImportPubchemProductError::InvalidCenumber(
+                format!("{}: {}", cenumber_text, err),
             )));
         };
 
@@ -249,7 +249,7 @@ pub fn create_update_product_from_pubchem(
                 ..Default::default()
             },
             db_connection,
-            &ecnumber_text,
+            &cenumber_text,
         )?;
 
         let ecnumber_id = match maybe_ecnumber {
@@ -260,7 +260,7 @@ pub fn create_update_product_from_pubchem(
                 },
                 None,
                 db_connection,
-                &ecnumber_text,
+                &cenumber_text,
                 Transform::None,
             )?),
         };
