@@ -1239,7 +1239,7 @@ fn compute_storage_barecode_parts(
 
     debug!("barecode_major: {:#?}", barecode_major);
 
-    let barecode_minor: u64 = match db_transaction
+    let barecode_minor: u64 = db_transaction
         .query_row(
             r#"SELECT
             MAX(CAST(substr(storage_barecode, instr(storage_barecode, '.')+1) AS INTEGER))
@@ -1254,15 +1254,8 @@ fn compute_storage_barecode_parts(
             |row| row.get::<usize, Option<u64>>(0),
         )
         .optional()?
-    {
-        // Some(Ok(minor)) => minor + 1,
-        // _ => 1,
-        Some(minor) => match minor {
-            Some(minor) => minor + 1,
-            None => 1,
-        },
-        None => 1,
-    };
+        .flatten()
+        .map_or(1, |minor| minor + 1);
 
     debug!("barecode_minor: {:#?}", barecode_minor);
 
