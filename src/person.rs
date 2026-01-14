@@ -42,113 +42,6 @@ impl From<&Row<'_>> for PersonWrapper {
     }
 }
 
-fn populate_orphans(
-    db_connection: &Connection,
-    filter: RequestFilter,
-    people: &mut Vec<PersonStruct>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
-
-    let order = if filter.order.eq_ignore_ascii_case("desc") {
-        Order::Desc
-    } else {
-        Order::Asc
-    };
-
-    // Create common query statement.
-    let mut expression = Query::select();
-    expression
-        .from(Person::Table)
-        // Required to populate the PersonWrapper fields.
-        .join(
-            JoinType::LeftJoin,
-            Personentities::Table,
-            Expr::col((
-                Personentities::Table,
-                Personentities::PersonentitiesPersonId,
-            ))
-            .equals((Person::Table, Person::PersonId)),
-        )
-        .and_where(
-            Expr::col((Person::Table, Person::PersonId)).not_in_subquery(
-                Query::select()
-                    .expr(Expr::col((
-                        Personentities::Table,
-                        Personentities::PersonentitiesPersonId,
-                    )))
-                    .from(Personentities::Table)
-                    .take(),
-            ),
-        )
-        .conditions(
-            filter.entity.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((
-                        Personentities::Table,
-                        Personentities::PersonentitiesEntityId,
-                    ))
-                    .eq(filter.entity.unwrap()),
-                );
-            },
-            |_| {},
-        )
-        .conditions(
-            filter.id.is_some(),
-            |q| {
-                q.and_where(Expr::col((Person::Table, Person::PersonId)).eq(filter.id.unwrap()));
-            },
-            |_| {},
-        )
-        .conditions(
-            filter.person_email.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((Person::Table, Person::PersonEmail))
-                        .eq(filter.person_email.clone().unwrap()),
-                );
-            },
-            |_| {},
-        )
-        .conditions(
-            filter.search.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((Person::Table, Person::PersonEmail))
-                        .like(format!("%{}%", filter.search.clone().unwrap())),
-                );
-            },
-            |_| {},
-        );
-
-    let (select_sql, select_values) = expression
-        .columns([Person::PersonId, Person::PersonEmail])
-        .expr_as(false, Alias::new("is_admin"))
-        .order_by(Person::PersonEmail, order)
-        .group_by_col((Person::Table, Person::PersonId))
-        .build_rusqlite(SqliteQueryBuilder);
-
-    debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
-
-    // Perform select query.
-    let mut stmt = db_connection.prepare(select_sql.as_str())?;
-    let rows = stmt.query_map(&*select_values.as_params(), |row| {
-        Ok(PersonWrapper::from(row))
-    })?;
-
-    for maybe_person in rows {
-        let person = maybe_person?;
-
-        // Admins already returns orphans.
-        if !people.contains(&person.0) {
-            people.push(person.0);
-        }
-    }
-
-    Ok(())
-}
-
 fn populate_entities(
     db_connection: &Connection,
     people: &mut [PersonStruct],
@@ -519,7 +412,6 @@ pub fn get_people(
     populate_entities(db_connection, &mut people)?;
     populate_managed_entities(db_connection, &mut people)?;
     populate_permissions(db_connection, &mut people)?;
-    populate_orphans(db_connection, filter, &mut people)?;
 
     debug!("people: {:#?}", people);
 

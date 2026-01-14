@@ -356,7 +356,7 @@ CREATE TABLE "entitypeople" (
 	"entitypeople_person_id"	integer NOT NULL,
 	PRIMARY KEY("entitypeople_entity_id","entitypeople_person_id"),
 	FOREIGN KEY("entitypeople_entity_id") REFERENCES "entity"("entity_id") ON DELETE CASCADE,
-	FOREIGN KEY("entitypeople_person_id") REFERENCES "person"("person_id") ON DELETE RESTRICT
+	FOREIGN KEY("entitypeople_person_id") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;
 
 DROP TABLE IF EXISTS "personentities";
