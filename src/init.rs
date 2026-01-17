@@ -61,11 +61,11 @@ pub fn init_db(
     // TEXT
     // BLOB
     // ANY
-    let sql = fs::read_to_string("/tmp/shema.sql").expect("Can not read shema.sql file.");
+    let sql = include_str!("resources/shema.sql");
 
     info!("creating database structure");
 
-    let mut batch = Batch::new(db_connection, &sql);
+    let mut batch = Batch::new(db_connection, sql);
     while let Some(mut stmt) = batch.next()? {
         stmt.execute([])?;
     }
