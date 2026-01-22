@@ -74,13 +74,13 @@ pub fn init_db(
 
     info!("- adding tags");
     for tag in TAGS {
-        tx.execute("INSERT INTO tag (tag_label) VALUES (?1)", [tag])?;
+        tx.execute("INSERT OR IGNORE INTO tag (tag_label) VALUES (?1)", [tag])?;
     }
 
     info!("- adding categories");
     for category in CATEGORIES {
         tx.execute(
-            "INSERT INTO category (category_label) VALUES (?1)",
+            "INSERT OR IGNORE INTO category (category_label) VALUES (?1)",
             [category],
         )?;
     }
@@ -88,7 +88,7 @@ pub fn init_db(
     info!("- adding suppliers");
     for supplier in SUPPLIERS {
         tx.execute(
-            "INSERT INTO supplier (supplier_label) VALUES (?1)",
+            "INSERT OR IGNORE INTO supplier (supplier_label) VALUES (?1)",
             [supplier],
         )?;
     }
@@ -96,7 +96,7 @@ pub fn init_db(
     info!("- adding producers");
     for producer in PRODUCERS {
         tx.execute(
-            "INSERT INTO producer (producer_label) VALUES (?1)",
+            "INSERT OR IGNORE INTO producer (producer_label) VALUES (?1)",
             [producer],
         )?;
     }
@@ -104,20 +104,23 @@ pub fn init_db(
     info!("- adding signal words");
     for signal_word in SIGNAL_WORDS {
         tx.execute(
-            "INSERT INTO signal_word (signal_word_label) VALUES (?1)",
+            "INSERT OR IGNORE INTO signal_word (signal_word_label) VALUES (?1)",
             [signal_word],
         )?;
     }
 
     info!("- adding symbols");
     for symbol in SYMBOLS {
-        tx.execute("INSERT INTO symbol (symbol_label) VALUES (?1)", [symbol])?;
+        tx.execute(
+            "INSERT OR IGNORE INTO symbol (symbol_label) VALUES (?1)",
+            [symbol],
+        )?;
     }
 
     info!("- adding physical states");
     for physical_state in PHYSICAL_STATES {
         tx.execute(
-            "INSERT INTO physical_state (physical_state_label) VALUES (?1)",
+            "INSERT OR IGNORE INTO physical_state (physical_state_label) VALUES (?1)",
             [physical_state],
         )?;
     }
@@ -125,91 +128,89 @@ pub fn init_db(
     info!("- adding classes of compounds");
     for class_of_compound in CLASSES_OF_COMPOUNDS {
         tx.execute(
-            "INSERT INTO class_of_compound (class_of_compound_label) VALUES (?1)",
+            "INSERT OR IGNORE INTO class_of_compound (class_of_compound_label) VALUES (?1)",
             [class_of_compound],
         )?;
     }
-
-    info!("- adding GHS statements");
-    update_ghs_statements(&tx)?;
 
     info!("- adding CMR CAS numbers");
     for cmr_cas in CMR_CAS {
         let (cas, cmr) = cmr_cas;
         tx.execute(
-            "INSERT INTO cas_number (cas_number_label, cas_number_cmr) VALUES (?1, ?2)",
+            "INSERT OR IGNORE INTO cas_number (cas_number_label, cas_number_cmr) VALUES (?1, ?2)",
             [cas, cmr],
         )?;
     }
 
     info!("- adding units");
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (1,'L',1.0,'quantity',NULL)", ())?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (2,'mL',0.001,'quantity',1)", ())?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (3,'µL',1.0e-06,'quantity',1)", ())?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (5,'g',1.0,'quantity',NULL)", ())?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (4,'kg',1000.0,'quantity',5)", ())?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (6,'mg',0.001,'quantity',5)", ())?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (7,'µg',1.0e-06,'quantity',5)", ())?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (8,'m',1.0,'quantity',NULL)", ())?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (9,'dm',10.0,'quantity',8)", ())?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (10,'cm',100.0,'quantity',8)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (1,'L',1.0,'quantity',NULL)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (2,'mL',0.001,'quantity',1)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (3,'µL',1.0e-06,'quantity',1)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (5,'g',1.0,'quantity',NULL)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (4,'kg',1000.0,'quantity',5)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (6,'mg',0.001,'quantity',5)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (7,'µg',1.0e-06,'quantity',5)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (8,'m',1.0,'quantity',NULL)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (9,'dm',10.0,'quantity',8)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (10,'cm',100.0,'quantity',8)", ())?;
     tx.execute(
-        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (11,'°K',1.0,'temperature',NULL)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (11,'°K',1.0,'temperature',NULL)",
         (),
     )?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (12,'°F',1.0,'temperature',11)", ())?;
-    tx.execute("INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (13,'°C',1.0,'temperature',11)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (12,'°F',1.0,'temperature',11)", ())?;
+    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (13,'°C',1.0,'temperature',11)", ())?;
     tx.execute(
-        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (14,'nM',1.0,'concentration',NULL)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (16,'mM',1.0,'concentration',16)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (14,'nM',1.0,'concentration',NULL)",
         (),
     )?;
     tx.execute(
-        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (15,'µM',1.0,'concentration',16)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (16,'mM',1.0,'concentration',16)",
         (),
     )?;
     tx.execute(
-        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (20,'g/L',1.0,'concentration',NULL)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (15,'µM',1.0,'concentration',16)",
         (),
     )?;
     tx.execute(
-        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (17,'ng/L',1.0,'concentration',20)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (20,'g/L',1.0,'concentration',NULL)",
         (),
     )?;
     tx.execute(
-        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (18,'µg/L',1.0,'concentration',20)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (17,'ng/L',1.0,'concentration',20)",
         (),
     )?;
     tx.execute(
-        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (19,'mg/L',1.0,'concentration',20)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (18,'µg/L',1.0,'concentration',20)",
         (),
     )?;
     tx.execute(
-        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (21,'%',1.0,'concentration',NULL)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (19,'mg/L',1.0,'concentration',20)",
         (),
     )?;
     tx.execute(
-        "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (22,'X',1.0,'concentration',NULL)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (21,'%',1.0,'concentration',NULL)",
         (),
     )?;
     tx.execute(
-        "INSERT INTO unit (unit_label, unit_multiplier, unit_type) VALUES ('g/mol', 1, 'molecular_weight');",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (22,'X',1.0,'concentration',NULL)",
+        (),
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO unit (unit_label, unit_multiplier, unit_type) VALUES ('g/mol', 1, 'molecular_weight');",
         (),
     )?;
 
     info!("- adding chimitheque admin");
     tx.execute(
-        "INSERT INTO person (person_id, person_email) VALUES (1, 'admin@chimitheque.fr')",
+        "INSERT OR IGNORE INTO person (person_id, person_email) VALUES (1, 'admin@chimitheque.fr')",
         (),
     )?;
     tx.execute(
-        "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'all', 'all', -1)",
+        "INSERT OR IGNORE INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'all', 'all', -1)",
         (),
     )?;
 
+    info!("- adding GHS statements");
     update_ghs_statements(&tx)?;
 
     tx.commit()?;

@@ -1,7 +1,6 @@
 BEGIN TRANSACTION;
 
-DROP TABLE IF EXISTS "bookmark";
-CREATE TABLE "bookmark" (
+CREATE TABLE IF NOT EXISTS "bookmark" (
 	"bookmark_id"	INTEGER,
 	"person"	INTEGER NOT NULL,
 	"product"	INTEGER NOT NULL,
@@ -10,8 +9,7 @@ CREATE TABLE "bookmark" (
 	FOREIGN KEY("product") REFERENCES "product"("product_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "borrowing";
-CREATE TABLE "borrowing" (
+CREATE TABLE IF NOT EXISTS "borrowing" (
 	"borrowing_id"	INTEGER,
 	"borrowing_comment"	TEXT,
 	"person"	INTEGER NOT NULL,
@@ -23,51 +21,44 @@ CREATE TABLE "borrowing" (
 	FOREIGN KEY("storage") REFERENCES "storage"("storage_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "cas_number";
-CREATE TABLE "cas_number" (
+CREATE TABLE IF NOT EXISTS "cas_number" (
 	"cas_number_id"	INTEGER,
 	"cas_number_label"	TEXT NOT NULL UNIQUE,
 	"cas_number_cmr"	TEXT,
 	PRIMARY KEY("cas_number_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "ce_number";
-CREATE TABLE "ce_number" (
+CREATE TABLE IF NOT EXISTS "ce_number" (
 	"ce_number_id"	INTEGER,
 	"ce_number_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("ce_number_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "category";
-CREATE TABLE "category" (
+CREATE TABLE IF NOT EXISTS "category" (
 	"category_id"	INTEGER,
 	"category_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("category_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "class_of_compound";
-CREATE TABLE "class_of_compound" (
+CREATE TABLE IF NOT EXISTS "class_of_compound" (
 	"class_of_compound_id"	INTEGER,
 	"class_of_compound_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("class_of_compound_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "empirical_formula";
-CREATE TABLE "empirical_formula" (
+CREATE TABLE IF NOT EXISTS "empirical_formula" (
 	"empirical_formula_id"	INTEGER,
 	"empirical_formula_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("empirical_formula_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "linear_formula";
-CREATE TABLE "linear_formula" (
+CREATE TABLE IF NOT EXISTS "linear_formula" (
 	"linear_formula_id"	INTEGER,
 	"linear_formula_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("linear_formula_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "hazard_statement";
-CREATE TABLE "hazard_statement" (
+CREATE TABLE IF NOT EXISTS "hazard_statement" (
 	"hazard_statement_id"	INTEGER,
 	"hazard_statement_label"	TEXT NOT NULL,
 	"hazard_statement_reference"	TEXT NOT NULL UNIQUE,
@@ -75,51 +66,44 @@ CREATE TABLE "hazard_statement" (
 	PRIMARY KEY("hazard_statement_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "precautionary_statement";
-CREATE TABLE "precautionary_statement" (
+CREATE TABLE IF NOT EXISTS "precautionary_statement" (
 	"precautionary_statement_id"	INTEGER,
 	"precautionary_statement_label"	TEXT NOT NULL,
 	"precautionary_statement_reference"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("precautionary_statement_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "physical_state";
-CREATE TABLE "physical_state" (
+CREATE TABLE IF NOT EXISTS "physical_state" (
 	"physical_state_id"	INTEGER,
 	"physical_state_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("physical_state_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "signal_word";
-CREATE TABLE "signal_word" (
+CREATE TABLE IF NOT EXISTS "signal_word" (
 	"signal_word_id"	INTEGER,
 	"signal_word_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("signal_word_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "symbol";
-CREATE TABLE "symbol" (
+CREATE TABLE IF NOT EXISTS "symbol" (
 	"symbol_id"	INTEGER,
 	"symbol_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("symbol_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "tag";
-CREATE TABLE "tag" (
+CREATE TABLE IF NOT EXISTS "tag" (
 	"tag_id"	INTEGER,
 	"tag_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("tag_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "producer";
-CREATE TABLE "producer" (
+CREATE TABLE IF NOT EXISTS "producer" (
 	"producer_id"	INTEGER,
 	"producer_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("producer_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "producer_ref";
-CREATE TABLE "producer_ref" (
+CREATE TABLE IF NOT EXISTS "producer_ref" (
 	"producer_ref_id"	INTEGER,
 	"producer_ref_label"	TEXT NOT NULL,
 	"producer"	INTEGER,
@@ -127,15 +111,13 @@ CREATE TABLE "producer_ref" (
 	FOREIGN KEY("producer") REFERENCES "producer"("producer_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "supplier";
-CREATE TABLE "supplier" (
+CREATE TABLE IF NOT EXISTS "supplier" (
 	"supplier_id"	INTEGER,
 	"supplier_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("supplier_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "supplier_ref";
-CREATE TABLE "supplier_ref" (
+CREATE TABLE IF NOT EXISTS "supplier_ref" (
 	"supplier_ref_id"	INTEGER,
 	"supplier_ref_label"	TEXT NOT NULL,
 	"supplier"	INTEGER,
@@ -143,15 +125,13 @@ CREATE TABLE "supplier_ref" (
 	FOREIGN KEY("supplier") REFERENCES "supplier"("supplier_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "name";
-CREATE TABLE "name" (
+CREATE TABLE IF NOT EXISTS "name" (
 	"name_id"	INTEGER,
 	"name_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("name_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "unit";
-CREATE TABLE "unit" (
+CREATE TABLE IF NOT EXISTS "unit" (
 	"unit_id"	INTEGER,
 	"unit_label"	TEXT NOT NULL UNIQUE,
 	"unit_multiplier"	REAL NOT NULL DEFAULT 1,
@@ -161,8 +141,7 @@ CREATE TABLE "unit" (
 	FOREIGN KEY("unit") REFERENCES "unit"("unit_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "permission";
-CREATE TABLE "permission" (
+CREATE TABLE IF NOT EXISTS "permission" (
 	"person"	INTEGER NOT NULL,
 	"permission_name"	TEXT NOT NULL,
 	"permission_item"	TEXT NOT NULL,
@@ -172,23 +151,20 @@ CREATE TABLE "permission" (
 	FOREIGN KEY("person") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "entity";
-CREATE TABLE "entity" (
+CREATE TABLE IF NOT EXISTS "entity" (
 	"entity_id"	INTEGER,
 	"entity_name"	TEXT NOT NULL UNIQUE,
 	"entity_description"	TEXT,
 	PRIMARY KEY("entity_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "person";
-CREATE TABLE "person" (
+CREATE TABLE IF NOT EXISTS "person" (
 	"person_id"	INTEGER,
 	"person_email"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("person_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "product";
-CREATE TABLE "product" (
+CREATE TABLE IF NOT EXISTS "product" (
 	"product_id"	INTEGER,
 	"product_type"	TEXT NOT NULL,
 	"product_inchi"	TEXT,
@@ -236,8 +212,7 @@ CREATE TABLE "product" (
 	FOREIGN KEY("unit_temperature") REFERENCES "unit"("unit_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "store_location";
-CREATE TABLE "store_location" (
+CREATE TABLE IF NOT EXISTS "store_location" (
 	"store_location_id"	INTEGER,
 	"store_location_name"	TEXT NOT NULL,
 	"store_location_color"	TEXT,
@@ -250,8 +225,7 @@ CREATE TABLE "store_location" (
 	FOREIGN KEY("store_location") REFERENCES "store_location"("store_location_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "storage";
-CREATE TABLE "storage" (
+CREATE TABLE IF NOT EXISTS "storage" (
 	"storage_id"	INTEGER,
 	"storage_creation_date"	INTEGER NOT NULL DEFAULT current_timestamp,
 	"storage_modification_date"	INTEGER NOT NULL DEFAULT current_timestamp,
@@ -287,8 +261,7 @@ CREATE TABLE "storage" (
 	FOREIGN KEY("unit_quantity") REFERENCES "unit"("unit_id")
 ) STRICT;
 
-DROP TABLE IF EXISTS "productclassesofcompounds";
-CREATE TABLE "productclassesofcompounds" (
+CREATE TABLE IF NOT EXISTS "productclassesofcompounds" (
 	"productclassesofcompounds_product_id"	INTEGER NOT NULL,
 	"productclassesofcompounds_class_of_compound_id"	INTEGER NOT NULL,
 	PRIMARY KEY("productclassesofcompounds_product_id","productclassesofcompounds_class_of_compound_id"),
@@ -296,8 +269,7 @@ CREATE TABLE "productclassesofcompounds" (
 	FOREIGN KEY("productclassesofcompounds_product_id") REFERENCES "product"("product_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "producthazardstatements";
-CREATE TABLE "producthazardstatements" (
+CREATE TABLE IF NOT EXISTS "producthazardstatements" (
 	"producthazardstatements_product_id"	INTEGER NOT NULL,
 	"producthazardstatements_hazard_statement_id"	INTEGER NOT NULL,
 	PRIMARY KEY("producthazardstatements_product_id","producthazardstatements_hazard_statement_id"),
@@ -305,8 +277,7 @@ CREATE TABLE "producthazardstatements" (
 	FOREIGN KEY("producthazardstatements_product_id") REFERENCES "product"("product_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "productprecautionarystatements";
-CREATE TABLE "productprecautionarystatements" (
+CREATE TABLE IF NOT EXISTS "productprecautionarystatements" (
 	"productprecautionarystatements_product_id"	INTEGER NOT NULL,
 	"productprecautionarystatements_precautionary_statement_id"	INTEGER NOT NULL,
 	PRIMARY KEY("productprecautionarystatements_product_id","productprecautionarystatements_precautionary_statement_id"),
@@ -314,8 +285,7 @@ CREATE TABLE "productprecautionarystatements" (
 	FOREIGN KEY("productprecautionarystatements_product_id") REFERENCES "product"("product_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "productsupplierrefs";
-CREATE TABLE "productsupplierrefs" (
+CREATE TABLE IF NOT EXISTS "productsupplierrefs" (
 	"productsupplierrefs_product_id"	INTEGER NOT NULL,
 	"productsupplierrefs_supplier_ref_id"	INTEGER NOT NULL,
 	PRIMARY KEY("productsupplierrefs_product_id","productsupplierrefs_supplier_ref_id"),
@@ -323,8 +293,7 @@ CREATE TABLE "productsupplierrefs" (
 	FOREIGN KEY("productsupplierrefs_supplier_ref_id") REFERENCES "supplier_ref"("supplier_ref_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "productsymbols";
-CREATE TABLE "productsymbols" (
+CREATE TABLE IF NOT EXISTS "productsymbols" (
 	"productsymbols_product_id"	integer NOT NULL,
 	"productsymbols_symbol_id"	integer NOT NULL,
 	PRIMARY KEY("productsymbols_product_id","productsymbols_symbol_id"),
@@ -332,8 +301,7 @@ CREATE TABLE "productsymbols" (
 	FOREIGN KEY("productsymbols_symbol_id") REFERENCES "symbol"("symbol_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "productsynonyms";
-CREATE TABLE "productsynonyms" (
+CREATE TABLE IF NOT EXISTS "productsynonyms" (
 	"productsynonyms_product_id"	integer NOT NULL,
 	"productsynonyms_name_id"	integer NOT NULL,
 	PRIMARY KEY("productsynonyms_product_id","productsynonyms_name_id"),
@@ -341,8 +309,7 @@ CREATE TABLE "productsynonyms" (
 	FOREIGN KEY("productsynonyms_product_id") REFERENCES "product"("product_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "producttags";
-CREATE TABLE "producttags" (
+CREATE TABLE IF NOT EXISTS "producttags" (
 	"producttags_product_id"	integer NOT NULL,
 	"producttags_tag_id"	integer NOT NULL,
 	PRIMARY KEY("producttags_product_id","producttags_tag_id"),
@@ -350,8 +317,7 @@ CREATE TABLE "producttags" (
 	FOREIGN KEY("producttags_tag_id") REFERENCES "tag"("tag_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "entitypeople";
-CREATE TABLE "entitypeople" (
+CREATE TABLE IF NOT EXISTS "entitypeople" (
 	"entitypeople_entity_id"	integer NOT NULL,
 	"entitypeople_person_id"	integer NOT NULL,
 	PRIMARY KEY("entitypeople_entity_id","entitypeople_person_id"),
@@ -359,8 +325,7 @@ CREATE TABLE "entitypeople" (
 	FOREIGN KEY("entitypeople_person_id") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;
 
-DROP TABLE IF EXISTS "personentities";
-CREATE TABLE "personentities" (
+CREATE TABLE IF NOT EXISTS "personentities" (
 	"personentities_person_id"	integer NOT NULL,
 	"personentities_entity_id"	integer NOT NULL,
 	PRIMARY KEY("personentities_person_id","personentities_entity_id"),
@@ -368,94 +333,94 @@ CREATE TABLE "personentities" (
 	FOREIGN KEY("personentities_person_id") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;
 
-CREATE INDEX "idx_bookmark" ON "bookmark" (
+CREATE INDEX IF NOT EXISTS "idx_bookmark" ON "bookmark" (
 	"person","product"
 );
-CREATE INDEX "idx_borrowing" ON "borrowing" (
+CREATE INDEX IF NOT EXISTS "idx_borrowing" ON "borrowing" (
 	"person","storage"
 );
-CREATE INDEX "idx_cas_number" ON "cas_number" (
+CREATE INDEX IF NOT EXISTS "idx_cas_number" ON "cas_number" (
 	"cas_number_label"
 );
-CREATE INDEX "idx_ce_number" ON "ce_number" (
+CREATE INDEX IF NOT EXISTS "idx_ce_number" ON "ce_number" (
 	"ce_number_label"
 );
-CREATE INDEX "idx_category" ON "category" (
+CREATE INDEX IF NOT EXISTS "idx_category" ON "category" (
 	"category_label"
 );
-CREATE INDEX "idx_class_of_compound" ON "class_of_compound" (
+CREATE INDEX IF NOT EXISTS "idx_class_of_compound" ON "class_of_compound" (
 	"class_of_compound_label"
 );
-CREATE INDEX "idx_empirical_formula" ON "empirical_formula" (
+CREATE INDEX IF NOT EXISTS "idx_empirical_formula" ON "empirical_formula" (
 	"empirical_formula_label"
 );
-CREATE INDEX "idx_linear_formula" ON "linear_formula" (
+CREATE INDEX IF NOT EXISTS "idx_linear_formula" ON "linear_formula" (
 	"linear_formula_label"
 );
-CREATE INDEX "idx_hazard_statement" ON "hazard_statement" (
+CREATE INDEX IF NOT EXISTS "idx_hazard_statement" ON "hazard_statement" (
 	"hazard_statement_reference"
 );
-CREATE INDEX "idx_precautionary_statement" ON "precautionary_statement" (
+CREATE INDEX IF NOT EXISTS "idx_precautionary_statement" ON "precautionary_statement" (
 	"precautionary_statement_reference"
 );
-CREATE INDEX "idx_physical_state" ON "physical_state" (
+CREATE INDEX IF NOT EXISTS "idx_physical_state" ON "physical_state" (
 	"physical_state_label"
 );
-CREATE INDEX "idx_signal_word" ON "signal_word" (
+CREATE INDEX IF NOT EXISTS "idx_signal_word" ON "signal_word" (
 	"signal_word_label"
 );
-CREATE INDEX "idx_symbol" ON "symbol" (
+CREATE INDEX IF NOT EXISTS "idx_symbol" ON "symbol" (
 	"symbol_label"
 );
-CREATE INDEX "idx_tag" ON "tag" (
+CREATE INDEX IF NOT EXISTS "idx_tag" ON "tag" (
 	"tag_label"
 );
-CREATE INDEX "idx_producer" ON "producer" (
+CREATE INDEX IF NOT EXISTS "idx_producer" ON "producer" (
 	"producer_label"
 );
-CREATE INDEX "idx_producer_ref" ON "producer_ref" (
+CREATE INDEX IF NOT EXISTS "idx_producer_ref" ON "producer_ref" (
 	"producer","producer_ref_label"
 );
-CREATE INDEX "idx_supplier" ON "supplier" (
+CREATE INDEX IF NOT EXISTS "idx_supplier" ON "supplier" (
 	"supplier_label"
 );
-CREATE INDEX "idx_supplier_ref" ON "supplier_ref" (
+CREATE INDEX IF NOT EXISTS "idx_supplier_ref" ON "supplier_ref" (
 	"supplier","supplier_ref_label"
 );
-CREATE INDEX "idx_name" ON "name" (
+CREATE INDEX IF NOT EXISTS "idx_name" ON "name" (
 	"name_label"
 );
-CREATE INDEX "idx_unit" ON "unit" (
+CREATE INDEX IF NOT EXISTS "idx_unit" ON "unit" (
 	"unit_label"
 );
-CREATE INDEX "idx_permission" ON "permission" (
+CREATE INDEX IF NOT EXISTS "idx_permission" ON "permission" (
 	"person"
 );
-CREATE INDEX "idx_entity" ON "entity" (
+CREATE INDEX IF NOT EXISTS "idx_entity" ON "entity" (
 	"entity_name"
 );
-CREATE INDEX "idx_person" ON "person" (
+CREATE INDEX IF NOT EXISTS "idx_person" ON "person" (
 	"person_email"
 );
-CREATE INDEX "idx_product_cas_number" ON "product" (
+CREATE INDEX IF NOT EXISTS "idx_product_cas_number" ON "product" (
 	"cas_number"
 );
-CREATE INDEX "idx_product_empirical_formula" ON "product" (
+CREATE INDEX IF NOT EXISTS "idx_product_empirical_formula" ON "product" (
 	"empirical_formula"
 );
-CREATE INDEX "idx_product_name" ON "product" (
+CREATE INDEX IF NOT EXISTS "idx_product_name" ON "product" (
 	"name"
 );
-CREATE INDEX "idx_product_type" ON "product" (
+CREATE INDEX IF NOT EXISTS "idx_product_type" ON "product" (
 	"product_type"
 );
-CREATE INDEX "idx_store_location_name" ON "store_location" (
+CREATE INDEX IF NOT EXISTS "idx_store_location_name" ON "store_location" (
 	"store_location_name"
 );
-CREATE INDEX "idx_store_location_entity" ON "store_location" (
+CREATE INDEX IF NOT EXISTS "idx_store_location_entity" ON "store_location" (
 	"entity"
 );
-CREATE INDEX "idx_storage" ON "storage" (
+CREATE INDEX IF NOT EXISTS "idx_storage" ON "storage" (
 	"product"
 );
 
