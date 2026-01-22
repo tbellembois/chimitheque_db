@@ -858,27 +858,23 @@ pub fn get_storages(
             },
             |_| {},
         )
-        // .conditions(
-        //     filter.storage.is_some(),
-        //     |q| {
-        //         q.and_where(
-        //             Expr::col((Storage::Table, Storage::StorageId)).eq(filter.storage.unwrap()),
-        //         );
-        //     },
-        //     |_| {},
-        // )
         .conditions(
-            filter.storage_archive,
+            filter.storage_archive.is_some_and(|x| x),
             |q| {
                 q.and_where(
                     Expr::col((Storage::Table,Storage::StorageArchive)).eq(true),
                 );
             },
+            |_| {},
+        )
+        .conditions(
+            filter.storage_archive.is_some_and(|x| !x),
             |q| {
                 q.and_where(
                     Expr::col((Storage::Table,Storage::StorageArchive)).eq(false),
                 );
             },
+            |_| {},
         )
         .conditions(
             filter.borrowing,
