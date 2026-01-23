@@ -2322,11 +2322,6 @@ pub fn create_update_product(
 
     if let Some(product_id) = product.product_id {
         // Update query.
-        // (sql_query, sql_values) = Query::update()
-        //     .table(Product::Table)
-        //     .values(columns_values)
-        //     .and_where(Expr::col(Product::ProductId).eq(product_id))
-        //     .build_rusqlite(SqliteQueryBuilder);
         columns.push(Product::ProductId);
         values.push(SimpleExpr::Value(product_id.into()));
 

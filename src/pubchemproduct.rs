@@ -404,10 +404,14 @@ pub fn create_update_product_from_pubchem(
 
     if let Some(product_id) = product_id {
         // Update query.
-        (sql_query, sql_values) = Query::update()
-            .table(Product::Table)
-            .values(columns_values)
-            .and_where(Expr::col(Product::ProductId).eq(product_id))
+        columns.push(Product::ProductId);
+        values.push(SimpleExpr::Value(product_id.into()));
+
+        (sql_query, sql_values) = Query::insert()
+            .replace()
+            .into_table(Product::Table)
+            .columns(columns)
+            .values(values)?
             .build_rusqlite(SqliteQueryBuilder);
     } else {
         // Insert query.
