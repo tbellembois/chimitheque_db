@@ -20,7 +20,6 @@ use chimitheque_utils::formula::sort_empirical_formula;
 use chimitheque_utils::string::Transform;
 use log::debug;
 use rusqlite::Connection;
-use sea_query::Expr;
 use sea_query::OnConflict;
 use sea_query::{Query, SimpleExpr, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;

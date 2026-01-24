@@ -76,7 +76,7 @@ pub fn parse(
 pub fn get_precautionary_statements(
     db_connection: &Connection,
     filter: RequestFilter,
-) -> Result<(Vec<PrecautionaryStatementWrapper>, usize), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(Vec<PrecautionaryStatementStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
 
     // Create common query statement.
@@ -167,10 +167,10 @@ pub fn get_precautionary_statements(
             precautionary_statement.0.match_exact_search = true;
 
             // Inserting the statement at the beginning of the results.
-            precautionary_statements.insert(0, precautionary_statement)
+            precautionary_statements.insert(0, precautionary_statement.0)
         } else {
             // Inserting the statement at the end of the results.
-            precautionary_statements.push(precautionary_statement);
+            precautionary_statements.push(precautionary_statement.0);
         }
     }
 
@@ -234,11 +234,9 @@ mod tests {
         assert_eq!(count, 2);
         // expected exact match appears first.
         assert!(precautionary_statements[0]
-            .0
             .precautionary_statement_reference
             .eq("precautionary_statement1-ref"));
         assert!(precautionary_statements[0]
-            .0
             .precautionary_statement_label
             .eq("precautionary_statement1"));
     }
