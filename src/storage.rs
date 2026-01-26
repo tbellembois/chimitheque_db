@@ -661,6 +661,13 @@ pub fn get_storages(
                     Expr::col((Alias::new("perm"), Alias::new("permission_name")))
                         .is_in(["r", "w", "all"]),
                 )
+                .and(
+                    Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
+                        .equals(Entity::EntityId)
+                        .or(
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1),
+                        ),
+                ),
         )
         //
         // restricted products?
