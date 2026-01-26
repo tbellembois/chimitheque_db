@@ -126,8 +126,6 @@ impl TryFrom<&Row<'_>> for StorageWrapper {
     type Error = ParseError;
 
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
-        dbg!(row);
-
         let maybe_unit_quantity: Option<u64> = row.get_unwrap("unit_quantity_unit_id");
         let maybe_unit_concentration: Option<u64> = row.get_unwrap("unit_concentration_unit_id");
         let maybe_parent_storage: Option<u64> = row.get_unwrap("parent_storage_id");
