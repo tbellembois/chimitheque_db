@@ -841,7 +841,7 @@ pub fn get_storages(
         .conditions(
             filter.storage_to_destroy,
             |q| {
-                q.and_where(Expr::col(Storage::StorageToDestroy).eq(filter.storage_to_destroy));
+                q.and_where(Expr::col((Storage::Table,Storage::StorageToDestroy)).eq(filter.storage_to_destroy));
             },
             |_| {},
         )
@@ -849,7 +849,7 @@ pub fn get_storages(
             filter.storage_barecode.is_some(),
             |q| {
                 q.and_where(
-                    Expr::col(Storage::StorageBarecode).like(format!("%{}%",filter.storage_barecode.unwrap())),
+                    Expr::col((Storage::Table,Storage::StorageBarecode)).like(format!("%{}%",filter.storage_barecode.unwrap())),
                 );
             },
             |_| {},
@@ -858,7 +858,7 @@ pub fn get_storages(
             filter.storage_batch_number.is_some(),
             |q| {
                 q.and_where(
-                    Expr::col(Storage::StorageBatchNumber).like(format!("%{}%",filter.storage_batch_number.unwrap())),
+                    Expr::col((Storage::Table,Storage::StorageBatchNumber)).like(format!("%{}%",filter.storage_batch_number.unwrap())),
                 );
             },
             |_| {},
@@ -1035,16 +1035,6 @@ pub fn get_storages(
             Expr::col((Alias::new("parent"), Alias::new("storage_id"))),
             Alias::new("parent_storage_id"),
         )
-        // .expr(SimpleExpr::SubQuery(SelectStatement(
-        //     Query::select()
-        //         .expr(Expr::col((Storage::Table, Storage::StorageId)).count_distinct())
-        //         .from(Storage::Table)
-        //         .and_where(
-        //             Expr::col((Storage::Table, Storage::Storage))
-        //                 .equals((Storage::Table, Storage::StorageId)),
-        //         )
-        //         .into(),
-        // )))
         .expr_as(
             Expr::col((Alias::new("borrower"), Alias::new("person_id"))),
             Alias::new("borrower_person_id"),
