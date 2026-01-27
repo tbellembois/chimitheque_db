@@ -308,10 +308,7 @@ pub fn export_storages(
     }
     wtr.flush()?;
 
-    let inner_buffer_content = match wtr.into_inner() {
-        Ok(inner_buffer) => inner_buffer,
-        Err(err) => return Err(err.into()),
-    };
+    let inner_buffer_content = wtr.into_inner()?;
 
     let csv = String::from_utf8(inner_buffer_content.into_inner()?).unwrap();
 
@@ -1186,41 +1183,36 @@ fn compute_storage_barecode_parts(
         None => return Err(Box::new(StorageError::MissingStoreLocationId)),
     };
 
-    let store_location_name = storage.store_location.store_location_name.clone();
+    // Getting the store location and its name..
+    let (store_locations, nb_results) = get_store_locations(
+        db_transaction,
+        RequestFilter {
+            id: Some(store_location_id),
+            ..Default::default()
+        },
+        person_id,
+    )?;
 
-    let entity_id = match storage.store_location.entity.clone() {
+    if nb_results == 0 {
+        return Err(format!("no store location found for id {}", store_location_id).into());
+    };
+
+    let store_location = store_locations.first().unwrap();
+    let store_location_name = store_location.clone().store_location_name;
+
+    // Getting the entity id.
+    let entity_id = match store_location.entity.clone() {
         Some(entity) => match entity.entity_id {
             Some(entity_id) => entity_id,
             None => return Err(Box::new(StorageError::MissingEntityId)),
         },
-        None => {
-            let (store_locations, nb_results) = get_store_locations(
-                db_transaction,
-                RequestFilter {
-                    id: Some(store_location_id),
-                    ..Default::default()
-                },
-                person_id,
-            )?;
-
-            if nb_results == 0 {
-                return Err(format!("no store location found for id {}", store_location_id).into());
-            };
-
-            let store_location = store_locations.first().unwrap();
-
-            match store_location.entity.clone() {
-                Some(entity) => match entity.entity_id {
-                    Some(entity_id) => entity_id,
-                    None => return Err(Box::new(StorageError::MissingEntityId)),
-                },
-                None => return Err(Box::new(StorageError::MissingEntity)),
-            }
-        }
+        None => return Err(Box::new(StorageError::MissingEntity)),
     };
 
-    debug!("product_id: {:#?}", product_id);
-    debug!("entity_id: {:#?}", entity_id);
+    debug!("store_location_id: {}", store_location_id);
+    debug!("store_location_name: {}", store_location_name);
+    debug!("product_id: {}", product_id);
+    debug!("entity_id: {}", entity_id);
 
     let re = Regex::new(r#"^\[(?P<groupone>[_a-zA-Z]+)\].*$"#)?;
     let barecode_major = match re.captures(&store_location_name) {

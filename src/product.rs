@@ -1039,10 +1039,7 @@ pub fn export_products(
     }
     wtr.flush()?;
 
-    let inner_buffer_content = match wtr.into_inner() {
-        Ok(inner_buffer) => inner_buffer,
-        Err(err) => return Err(err.into()),
-    };
+    let inner_buffer_content = wtr.into_inner()?;
 
     let csv = String::from_utf8(inner_buffer_content.into_inner()?).unwrap();
 
