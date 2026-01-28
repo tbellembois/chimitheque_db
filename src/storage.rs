@@ -16,7 +16,7 @@ use csv::WriterBuilder;
 use log::debug;
 use qrcode_png::{Color, QrCode, QrCodeEcc};
 use regex::Regex;
-use rusqlite::{Connection, OptionalExtension, Row, Transaction};
+use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
     any, Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
     SqliteQueryBuilder,
@@ -1177,7 +1177,7 @@ fn compute_storage_barecode_parts(
     storage: &StorageStruct,
     product_id: u64,
     person_id: u64,
-) -> Result<(String, u64), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(String, u64, u64), Box<dyn std::error::Error + Send + Sync>> {
     let store_location_id = match storage.store_location.store_location_id {
         Some(store_location_id) => store_location_id,
         None => return Err(Box::new(StorageError::MissingStoreLocationId)),
@@ -1215,34 +1215,45 @@ fn compute_storage_barecode_parts(
     debug!("entity_id: {}", entity_id);
 
     let re = Regex::new(r#"^\[(?P<groupone>[_a-zA-Z]+)\].*$"#)?;
-    let barecode_major = match re.captures(&store_location_name) {
+    let barecode_string = match re.captures(&store_location_name) {
         Some(caps) => caps["groupone"].to_string(),
         None => "_".to_string(),
     };
 
-    debug!("barecode_major: {:#?}", barecode_major);
+    debug!("barecode_string: {:#?}", barecode_string);
 
-    let barecode_minor: u64 = db_transaction
+    let (maybe_barecode_major, maybe_barecode_minor): (Option<u64>, Option<u64>) = db_transaction
         .query_row(
-            r#"SELECT
-            MAX(CAST(substr(storage_barecode, instr(storage_barecode, '.')+1) AS INTEGER))
-        FROM storage
-		JOIN store_location on storage.store_location = store_location.store_location_id
-		WHERE product = (?1)
-		AND store_location.entity = (?2)
-		AND storage.storage IS NULL
-		AND regexp('^[_a-zA-Z]+[0-9]+\.[0-9]+$', '' || storage_barecode || '') = true
+            r#"
+            SELECT CAST(regex_capture(
+              "[_a-zA-Z]+(?P<barecode_major>[0-9]+)\.[0-9]+",
+              storage_barecode,
+              "barecode_major"
+            ) AS INTEGER) as barecode_major,
+            MAX(CAST(substr(storage_barecode, instr(storage_barecode, '.')+1) AS INTEGER)) as barecode_minor
+            FROM storage
+            JOIN store_location on storage.store_location = store_location.store_location_id
+            WHERE product = (?1)
+            AND store_location.entity = (?2)
+            AND storage.storage IS NULL
+            AND regexp('^[_a-zA-Z]+[0-9]+\.[0-9]+$', '' || storage_barecode || '') = true
 		"#,
             [product_id, entity_id],
-            |row| row.get::<usize, Option<u64>>(0),
-        )
-        .optional()?
-        .flatten()
-        .map_or(1, |minor| minor + 1);
+            |row| {
+                        Ok((
+                            row.get("barecode_major")?,
+                            row.get("barecode_minor")?,
+                        ))
+                    },
+        )?;
 
-    debug!("barecode_minor: {:#?}", barecode_minor);
+    debug!("maybe_barecode_major: {:#?}", maybe_barecode_major);
+    debug!("barecode_minor: {:#?}", maybe_barecode_minor);
 
-    Ok((barecode_major, barecode_minor))
+    let barecode_major = maybe_barecode_major.unwrap_or(product_id);
+    let barecode_minor = maybe_barecode_minor.unwrap_or(1);
+
+    Ok((barecode_string, barecode_major, barecode_minor))
 }
 
 pub fn create_update_storage(
@@ -1283,15 +1294,18 @@ pub fn create_update_storage(
     //
     // Generate barcode if empty.
     //
-    let mut barecode_major: String = "".to_string();
+    let barecode_string;
+    let mut barecode_major: u64 = product_id;
     let mut barecode_minor: u64 = 1;
     if storage.storage_barecode.is_none() {
-        (barecode_major, barecode_minor) =
+        (barecode_string, barecode_major, barecode_minor) =
             compute_storage_barecode_parts(&db_transaction, &storage, product_id, person_id)?;
 
         storage.storage_barecode = Some(format!(
             "{}{}.{}",
-            barecode_major, product_id, barecode_minor
+            barecode_string,
+            barecode_major,
+            barecode_minor + 1
         ));
     }
 
@@ -1302,8 +1316,6 @@ pub fn create_update_storage(
             Storage::Product,
             Storage::Person,
             Storage::StoreLocation,
-            Storage::StorageCreationDate,
-            Storage::StorageModificationDate,
             Storage::StorageQrcode,
             Storage::StorageToDestroy,
             Storage::StorageArchive,
@@ -1312,14 +1324,6 @@ pub fn create_update_storage(
             SimpleExpr::Value(product_id.into()),
             SimpleExpr::Value(person_id.into()),
             SimpleExpr::Value(store_location_id.into()),
-            SimpleExpr::Value(storage.storage_creation_date.timestamp().into()),
-            SimpleExpr::Value(
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs()
-                    .into(),
-            ),
             SimpleExpr::Value(storage.storage_qrcode.clone().into()),
             SimpleExpr::Value(storage.storage_to_destroy.into()),
             SimpleExpr::Value(storage.storage_archive.into()),
@@ -1435,6 +1439,15 @@ pub fn create_update_storage(
             columns.push(Storage::StorageId);
             values.push(SimpleExpr::Value(storage_id.into()));
 
+            columns.push(Storage::StorageModificationDate);
+            values.push(SimpleExpr::Value(
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+                    .into(),
+            ));
+
             sql_query = Query::insert()
                 .replace()
                 .into_table(Storage::Table)
@@ -1443,6 +1456,7 @@ pub fn create_update_storage(
                 .to_string(SqliteQueryBuilder);
         } else {
             // Insert query.
+            // Storage creation date is set by database default.
             sql_query = Query::insert()
                 .into_table(Storage::Table)
                 .columns(columns)

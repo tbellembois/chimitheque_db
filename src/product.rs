@@ -1691,21 +1691,22 @@ pub fn get_products(
         .expr(Expr::col((Producer::Table, Producer::ProducerLabel)))
         .expr_as(
             Expr::case(
-                           Expr::exists(
-                               Query::select()
-                                   .expr(Expr::col((Bookmark::Table, Bookmark::BookmarkId)))
-                                   .from(Bookmark::Table)
-                                   .and_where(
-                                       Expr::col((Bookmark::Table, Bookmark::Product))
-                                           .equals((Product::Table, Product::ProductId)),
-                                   )
-                                   .and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id))
-                                   .take(),
-                           ),
-                           Expr::val(true),
-                       )
-                       .finally(Expr::val(false))
-            , Alias::new("product_has_bookmark"))
+                Expr::exists(
+                    Query::select()
+                        .expr(Expr::col((Bookmark::Table, Bookmark::BookmarkId)))
+                        .from(Bookmark::Table)
+                        .and_where(
+                            Expr::col((Bookmark::Table, Bookmark::Product))
+                                .equals((Product::Table, Product::ProductId)),
+                        )
+                        .and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id))
+                        .take(),
+                ),
+                Expr::val(true),
+            )
+            .finally(Expr::val(false)),
+            Alias::new("product_has_bookmark"),
+        )
         .expr_as(
             Expr::col((Alias::new("unit_temperature"), Alias::new("unit_id"))),
             Alias::new("unit_temperature_unit_id"),
@@ -1747,13 +1748,27 @@ pub fn get_products(
             Expr::col((Alias::new("unit_molecular_weight"), Alias::new("unit_type"))),
             Alias::new("unit_molecular_weight_unit_type"),
         )
+        // Double security here:
+        // storage.storage_barecode can be null -> inner COALESCE
+        // regex_capture can also be null -> outer COALESCE
         .expr_as(
-            Expr::cust("GROUP_CONCAT(DISTINCT REGEXP_SUBSTR(storage.storage_barecode, '[a-zA-Z]{1}[0-9]+.'))"),
+            Expr::cust(
+                r#"
+                COALESCE(
+                    regex_capture(
+                        '(?P<product_sl>[_a-zA-Z]+[0-9]+)\.',
+                        COALESCE(storage.storage_barecode, ''),
+                        'product_sl'
+                    ),
+                    ''
+                )
+                "#,
+            ),
             Alias::new("product_sl"),
         )
         .expr_as(
             Expr::cust("GROUP_CONCAT(DISTINCT hazard_statement.hazard_statement_cmr)"),
-                 Alias::new("product_hs_cmr"),
+            Alias::new("product_hs_cmr"),
         )
         .order_by(order_by, order)
         .group_by_col((Product::Table, Product::ProductId))

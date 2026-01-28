@@ -227,8 +227,8 @@ CREATE TABLE IF NOT EXISTS "store_location" (
 
 CREATE TABLE IF NOT EXISTS "storage" (
 	"storage_id"	INTEGER,
-	"storage_creation_date"	INTEGER NOT NULL DEFAULT current_timestamp,
-	"storage_modification_date"	INTEGER NOT NULL DEFAULT current_timestamp,
+	"storage_creation_date"	INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+	"storage_modification_date"	INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
 	"storage_entry_date"	INTEGER,
 	"storage_exit_date"	INTEGER,
 	"storage_opening_date"	INTEGER,

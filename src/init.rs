@@ -12,7 +12,7 @@ use crate::define::{
 pub fn connect_test() -> Connection {
     let sql_extension_dir = env::var("SQLITE_EXTENSION_DIR")
         .expect("Missing SQLITE_EXTENSION_DIR environment variable.");
-    let sql_extension_regex = Path::new(sql_extension_dir.as_str()).join("regexp.so");
+    let sql_extension_regex = Path::new(sql_extension_dir.as_str()).join("regex0.so");
 
     let db_connection = Connection::open_in_memory().unwrap();
     unsafe {
@@ -27,7 +27,7 @@ pub fn connect_test() -> Connection {
 pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
     let sql_extension_dir = env::var("SQLITE_EXTENSION_DIR")
         .expect("Missing SQLITE_EXTENSION_DIR environment variable.");
-    let sql_extension_regex = Path::new(sql_extension_dir.as_str()).join("regexp.so");
+    let sql_extension_regex = Path::new(sql_extension_dir.as_str()).join("regex0.so");
 
     let db_connection = Connection::open(db_path)?;
     unsafe {
