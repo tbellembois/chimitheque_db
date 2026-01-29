@@ -1294,7 +1294,7 @@ pub fn create_update_storage(
     //
     // Generate barcode if empty.
     //
-    let barecode_string;
+    let mut barecode_string = "".to_string();
     let mut barecode_major: u64 = product_id;
     let mut barecode_minor: u64 = 1;
     if storage.storage_barecode.is_none() {
@@ -1490,7 +1490,7 @@ pub fn create_update_storage(
 
             storage.storage_barecode = Some(format!(
                 "{}{}.{}",
-                barecode_major, product_id, barecode_minor
+                barecode_string, barecode_major, barecode_minor
             ));
         }
 
