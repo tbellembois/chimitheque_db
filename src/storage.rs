@@ -205,6 +205,7 @@ impl TryFrom<&Row<'_>> for StorageWrapper {
                 store_location_id: row.get_unwrap("store_location_id"),
                 store_location_name: row.get_unwrap("store_location_name"),
                 store_location_full_path: row.get_unwrap("store_location_full_path"),
+                store_location_color: row.get_unwrap("store_location_color"),
                 entity: Some(EntityStruct {
                     entity_id: row.get_unwrap("entity_id"),
                     entity_name: row.get_unwrap("entity_name"),
@@ -1007,6 +1008,10 @@ pub fn get_storages(
         .expr(Expr::col((
             StoreLocation::Table,
             StoreLocation::StoreLocationFullPath,
+        )))
+        .expr(Expr::col((
+            StoreLocation::Table,
+            StoreLocation::StoreLocationColor,
         )))
         .expr(Expr::col((Entity::Table, Entity::EntityId)))
         .expr(Expr::col((Entity::Table, Entity::EntityName)))
