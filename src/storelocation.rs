@@ -464,16 +464,16 @@ pub fn create_update_store_location(
     let clean_store_location_name = clean(&store_location.store_location_name, Transform::None);
 
     // Update request: list of (columns, values) pairs to insert.
-    // let mut columns_values = vec![
-    //     (
-    //         StoreLocation::StoreLocationName,
-    //         clean_store_location_name.clone().into(),
-    //     ),
-    //     (
-    //         StoreLocation::StoreLocationCanStore,
-    //         store_location.store_location_can_store.into(),
-    //     ),
-    // ];
+    let mut columns_values = vec![
+        (
+            StoreLocation::StoreLocationName,
+            clean_store_location_name.clone().into(),
+        ),
+        (
+            StoreLocation::StoreLocationCanStore,
+            store_location.store_location_can_store.into(),
+        ),
+    ];
 
     // Create request: list of columns and values to insert.
     let mut columns = vec![
@@ -486,37 +486,43 @@ pub fn create_update_store_location(
     ];
 
     if let Some(color) = store_location.store_location_color {
-        // columns_values.push((StoreLocation::StoreLocationColor, color.clone().into()));
+        columns_values.push((StoreLocation::StoreLocationColor, color.clone().into()));
 
         columns.push(StoreLocation::StoreLocationColor);
         values.push(SimpleExpr::Value(color.into()));
+    } else {
+        columns.push(StoreLocation::StoreLocationColor);
+        values.push(SimpleExpr::Custom("NULL".to_owned()));
     }
 
     if let Some(full_path) = store_location.store_location_full_path {
-        // columns_values.push((
-        //     StoreLocation::StoreLocationFullPath,
-        //     full_path.clone().into(),
-        // ));
+        columns_values.push((
+            StoreLocation::StoreLocationFullPath,
+            full_path.clone().into(),
+        ));
 
         columns.push(StoreLocation::StoreLocationFullPath);
         values.push(SimpleExpr::Value(full_path.into()));
     }
 
     if let Some(entity) = store_location.entity {
-        // columns_values.push((StoreLocation::Entity, entity.entity_id.into()));
+        columns_values.push((StoreLocation::Entity, entity.entity_id.into()));
 
         columns.push(StoreLocation::Entity);
         values.push(SimpleExpr::Value(entity.entity_id.into()));
     }
 
     if let Some(store_location) = store_location.store_location {
-        // columns_values.push((
-        //     StoreLocation::StoreLocation,
-        //     store_location.store_location_id.into(),
-        // ));
+        columns_values.push((
+            StoreLocation::StoreLocation,
+            store_location.store_location_id.into(),
+        ));
 
         columns.push(StoreLocation::StoreLocation);
         values.push(SimpleExpr::Value(store_location.store_location_id.into()));
+    } else {
+        columns.push(StoreLocation::StoreLocation);
+        values.push(SimpleExpr::Custom("NULL".to_owned()));
     }
 
     let sql_query: String;
@@ -524,20 +530,21 @@ pub fn create_update_store_location(
 
     if let Some(store_location_id) = store_location.store_location_id {
         // Update query.
-        // (sql_query, sql_values) = Query::update()
-        //     .table(StoreLocation::Table)
-        //     .values(columns_values)
-        //     .and_where(Expr::col(StoreLocation::StoreLocationId).eq(store_location_id))
-        //     .build_rusqlite(SqliteQueryBuilder);
-        columns.push(StoreLocation::StoreLocationId);
-        values.push(SimpleExpr::Value(store_location_id.into()));
-
-        sql_query = Query::insert()
-            .replace()
-            .into_table(StoreLocation::Table)
-            .columns(columns)
-            .values(values)?
+        sql_query = Query::update()
+            .table(StoreLocation::Table)
+            .values(columns_values)
+            .and_where(Expr::col(StoreLocation::StoreLocationId).eq(store_location_id))
             .to_string(SqliteQueryBuilder);
+
+        // columns.push(StoreLocation::StoreLocationId);
+        // values.push(SimpleExpr::Value(store_location_id.into()));
+
+        // sql_query = Query::insert()
+        //     .replace()
+        //     .into_table(StoreLocation::Table)
+        //     .columns(columns)
+        //     .values(values)?
+        //     .to_string(SqliteQueryBuilder);
     } else {
         // Insert query.
         sql_query = Query::insert()

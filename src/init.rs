@@ -238,8 +238,11 @@ pub fn update_ghs_statements(
             debug!("label: {label}");
 
             db_transaction.execute(
-            "INSERT OR REPLACE INTO hazard_statement (hazard_statement_label, hazard_statement_reference) VALUES (?1, ?2);",
-            (&label, &reference),
+                "INSERT INTO hazard_statement (hazard_statement_label, hazard_statement_reference)
+            VALUES (?1, ?2)
+            ON CONFLICT(hazard_statement_reference) DO UPDATE
+            SET hazard_statement_reference = ?2;",
+                (&label, &reference),
             )?;
         } else if let Some(captures) = precautionary_statement_re.captures(line) {
             let reference = captures.name("reference").unwrap().as_str();
@@ -249,7 +252,10 @@ pub fn update_ghs_statements(
             debug!("label: {label}");
 
             db_transaction.execute(
-            "INSERT OR REPLACE INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference) VALUES (?1, ?2);",
+                "INSERT INTO precautionary_statement (precautionary_statement_label, precautionary_statement_reference)
+            VALUES (?1, ?2)
+            ON CONFLICT(precautionary_statement_reference) DO UPDATE
+            SET precautionary_statement_reference = ?2;",
             (&label, &reference),
             )?;
         };

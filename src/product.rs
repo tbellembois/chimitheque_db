@@ -54,8 +54,8 @@ use csv::WriterBuilder;
 use log::debug;
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
-    any, Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
-    SqliteQueryBuilder,
+    any, Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, OnConflict, Order, Query,
+    SimpleExpr, SqliteQueryBuilder,
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
@@ -2095,22 +2095,22 @@ pub fn create_update_product(
     }
 
     // Update request: list of (columns, values) pairs to insert.
-    // let mut columns_values = vec![
-    //     (
-    //         Product::ProductType,
-    //         product.product_type.to_string().into(),
-    //     ),
-    //     (
-    //         Product::ProductRestricted,
-    //         product.product_restricted.into(),
-    //     ),
-    //     (
-    //         Product::ProductRadioactive,
-    //         product.product_radioactive.into(),
-    //     ),
-    //     (Product::Name, product.name.name_id.into()),
-    //     (Product::Person, product.person.person_id.into()),
-    // ];
+    let mut columns_values = vec![
+        (
+            Product::ProductType,
+            product.product_type.to_string().into(),
+        ),
+        (
+            Product::ProductRestricted,
+            product.product_restricted.into(),
+        ),
+        (
+            Product::ProductRadioactive,
+            product.product_radioactive.into(),
+        ),
+        (Product::Name, product.name.name_id.into()),
+        (Product::Person, product.person.person_id.into()),
+    ];
 
     // Create request: list of columns and values to insert.
     let mut columns = vec![
@@ -2129,202 +2129,298 @@ pub fn create_update_product(
     ];
 
     if let Some(inchi) = &product.product_inchi {
-        // columns_values.push((Product::ProductInchi, inchi.clone().into()));
+        columns_values.push((Product::ProductInchi, inchi.clone().into()));
 
         columns.push(Product::ProductInchi);
         values.push(SimpleExpr::Value(inchi.into()));
+    } else {
+        columns_values.push((Product::ProductInchi, SimpleExpr::Custom("NULL".to_owned())));
     }
 
     if let Some(inchikey) = &product.product_inchikey {
-        // columns_values.push((Product::ProductInchikey, inchikey.clone().into()));
+        columns_values.push((Product::ProductInchikey, inchikey.clone().into()));
 
         columns.push(Product::ProductInchikey);
         values.push(SimpleExpr::Value(inchikey.into()));
+    } else {
+        columns_values.push((
+            Product::ProductInchikey,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(canonical_smiles) = &product.product_canonical_smiles {
-        // columns_values.push((
-        //     Product::ProductCanonicalSmiles,
-        //     canonical_smiles.clone().into(),
-        // ));
+        columns_values.push((
+            Product::ProductCanonicalSmiles,
+            canonical_smiles.clone().into(),
+        ));
 
         columns.push(Product::ProductCanonicalSmiles);
         values.push(SimpleExpr::Value(canonical_smiles.into()));
+    } else {
+        columns_values.push((
+            Product::ProductCanonicalSmiles,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(specificity) = &product.product_specificity {
-        // columns_values.push((Product::ProductSpecificity, specificity.clone().into()));
+        columns_values.push((Product::ProductSpecificity, specificity.clone().into()));
 
         columns.push(Product::ProductSpecificity);
         values.push(SimpleExpr::Value(specificity.into()));
+    } else {
+        columns_values.push((
+            Product::ProductSpecificity,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(msds) = &product.product_msds {
-        // columns_values.push((Product::ProductMsds, msds.clone().into()));
+        columns_values.push((Product::ProductMsds, msds.clone().into()));
 
         columns.push(Product::ProductMsds);
         values.push(SimpleExpr::Value(msds.into()));
+    } else {
+        columns_values.push((Product::ProductMsds, SimpleExpr::Custom("NULL".to_owned())));
     }
 
     if let Some(twod_formula) = &product.product_twod_formula {
-        // columns_values.push((Product::ProductTwodFormula, twod_formula.clone().into()));
+        columns_values.push((Product::ProductTwodFormula, twod_formula.clone().into()));
 
         columns.push(Product::ProductTwodFormula);
         values.push(SimpleExpr::Value(twod_formula.into()));
+    } else {
+        columns_values.push((
+            Product::ProductTwodFormula,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(threed_formula) = &product.product_threed_formula {
-        // columns_values.push((Product::ProductThreedFormula, threed_formula.clone().into()));
+        columns_values.push((Product::ProductThreedFormula, threed_formula.clone().into()));
 
         columns.push(Product::ProductThreedFormula);
         values.push(SimpleExpr::Value(threed_formula.into()));
+    } else {
+        columns_values.push((
+            Product::ProductThreedFormula,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(disposal_comment) = &product.product_disposal_comment {
-        // columns_values.push((
-        //     Product::ProductDisposalComment,
-        //     disposal_comment.clone().into(),
-        // ));
+        columns_values.push((
+            Product::ProductDisposalComment,
+            disposal_comment.clone().into(),
+        ));
 
         columns.push(Product::ProductDisposalComment);
         values.push(SimpleExpr::Value(disposal_comment.into()));
+    } else {
+        columns_values.push((
+            Product::ProductDisposalComment,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(remark) = &product.product_remark {
-        // columns_values.push((Product::ProductRemark, remark.clone().into()));
+        columns_values.push((Product::ProductRemark, remark.clone().into()));
 
         columns.push(Product::ProductRemark);
         values.push(SimpleExpr::Value(remark.into()));
+    } else {
+        columns_values.push((
+            Product::ProductRemark,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(molecular_weight) = &product.product_molecular_weight {
-        // columns_values.push((
-        //     Product::ProductMolecularWeight,
-        //     molecular_weight.to_owned().into(),
-        // ));
+        columns_values.push((
+            Product::ProductMolecularWeight,
+            molecular_weight.to_owned().into(),
+        ));
 
         columns.push(Product::ProductMolecularWeight);
         values.push(SimpleExpr::Value(molecular_weight.to_owned().into()));
+    } else {
+        columns_values.push((
+            Product::ProductMolecularWeight,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(temperature) = &product.product_temperature {
-        // columns_values.push((Product::ProductTemperature, temperature.to_owned().into()));
+        columns_values.push((Product::ProductTemperature, temperature.to_owned().into()));
 
         columns.push(Product::ProductTemperature);
         values.push(SimpleExpr::Value(temperature.to_owned().into()));
+    } else {
+        columns_values.push((
+            Product::ProductTemperature,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(sheet) = &product.product_sheet {
-        // columns_values.push((Product::ProductSheet, sheet.clone().into()));
+        columns_values.push((Product::ProductSheet, sheet.clone().into()));
 
         columns.push(Product::ProductSheet);
         values.push(SimpleExpr::Value(sheet.into()));
+    } else {
+        columns_values.push((Product::ProductSheet, SimpleExpr::Custom("NULL".to_owned())));
     }
 
     if let Some(number_per_carton) = &product.product_number_per_carton {
-        // columns_values.push((
-        //     Product::ProductNumberPerCarton,
-        //     number_per_carton.to_owned().into(),
-        // ));
+        columns_values.push((
+            Product::ProductNumberPerCarton,
+            number_per_carton.to_owned().into(),
+        ));
 
         columns.push(Product::ProductNumberPerCarton);
         values.push(SimpleExpr::Value(number_per_carton.to_owned().into()));
+    } else {
+        columns_values.push((
+            Product::ProductNumberPerCarton,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(number_per_bag) = &product.product_number_per_bag {
-        // columns_values.push((
-        //     Product::ProductNumberPerBag,
-        //     number_per_bag.to_owned().into(),
-        // ));
+        columns_values.push((
+            Product::ProductNumberPerBag,
+            number_per_bag.to_owned().into(),
+        ));
 
         columns.push(Product::ProductNumberPerBag);
         values.push(SimpleExpr::Value(number_per_bag.to_owned().into()));
+    } else {
+        columns_values.push((
+            Product::ProductNumberPerBag,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     // --
 
     if let Some(empirical_formula) = &product.empirical_formula {
-        // columns_values.push((
-        //     Product::EmpiricalFormula,
-        //     empirical_formula.empirical_formula_id.into(),
-        // ));
+        columns_values.push((
+            Product::EmpiricalFormula,
+            empirical_formula.empirical_formula_id.into(),
+        ));
 
         columns.push(Product::EmpiricalFormula);
         values.push(SimpleExpr::Value(
             empirical_formula.empirical_formula_id.into(),
         ));
+    } else {
+        columns_values.push((
+            Product::EmpiricalFormula,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(linear_formula) = &product.linear_formula {
-        // columns_values.push((
-        //     Product::LinearFormula,
-        //     linear_formula.linear_formula_id.into(),
-        // ));
+        columns_values.push((
+            Product::LinearFormula,
+            linear_formula.linear_formula_id.into(),
+        ));
 
         columns.push(Product::LinearFormula);
         values.push(SimpleExpr::Value(linear_formula.linear_formula_id.into()));
+    } else {
+        columns_values.push((
+            Product::LinearFormula,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(physical_state) = &product.physical_state {
-        // columns_values.push((
-        //     Product::PhysicalState,
-        //     physical_state.physical_state_id.into(),
-        // ));
+        columns_values.push((
+            Product::PhysicalState,
+            physical_state.physical_state_id.into(),
+        ));
 
         columns.push(Product::PhysicalState);
         values.push(SimpleExpr::Value(physical_state.physical_state_id.into()));
+    } else {
+        columns_values.push((
+            Product::PhysicalState,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(cas_number) = &product.cas_number {
-        // columns_values.push((Product::CasNumber, cas_number.cas_number_id.into()));
+        columns_values.push((Product::CasNumber, cas_number.cas_number_id.into()));
 
         columns.push(Product::CasNumber);
         values.push(SimpleExpr::Value(cas_number.cas_number_id.into()));
+    } else {
+        columns_values.push((Product::CasNumber, SimpleExpr::Custom("NULL".to_owned())));
     }
 
     if let Some(ce_number) = &product.ce_number {
-        // columns_values.push((Product::CeNumber, ce_number.ce_number_id.into()));
+        columns_values.push((Product::CeNumber, ce_number.ce_number_id.into()));
 
         columns.push(Product::CeNumber);
         values.push(SimpleExpr::Value(ce_number.ce_number_id.into()));
+    } else {
+        columns_values.push((Product::CeNumber, SimpleExpr::Custom("NULL".to_owned())));
     }
 
     if let Some(producer_ref) = &product.producer_ref {
-        // columns_values.push((Product::ProducerRef, producer_ref.producer_ref_id.into()));
+        columns_values.push((Product::ProducerRef, producer_ref.producer_ref_id.into()));
 
         columns.push(Product::ProducerRef);
         values.push(SimpleExpr::Value(producer_ref.producer_ref_id.into()));
+    } else {
+        columns_values.push((Product::ProducerRef, SimpleExpr::Custom("NULL".to_owned())));
     }
 
     if let Some(category) = &product.category {
-        // columns_values.push((Product::Category, category.category_id.into()));
+        columns_values.push((Product::Category, category.category_id.into()));
 
         columns.push(Product::Category);
         values.push(SimpleExpr::Value(category.category_id.into()));
+    } else {
+        columns_values.push((Product::Category, SimpleExpr::Custom("NULL".to_owned())));
     }
 
     if let Some(signal_word) = &product.signal_word {
-        // columns_values.push((Product::SignalWord, signal_word.signal_word_id.into()));
+        columns_values.push((Product::SignalWord, signal_word.signal_word_id.into()));
 
         columns.push(Product::SignalWord);
         values.push(SimpleExpr::Value(signal_word.signal_word_id.into()));
+    } else {
+        columns_values.push((Product::SignalWord, SimpleExpr::Custom("NULL".to_owned())));
     }
 
     if let Some(unit_temperature) = &product.unit_temperature {
-        // columns_values.push((Product::UnitTemperature, unit_temperature.unit_id.into()));
+        columns_values.push((Product::UnitTemperature, unit_temperature.unit_id.into()));
 
         columns.push(Product::UnitTemperature);
         values.push(SimpleExpr::Value(unit_temperature.unit_id.into()));
+    } else {
+        columns_values.push((
+            Product::UnitTemperature,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     if let Some(unit_molecular_weight) = &product.unit_molecular_weight {
-        // columns_values.push((
-        //     Product::UnitMolecularWeight,
-        //     unit_molecular_weight.unit_id.into(),
-        // ));
+        columns_values.push((
+            Product::UnitMolecularWeight,
+            unit_molecular_weight.unit_id.into(),
+        ));
 
         columns.push(Product::UnitMolecularWeight);
         values.push(SimpleExpr::Value(unit_molecular_weight.unit_id.into()));
+    } else {
+        columns_values.push((
+            Product::UnitMolecularWeight,
+            SimpleExpr::Custom("NULL".to_owned()),
+        ));
     }
 
     // --
@@ -2334,15 +2430,21 @@ pub fn create_update_product(
 
     if let Some(product_id) = product.product_id {
         // Update query.
-        columns.push(Product::ProductId);
-        values.push(SimpleExpr::Value(product_id.into()));
-
-        sql_query = Query::insert()
-            .replace()
-            .into_table(Product::Table)
-            .columns(columns)
-            .values(values)?
+        sql_query = Query::update()
+            .table(Product::Table)
+            .values(columns_values)
+            .and_where(Expr::col(Product::ProductId).eq(product_id))
             .to_string(SqliteQueryBuilder);
+
+        // columns.push(Product::ProductId);
+        // values.push(SimpleExpr::Value(product_id.into()));
+
+        // sql_query = Query::insert()
+        //     .replace()
+        //     .into_table(Product::Table)
+        //     .columns(columns)
+        //     .values(values)?
+        //     .to_string(SqliteQueryBuilder);
     } else {
         // Insert query.
         sql_query = Query::insert()
@@ -2420,6 +2522,14 @@ fn create_update_product_symbols(
     for name_id in product_symbols_ids {
         let sql_values: RusqliteValues = RusqliteValues(vec![]);
         let sql_query = Query::insert()
+            .on_conflict(
+                OnConflict::columns([
+                    Productsymbols::ProductsymbolsProductId,
+                    Productsymbols::ProductsymbolsSymbolId,
+                ])
+                .do_nothing()
+                .to_owned(),
+            )
             .into_table(Productsymbols::Table)
             .columns([
                 Productsymbols::ProductsymbolsProductId,
@@ -2471,6 +2581,14 @@ fn create_update_product_tags(
     for name_id in product_tags_ids {
         let sql_values: RusqliteValues = RusqliteValues(vec![]);
         let sql_query = Query::insert()
+            .on_conflict(
+                OnConflict::columns([
+                    Producttags::ProducttagsProductId,
+                    Producttags::ProducttagsTagId,
+                ])
+                .do_nothing()
+                .to_owned(),
+            )
             .into_table(Producttags::Table)
             .columns([
                 Producttags::ProducttagsProductId,
@@ -2525,6 +2643,14 @@ fn create_update_product_synonyms(
     for name_id in product_synonyms_ids {
         let sql_values: RusqliteValues = RusqliteValues(vec![]);
         let sql_query = Query::insert()
+            .on_conflict(
+                OnConflict::columns([
+                    Productsynonyms::ProductsynonymsProductId,
+                    Productsynonyms::ProductsynonymsNameId,
+                ])
+                .do_nothing()
+                .to_owned(),
+            )
             .into_table(Productsynonyms::Table)
             .columns([
                 Productsynonyms::ProductsynonymsProductId,
@@ -2582,6 +2708,14 @@ fn create_update_product_supplier_refs(
     for class_of_compound_id in product_supplier_refs_ids {
         let sql_values: RusqliteValues = RusqliteValues(vec![]);
         let sql_query = Query::insert()
+            .on_conflict(
+                OnConflict::columns([
+                    Productsupplierrefs::ProductsupplierrefsProductId,
+                    Productsupplierrefs::ProductsupplierrefsSupplierRefId,
+                ])
+                .do_nothing()
+                .to_owned(),
+            )
             .into_table(Productsupplierrefs::Table)
             .columns([
                 Productsupplierrefs::ProductsupplierrefsProductId,
@@ -2639,6 +2773,14 @@ fn create_update_product_hazard_statements(
     for class_of_compound_id in product_hazard_statements_ids {
         let sql_values: RusqliteValues = RusqliteValues(vec![]);
         let sql_query = Query::insert()
+            .on_conflict(
+                OnConflict::columns([
+                    Producthazardstatements::ProducthazardstatementsProductId,
+                    Producthazardstatements::ProducthazardstatementsHazardStatementId,
+                ])
+                .do_nothing()
+                .to_owned(),
+            )
             .into_table(Producthazardstatements::Table)
             .columns([
                 Producthazardstatements::ProducthazardstatementsProductId,
@@ -2699,6 +2841,14 @@ fn create_update_product_precautionary_statements(
     for class_of_compound_id in product_precautionary_statements_ids {
         let sql_values: RusqliteValues = RusqliteValues(vec![]);
         let sql_query = Query::insert()
+            .on_conflict(
+                OnConflict::columns([
+                    Productprecautionarystatements::ProductprecautionarystatementsProductId,
+                    Productprecautionarystatements::ProductprecautionarystatementsPrecautionaryStatementId,
+                ])
+                .do_nothing()
+                .to_owned(),
+            )
             .into_table(Productprecautionarystatements::Table)
             .columns([
                 Productprecautionarystatements::ProductprecautionarystatementsProductId,
@@ -2758,6 +2908,14 @@ fn create_update_product_classes_of_compound(
     for class_of_compound_id in product_classes_of_compounds_ids {
         let sql_values: RusqliteValues = RusqliteValues(vec![]);
         let sql_query = Query::insert()
+            .on_conflict(
+                OnConflict::columns([
+                    Productclassesofcompounds::ProductclassesofcompoundsProductId,
+                    Productclassesofcompounds::ProductclassesofcompoundsClassOfCompoundId,
+                ])
+                .do_nothing()
+                .to_owned(),
+            )
             .into_table(Productclassesofcompounds::Table)
             .columns([
                 Productclassesofcompounds::ProductclassesofcompoundsProductId,

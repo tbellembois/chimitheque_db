@@ -572,23 +572,35 @@ pub fn create_update_person(
     let db_transaction = db_connection.transaction()?;
 
     // Create request: list of columns and values to insert.
-    let mut columns = vec![Person::PersonEmail];
-    let mut values = vec![SimpleExpr::Value(person.person_email.clone().into())];
+    let columns = vec![Person::PersonEmail];
+    let values = vec![SimpleExpr::Value(person.person_email.clone().into())];
+
+    // Update request: list of (columns, values) pairs to insert.
+    let columns_values = vec![(
+        Person::PersonEmail,
+        SimpleExpr::Value(person.person_email.clone().into()),
+    )];
 
     let sql_query: String;
     let sql_values: RusqliteValues = RusqliteValues(vec![]);
 
     if let Some(person_id) = person.person_id {
         // Update query.
-        columns.push(Person::PersonId);
-        values.push(SimpleExpr::Value(person_id.into()));
-
-        sql_query = Query::insert()
-            .replace()
-            .into_table(Person::Table)
-            .columns(columns)
-            .values(values)?
+        sql_query = Query::update()
+            .table(Person::Table)
+            .values(columns_values)
+            .and_where(Expr::col(Person::PersonId).eq(person_id))
             .to_string(SqliteQueryBuilder);
+
+        // columns.push(Person::PersonId);
+        // values.push(SimpleExpr::Value(person_id.into()));
+
+        // sql_query = Query::insert()
+        //     .replace()
+        //     .into_table(Person::Table)
+        //     .columns(columns)
+        //     .values(values)?
+        //     .to_string(SqliteQueryBuilder);
     } else {
         // Insert query.
         sql_query = Query::insert()

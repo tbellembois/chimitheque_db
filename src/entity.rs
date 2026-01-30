@@ -347,10 +347,19 @@ pub fn create_update_entity(
     let db_transaction = db_connection.transaction()?;
 
     // Create request: list of columns and values to insert.
-    let mut columns = vec![Entity::EntityName, Entity::EntityDescription];
-    let mut values = vec![
+    let columns = vec![Entity::EntityName, Entity::EntityDescription];
+    let values = vec![
         SimpleExpr::Value(entity.entity_name.clone().into()),
         SimpleExpr::Value(entity.entity_description.clone().into()),
+    ];
+
+    // Update request: list of (columns, values) pairs to insert.
+    let columns_values = vec![
+        (Entity::EntityName, entity.entity_name.clone().into()),
+        (
+            Entity::EntityDescription,
+            entity.entity_description.clone().into(),
+        ),
     ];
 
     let sql_query: String;
@@ -358,15 +367,21 @@ pub fn create_update_entity(
 
     if let Some(entity_id) = entity.entity_id {
         // Update query.
-        columns.push(Entity::EntityId);
-        values.push(SimpleExpr::Value(entity_id.into()));
-
-        sql_query = Query::insert()
-            .replace()
-            .into_table(Entity::Table)
-            .columns(columns)
-            .values(values)?
+        sql_query = Query::update()
+            .table(Entity::Table)
+            .values(columns_values)
+            .and_where(Expr::col(Entity::EntityId).eq(entity_id))
             .to_string(SqliteQueryBuilder);
+
+        // columns.push(Entity::EntityId);
+        // values.push(SimpleExpr::Value(entity_id.into()));
+
+        // sql_query = Query::insert()
+        //     .replace()
+        //     .into_table(Entity::Table)
+        //     .columns(columns)
+        //     .values(values)?
+        //     .to_string(SqliteQueryBuilder);
     } else {
         // Insert query.
         sql_query = Query::insert()

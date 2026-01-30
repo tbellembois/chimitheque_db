@@ -1188,7 +1188,7 @@ fn compute_storage_barecode_parts(
         None => return Err(Box::new(StorageError::MissingStoreLocationId)),
     };
 
-    // Getting the store location and its name..
+    // Getting the store location and its name.
     let (store_locations, nb_results) = get_store_locations(
         db_transaction,
         RequestFilter {
@@ -1229,34 +1229,42 @@ fn compute_storage_barecode_parts(
 
     let (maybe_barecode_major, maybe_barecode_minor): (Option<u64>, Option<u64>) = db_transaction
         .query_row(
-            r#"
-            SELECT CAST(regex_capture(
-              "[_a-zA-Z]+(?P<barecode_major>[0-9]+)\.[0-9]+",
+        r#"
+        SELECT
+          MAX(
+            CAST(regex_capture(
+              "^[_a-zA-Z]+(?P<barecode_major>[0-9]+)\.[0-9]+$",
               storage_barecode,
               "barecode_major"
-            ) AS INTEGER) as barecode_major,
-            MAX(CAST(substr(storage_barecode, instr(storage_barecode, '.')+1) AS INTEGER)) as barecode_minor
-            FROM storage
-            JOIN store_location on storage.store_location = store_location.store_location_id
-            WHERE product = (?1)
-            AND store_location.entity = (?2)
-            AND storage.storage IS NULL
-            AND regexp('^[_a-zA-Z]+[0-9]+\.[0-9]+$', '' || storage_barecode || '') = true
+            ) AS INTEGER)
+          ) AS barecode_major,
+          MAX(
+            CAST(substr(
+              storage_barecode,
+              instr(storage_barecode, '.') + 1
+            ) AS INTEGER)
+          ) AS barecode_minor
+        FROM storage
+        JOIN store_location
+          ON storage.store_location = store_location.store_location_id
+        WHERE product = (?1)
+          AND store_location.entity = (?2)
+          AND storage.storage IS NULL
+          AND storage.storage_archive = false
+          AND regexp(
+            "^[_a-zA-Z]+[0-9]+\.[0-9]+$",
+            storage_barecode
+          );
 		"#,
-            [product_id, entity_id],
-            |row| {
-                        Ok((
-                            row.get("barecode_major")?,
-                            row.get("barecode_minor")?,
-                        ))
-                    },
-        )?;
+        [product_id, entity_id],
+        |row| Ok((row.get("barecode_major")?, row.get("barecode_minor")?)),
+    )?;
 
     debug!("maybe_barecode_major: {:#?}", maybe_barecode_major);
     debug!("barecode_minor: {:#?}", maybe_barecode_minor);
 
     let barecode_major = maybe_barecode_major.unwrap_or(product_id);
-    let barecode_minor = maybe_barecode_minor.unwrap_or(1);
+    let barecode_minor = maybe_barecode_minor.unwrap_or(0);
 
     Ok((barecode_string, barecode_major, barecode_minor + 1))
 }
@@ -1317,6 +1325,30 @@ pub fn create_update_storage(
     // Create nb_items storages.
     let mut nb_items_created = 0;
     while nb_items_created < nb_items {
+        // Update request: list of (columns, values) pairs to insert.
+        // We suppose that nb_items = 1.
+        let mut columns_values = vec![
+            (Storage::Product, SimpleExpr::Value(product_id.into())),
+            (Storage::Person, SimpleExpr::Value(person_id.into())),
+            (
+                Storage::StoreLocation,
+                SimpleExpr::Value(store_location_id.into()),
+            ),
+            (
+                Storage::StorageQrcode,
+                SimpleExpr::Value(storage.storage_qrcode.clone().into()),
+            ),
+            (
+                Storage::StorageToDestroy,
+                SimpleExpr::Value(storage.storage_to_destroy.into()),
+            ),
+            (
+                Storage::StorageArchive,
+                SimpleExpr::Value(storage.storage_archive.into()),
+            ),
+        ];
+
+        // Create request: list of columns and values to insert.
         let mut columns = vec![
             Storage::Product,
             Storage::Person,
@@ -1337,16 +1369,31 @@ pub fn create_update_storage(
         if let Some(storage_entry_date) = &storage.storage_entry_date {
             columns.push(Storage::StorageEntryDate);
             values.push(SimpleExpr::Value(storage_entry_date.timestamp().into()));
+        } else {
+            columns_values.push((
+                Storage::StorageEntryDate,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_exit_date) = &storage.storage_exit_date {
             columns.push(Storage::StorageExitDate);
             values.push(SimpleExpr::Value(storage_exit_date.timestamp().into()));
+        } else {
+            columns_values.push((
+                Storage::StorageExitDate,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_opening_date) = &storage.storage_opening_date {
             columns.push(Storage::StorageOpeningDate);
             values.push(SimpleExpr::Value(storage_opening_date.timestamp().into()));
+        } else {
+            columns_values.push((
+                Storage::StorageOpeningDate,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_expiration_date) = &storage.storage_expiration_date {
@@ -1354,46 +1401,91 @@ pub fn create_update_storage(
             values.push(SimpleExpr::Value(
                 storage_expiration_date.timestamp().into(),
             ));
+        } else {
+            columns_values.push((
+                Storage::StorageExpirationDate,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_comment) = &storage.storage_comment {
             columns.push(Storage::StorageComment);
             values.push(SimpleExpr::Value(storage_comment.into()));
+        } else {
+            columns_values.push((
+                Storage::StorageComment,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_reference) = &storage.storage_reference {
             columns.push(Storage::StorageReference);
             values.push(SimpleExpr::Value(storage_reference.into()));
+        } else {
+            columns_values.push((
+                Storage::StorageReference,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_batch_number) = &storage.storage_batch_number {
             columns.push(Storage::StorageBatchNumber);
             values.push(SimpleExpr::Value(storage_batch_number.into()));
+        } else {
+            columns_values.push((
+                Storage::StorageBatchNumber,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_quantity) = storage.storage_quantity {
             columns.push(Storage::StorageQuantity);
             values.push(SimpleExpr::Value(storage_quantity.into()));
+        } else {
+            columns_values.push((
+                Storage::StorageQuantity,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_barecode) = &storage.storage_barecode {
             columns.push(Storage::StorageBarecode);
             values.push(SimpleExpr::Value(storage_barecode.into()));
+        } else {
+            columns_values.push((
+                Storage::StorageBarecode,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_concentration) = storage.storage_concentration {
             columns.push(Storage::StorageConcentration);
             values.push(SimpleExpr::Value(storage_concentration.into()));
+        } else {
+            columns_values.push((
+                Storage::StorageConcentration,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_number_of_bag) = storage.storage_number_of_bag {
             columns.push(Storage::StorageNumberOfBag);
             values.push(SimpleExpr::Value(storage_number_of_bag.into()));
+        } else {
+            columns_values.push((
+                Storage::StorageNumberOfBag,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage_number_of_carton) = storage.storage_number_of_carton {
             columns.push(Storage::StorageNumberOfCarton);
             values.push(SimpleExpr::Value(storage_number_of_carton.into()));
+        } else {
+            columns_values.push((
+                Storage::StorageNumberOfCarton,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(supplier) = &storage.supplier {
@@ -1404,6 +1496,8 @@ pub fn create_update_storage(
 
             columns.push(Storage::Supplier);
             values.push(SimpleExpr::Value(supplier_id.into()));
+        } else {
+            columns_values.push((Storage::Supplier, SimpleExpr::Custom("NULL".to_owned())));
         }
 
         if let Some(unit_quantity) = storage.unit_quantity.clone() {
@@ -1414,6 +1508,8 @@ pub fn create_update_storage(
 
             columns.push(Storage::UnitQuantity);
             values.push(SimpleExpr::Value(unit_id.into()));
+        } else {
+            columns_values.push((Storage::UnitQuantity, SimpleExpr::Custom("NULL".to_owned())));
         }
 
         if let Some(unit_concentration) = storage.unit_concentration.clone() {
@@ -1424,6 +1520,11 @@ pub fn create_update_storage(
 
             columns.push(Storage::UnitConcentration);
             values.push(SimpleExpr::Value(unit_id.into()));
+        } else {
+            columns_values.push((
+                Storage::UnitConcentration,
+                SimpleExpr::Custom("NULL".to_owned()),
+            ));
         }
 
         if let Some(storage) = storage.storage.clone() {
@@ -1441,24 +1542,41 @@ pub fn create_update_storage(
 
         if let Some(storage_id) = storage.storage_id {
             // Update query - nb_items is supposed to be == 1.
-            columns.push(Storage::StorageId);
-            values.push(SimpleExpr::Value(storage_id.into()));
-
-            columns.push(Storage::StorageModificationDate);
-            values.push(SimpleExpr::Value(
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs()
-                    .into(),
+            columns_values.push((
+                Storage::StorageModificationDate,
+                SimpleExpr::Value(
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                        .into(),
+                ),
             ));
 
-            sql_query = Query::insert()
-                .replace()
-                .into_table(Storage::Table)
-                .columns(columns)
-                .values(values)?
+            sql_query = Query::update()
+                .table(Storage::Table)
+                .values(columns_values)
+                .and_where(Expr::col(Storage::StorageId).eq(storage_id))
                 .to_string(SqliteQueryBuilder);
+
+            // columns.push(Storage::StorageId);
+            // values.push(SimpleExpr::Value(storage_id.into()));
+
+            // columns.push(Storage::StorageModificationDate);
+            // values.push(SimpleExpr::Value(
+            //     SystemTime::now()
+            //         .duration_since(UNIX_EPOCH)
+            //         .unwrap()
+            //         .as_secs()
+            //         .into(),
+            // ));
+
+            // sql_query = Query::insert()
+            //     .replace()
+            //     .into_table(Storage::Table)
+            //     .columns(columns)
+            //     .values(values)?
+            //     .to_string(SqliteQueryBuilder);
         } else {
             // Insert query.
             // Storage creation date is set by database default.
