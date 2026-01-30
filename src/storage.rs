@@ -1253,7 +1253,7 @@ fn compute_storage_barecode_parts(
     let barecode_major = maybe_barecode_major.unwrap_or(product_id);
     let barecode_minor = maybe_barecode_minor.unwrap_or(1);
 
-    Ok((barecode_string, barecode_major, barecode_minor))
+    Ok((barecode_string, barecode_major, barecode_minor + 1))
 }
 
 pub fn create_update_storage(
@@ -1303,11 +1303,11 @@ pub fn create_update_storage(
 
         storage.storage_barecode = Some(format!(
             "{}{}.{}",
-            barecode_string,
-            barecode_major,
-            barecode_minor + 1
+            barecode_string, barecode_major, barecode_minor
         ));
     }
+
+    debug!("barecode_minor: {:#?}", barecode_minor);
 
     // Create nb_items storages.
     let mut nb_items_created = 0;
