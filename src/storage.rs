@@ -1188,7 +1188,7 @@ fn compute_storage_barecode_parts(
         None => return Err(Box::new(StorageError::MissingStoreLocationId)),
     };
 
-    // Getting the store location and its name.
+    // Getting the store location and its full path.
     let (store_locations, nb_results) = get_store_locations(
         db_transaction,
         RequestFilter {
@@ -1203,7 +1203,10 @@ fn compute_storage_barecode_parts(
     };
 
     let store_location = store_locations.first().unwrap();
-    let store_location_name = store_location.clone().store_location_name;
+    let store_location_full_path = store_location
+        .clone()
+        .store_location_full_path
+        .unwrap_or(store_location.store_location_name.clone());
 
     // Getting the entity id.
     let entity_id = match store_location.entity.clone() {
@@ -1215,12 +1218,13 @@ fn compute_storage_barecode_parts(
     };
 
     debug!("store_location_id: {}", store_location_id);
-    debug!("store_location_name: {}", store_location_name);
+    debug!("store_location_full_path: {}", store_location_full_path);
     debug!("product_id: {}", product_id);
     debug!("entity_id: {}", entity_id);
 
-    let re = Regex::new(r#"^\[(?P<groupone>[_a-zA-Z]+)\].*$"#)?;
-    let barecode_string = match re.captures(&store_location_name) {
+    // Capture the most right match.
+    let re = Regex::new(r"\[(?P<groupone>[_a-zA-Z]+)\]")?;
+    let barecode_string = match re.captures_iter(&store_location_full_path).last() {
         Some(caps) => caps["groupone"].to_string(),
         None => "_".to_string(),
     };
