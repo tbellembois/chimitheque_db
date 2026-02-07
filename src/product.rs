@@ -52,6 +52,7 @@ use chimitheque_types::{
 use chimitheque_utils::string::Transform;
 use csv::WriterBuilder;
 use log::debug;
+use regex::Regex;
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
     any, Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, OnConflict, Order, Query,
@@ -59,7 +60,7 @@ use sea_query::{
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
-use std::{io::BufWriter, str::FromStr};
+use std::{collections::HashSet, io::BufWriter, str::FromStr};
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
@@ -224,7 +225,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             product_sheet: row.get_unwrap("product_sheet"),
             product_number_per_carton: row.get_unwrap("product_number_per_carton"),
             product_number_per_bag: row.get_unwrap("product_number_per_bag"),
-            product_sl: row.get_unwrap("product_sl"),
+            // product_sl: row.get_unwrap("product_sl"),
             product_hs_cmr: row.get_unwrap("product_hs_cmr"),
             product_has_bookmark: row.get_unwrap("product_has_bookmark"),
             ..Default::default()
@@ -290,10 +291,10 @@ fn populate_entity_managers(
 
 fn populate_product_availability(
     db_connection: &Connection,
-    product: &mut [ProductStruct],
+    products: &mut [ProductStruct],
     person_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    for product in product.iter_mut() {
+    for product in products.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -396,9 +397,64 @@ fn populate_product_availability(
     Ok(())
 }
 
+fn populate_product_sl(
+    db_connection: &Connection,
+    products: &mut [ProductStruct],
+    person_id: u64,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    debug!("person_id:{:?}", person_id);
+
+    let storage_barecode_regex = Regex::new(r"([_a-zA-Z]+[0-9]+)\.[0-9]+").unwrap();
+
+    for product in products.iter_mut() {
+        let product_id = product.product_id;
+
+        // Create select query.
+        let (sql, values) = Query::select()
+            .expr_as(
+                Expr::cust(
+                    r#"
+                    GROUP_CONCAT(storage.storage_barecode)
+                    "#,
+                ),
+                Alias::new("product_sl"),
+            )
+            .from(Storage::Table)
+            .and_where(Expr::col(Storage::Product).eq(product_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql: {}", sql.clone().as_str());
+        debug!("values: {:?}", values);
+
+        // Perform select query.
+        let mut stmt = db_connection.prepare(&sql)?;
+        let mayerr_query = stmt.query_row(&*values.as_params(), |row| {
+            Ok(row.get_unwrap::<usize, String>(0))
+        });
+
+        // group_concat_barecode is like "103-72-0_20151127_9012.1,103-72-0_20151127_9012.2,103-72-0_20151127_9012.3,P3514.1,P3514.2,P3514.2"
+        let group_concat_barecode = match mayerr_query {
+            Ok(group_concat_barecode) => group_concat_barecode,
+            Err(e) => match e {
+                rusqlite::Error::QueryReturnedNoRows => return Ok(()),
+                _ => return Err(Box::new(e)),
+            },
+        };
+
+        let sl: HashSet<String> = storage_barecode_regex
+            .captures_iter(group_concat_barecode.as_str())
+            .map(|c| c[1].to_string() + " ")
+            .collect();
+
+        product.product_sl = Some(sl.iter().cloned().collect::<String>());
+    }
+
+    Ok(())
+}
+
 fn populate_product_sc(
     db_connection: &Connection,
-    product: &mut [ProductStruct],
+    products: &mut [ProductStruct],
     person_id: u64,
     total: bool,
     archived: bool,
@@ -406,7 +462,7 @@ fn populate_product_sc(
     debug!("person_id:{:?}", person_id);
     debug!("archived:{:?}", archived);
 
-    for product in product.iter_mut() {
+    for product in products.iter_mut() {
         let product_id = product.product_id;
 
         let (count_sql, count_values) = Query::select()
@@ -506,9 +562,9 @@ fn populate_product_sc(
 
 fn populate_synonyms(
     db_connection: &Connection,
-    product: &mut [ProductStruct],
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    for product in product.iter_mut() {
+    for product in products.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -566,9 +622,9 @@ fn populate_synonyms(
 
 fn populate_classes_of_compound(
     db_connection: &Connection,
-    product: &mut [ProductStruct],
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    for product in product.iter_mut() {
+    for product in products.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -636,9 +692,9 @@ fn populate_classes_of_compound(
 
 fn populate_symbols(
     db_connection: &Connection,
-    product: &mut [ProductStruct],
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    for product in product.iter_mut() {
+    for product in products.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -696,9 +752,9 @@ fn populate_symbols(
 
 fn populate_hazard_statements(
     db_connection: &Connection,
-    product: &mut [ProductStruct],
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    for product in product.iter_mut() {
+    for product in products.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -773,9 +829,9 @@ fn populate_hazard_statements(
 
 fn populate_precautionary_statements(
     db_connection: &Connection,
-    product: &mut [ProductStruct],
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    for product in product.iter_mut() {
+    for product in products.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -849,9 +905,9 @@ fn populate_precautionary_statements(
 
 fn populate_supplier_refs(
     db_connection: &Connection,
-    product: &mut [ProductStruct],
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    for product in product.iter_mut() {
+    for product in products.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -936,9 +992,9 @@ fn populate_supplier_refs(
 
 fn populate_tags(
     db_connection: &Connection,
-    product: &mut [ProductStruct],
+    products: &mut [ProductStruct],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    for product in product.iter_mut() {
+    for product in products.iter_mut() {
         let product_id = product.product_id;
 
         // Create select query.
@@ -1751,21 +1807,21 @@ pub fn get_products(
         // Double security here:
         // storage.storage_barecode can be null -> inner COALESCE
         // regex_capture can also be null -> outer COALESCE
-        .expr_as(
-            Expr::cust(
-                r#"
-                COALESCE(
-                    regex_capture(
-                        '(?P<product_sl>[_a-zA-Z]+[0-9]+)\.',
-                        COALESCE(storage.storage_barecode, ''),
-                        'product_sl'
-                    ),
-                    ''
-                )
-                "#,
-            ),
-            Alias::new("product_sl"),
-        )
+        // .expr_as(
+        //     Expr::cust(
+        //         r#"
+        //         COALESCE(
+        //             regex_capture(
+        //                 '(?P<product_sl>[_a-zA-Z]+[0-9]+)\.[0-9]+',
+        //                 COALESCE(GROUP_CONCAT(storage.storage_barecode), ''),
+        //                 'product_sl'
+        //             ),
+        //             ''
+        //         )
+        //         "#,
+        //     ),
+        //     Alias::new("product_sl"),
+        // )
         .expr_as(
             Expr::cust("GROUP_CONCAT(DISTINCT hazard_statement.hazard_statement_cmr)"),
             Alias::new("product_hs_cmr"),
@@ -1817,6 +1873,7 @@ pub fn get_products(
     populate_supplier_refs(db_connection, &mut products)?;
     populate_tags(db_connection, &mut products)?;
     populate_product_availability(db_connection, &mut products, person_id)?;
+    populate_product_sl(db_connection, &mut products, person_id)?;
 
     populate_product_sc(db_connection, &mut products, person_id, false, false)?;
     populate_product_sc(db_connection, &mut products, person_id, true, false)?;
