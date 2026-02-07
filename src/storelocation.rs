@@ -133,7 +133,8 @@ pub fn get_store_locations(
             JoinType::LeftJoin,
             Storage::Table,
             Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
-                .equals((Storage::Table, Storage::StoreLocation)),
+                .equals((Storage::Table, Storage::StoreLocation))
+                .and(Expr::col((Storage::Table, Storage::Storage)).is_null()),
         )
         //
         // store locations for nb_children
