@@ -1254,7 +1254,6 @@ fn compute_storage_barecode_parts(
         WHERE product = (?1)
           AND store_location.entity = (?2)
           AND storage.storage IS NULL
-          AND storage.storage_archive = false
           AND regexp(
             "^[_a-zA-Z]+[0-9]+\.[0-9]+$",
             storage_barecode
@@ -1371,6 +1370,11 @@ pub fn create_update_storage(
         ];
 
         if let Some(storage_entry_date) = &storage.storage_entry_date {
+            columns_values.push((
+                Storage::StorageEntryDate,
+                SimpleExpr::Value(storage_entry_date.timestamp().into()),
+            ));
+
             columns.push(Storage::StorageEntryDate);
             values.push(SimpleExpr::Value(storage_entry_date.timestamp().into()));
         } else {
@@ -1381,6 +1385,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_exit_date) = &storage.storage_exit_date {
+            columns_values.push((
+                Storage::StorageExitDate,
+                SimpleExpr::Value(storage_exit_date.timestamp().into()),
+            ));
+
             columns.push(Storage::StorageExitDate);
             values.push(SimpleExpr::Value(storage_exit_date.timestamp().into()));
         } else {
@@ -1391,6 +1400,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_opening_date) = &storage.storage_opening_date {
+            columns_values.push((
+                Storage::StorageOpeningDate,
+                SimpleExpr::Value(storage_opening_date.timestamp().into()),
+            ));
+
             columns.push(Storage::StorageOpeningDate);
             values.push(SimpleExpr::Value(storage_opening_date.timestamp().into()));
         } else {
@@ -1401,6 +1415,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_expiration_date) = &storage.storage_expiration_date {
+            columns_values.push((
+                Storage::StorageExpirationDate,
+                SimpleExpr::Value(storage_expiration_date.timestamp().into()),
+            ));
+
             columns.push(Storage::StorageExpirationDate);
             values.push(SimpleExpr::Value(
                 storage_expiration_date.timestamp().into(),
@@ -1413,6 +1432,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_comment) = &storage.storage_comment {
+            columns_values.push((
+                Storage::StorageComment,
+                SimpleExpr::Value(storage_comment.into()),
+            ));
+
             columns.push(Storage::StorageComment);
             values.push(SimpleExpr::Value(storage_comment.into()));
         } else {
@@ -1423,6 +1447,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_reference) = &storage.storage_reference {
+            columns_values.push((
+                Storage::StorageReference,
+                SimpleExpr::Value(storage_reference.into()),
+            ));
+
             columns.push(Storage::StorageReference);
             values.push(SimpleExpr::Value(storage_reference.into()));
         } else {
@@ -1433,6 +1462,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_batch_number) = &storage.storage_batch_number {
+            columns_values.push((
+                Storage::StorageBatchNumber,
+                SimpleExpr::Value(storage_batch_number.into()),
+            ));
+
             columns.push(Storage::StorageBatchNumber);
             values.push(SimpleExpr::Value(storage_batch_number.into()));
         } else {
@@ -1443,6 +1477,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_quantity) = storage.storage_quantity {
+            columns_values.push((
+                Storage::StorageQuantity,
+                SimpleExpr::Value(storage_quantity.into()),
+            ));
+
             columns.push(Storage::StorageQuantity);
             values.push(SimpleExpr::Value(storage_quantity.into()));
         } else {
@@ -1453,6 +1492,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_barecode) = &storage.storage_barecode {
+            columns_values.push((
+                Storage::StorageBarecode,
+                SimpleExpr::Value(storage_barecode.into()),
+            ));
+
             columns.push(Storage::StorageBarecode);
             values.push(SimpleExpr::Value(storage_barecode.into()));
         } else {
@@ -1463,6 +1507,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_concentration) = storage.storage_concentration {
+            columns_values.push((
+                Storage::StorageConcentration,
+                SimpleExpr::Value(storage_concentration.into()),
+            ));
+
             columns.push(Storage::StorageConcentration);
             values.push(SimpleExpr::Value(storage_concentration.into()));
         } else {
@@ -1473,6 +1522,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_number_of_bag) = storage.storage_number_of_bag {
+            columns_values.push((
+                Storage::StorageNumberOfBag,
+                SimpleExpr::Value(storage_number_of_bag.into()),
+            ));
+
             columns.push(Storage::StorageNumberOfBag);
             values.push(SimpleExpr::Value(storage_number_of_bag.into()));
         } else {
@@ -1483,6 +1537,11 @@ pub fn create_update_storage(
         }
 
         if let Some(storage_number_of_carton) = storage.storage_number_of_carton {
+            columns_values.push((
+                Storage::StorageNumberOfCarton,
+                SimpleExpr::Value(storage_number_of_carton.into()),
+            ));
+
             columns.push(Storage::StorageNumberOfCarton);
             values.push(SimpleExpr::Value(storage_number_of_carton.into()));
         } else {
@@ -1498,6 +1557,8 @@ pub fn create_update_storage(
                 None => return Err(Box::new(StorageError::MissingSupplierId)),
             };
 
+            columns_values.push((Storage::Supplier, SimpleExpr::Value(supplier_id.into())));
+
             columns.push(Storage::Supplier);
             values.push(SimpleExpr::Value(supplier_id.into()));
         } else {
@@ -1510,6 +1571,8 @@ pub fn create_update_storage(
                 None => return Err(Box::new(StorageError::MissingUnitId)),
             };
 
+            columns_values.push((Storage::UnitQuantity, SimpleExpr::Value(unit_id.into())));
+
             columns.push(Storage::UnitQuantity);
             values.push(SimpleExpr::Value(unit_id.into()));
         } else {
@@ -1521,6 +1584,11 @@ pub fn create_update_storage(
                 Some(unit_id) => unit_id,
                 None => return Err(Box::new(StorageError::MissingUnitId)),
             };
+
+            columns_values.push((
+                Storage::UnitConcentration,
+                SimpleExpr::Value(unit_id.into()),
+            ));
 
             columns.push(Storage::UnitConcentration);
             values.push(SimpleExpr::Value(unit_id.into()));
@@ -1536,6 +1604,8 @@ pub fn create_update_storage(
                 Some(storage_id) => storage_id,
                 None => return Err(Box::new(StorageError::MissingStorageId)),
             };
+
+            columns_values.push((Storage::Storage, SimpleExpr::Value(storage_id.into())));
 
             columns.push(Storage::Storage);
             values.push(SimpleExpr::Value(storage_id.into()));
