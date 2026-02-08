@@ -414,7 +414,7 @@ fn populate_product_sl(
             .expr_as(
                 Expr::cust(
                     r#"
-                    GROUP_CONCAT(storage.storage_barecode)
+                    COALESCE(GROUP_CONCAT(storage.storage_barecode), '')
                     "#,
                 ),
                 Alias::new("product_sl"),
