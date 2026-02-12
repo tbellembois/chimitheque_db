@@ -1705,13 +1705,10 @@ pub fn delete_storage(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("delete_storage: {:#?}", storage_id);
 
+    // History deletion managed by ON DELETE CASCADE.
     let (delete_sql, delete_values) = Query::delete()
         .from_table(Storage::Table)
-        .cond_where(
-            Cond::any()
-                .add(Expr::col(Storage::StorageId).eq(storage_id))
-                .add(Expr::col(Storage::Storage).eq(storage_id)),
-        )
+        .and_where(Expr::col(Storage::StorageId).eq(storage_id))
         .build_rusqlite(SqliteQueryBuilder);
 
     _ = db_connection.execute(delete_sql.as_str(), &*delete_values.as_params())?;

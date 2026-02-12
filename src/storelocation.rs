@@ -586,7 +586,10 @@ pub fn delete_store_location(
         .and_where(Expr::col(StoreLocation::StoreLocationId).eq(store_location_id))
         .build_rusqlite(SqliteQueryBuilder);
 
-    _ = db_connection.execute(sql_query.as_str(), &*sql_values.as_params());
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_connection.execute(sql_query.as_str(), &*sql_values.as_params())?;
 
     Ok(())
 }

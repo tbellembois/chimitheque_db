@@ -254,7 +254,7 @@ CREATE TABLE IF NOT EXISTS "storage" (
 	PRIMARY KEY("storage_id"),
 	FOREIGN KEY("person") REFERENCES "person"("person_id") ON DELETE SET DEFAULT,
 	FOREIGN KEY("product") REFERENCES "product"("product_id"),
-	FOREIGN KEY("storage") REFERENCES "storage"("storage_id"),
+	FOREIGN KEY("storage") REFERENCES "storage"("storage_id") ON DELETE CASCADE,
 	FOREIGN KEY("store_location") REFERENCES "store_location"("store_location_id"),
 	FOREIGN KEY("supplier") REFERENCES "supplier"("supplier_id"),
 	FOREIGN KEY("unit_concentration") REFERENCES "unit"("unit_id"),
