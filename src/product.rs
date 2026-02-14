@@ -420,6 +420,43 @@ fn populate_product_sl(
                 Alias::new("product_sl"),
             )
             .from(Storage::Table)
+            .join(
+                // storelocation
+                JoinType::LeftJoin,
+                StoreLocation::Table,
+                Expr::col((Storage::Table, Storage::StoreLocation))
+                    .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
+            )
+            .join(
+                // entity
+                JoinType::LeftJoin,
+                Entity::Table,
+                Expr::col((StoreLocation::Table, StoreLocation::Entity))
+                    .equals((Entity::Table, Entity::EntityId)),
+            )
+            .join_as(
+                JoinType::InnerJoin,
+                Permission::Table,
+                Alias::new("perm"),
+                Expr::col((Alias::new("perm"), Alias::new("person")))
+                    .eq(person_id)
+                    .and(
+                        Expr::col((Alias::new("perm"), Alias::new("permission_item")))
+                            .is_in(["all", "storages"]),
+                    )
+                    .and(
+                        Expr::col((Alias::new("perm"), Alias::new("permission_name")))
+                            .is_in(["r", "w", "all"]),
+                    )
+                    .and(
+                        Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
+                            .equals(Entity::EntityId)
+                            .or(
+                                Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
+                                    .eq(-1),
+                            ),
+                    ),
+            )
             .and_where(Expr::col(Storage::Product).eq(product_id))
             .build_rusqlite(SqliteQueryBuilder);
 
