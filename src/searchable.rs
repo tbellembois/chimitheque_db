@@ -2,7 +2,7 @@ use chimitheque_traits::searchable::Searchable;
 use chimitheque_types::requestfilter::RequestFilter;
 use chimitheque_utils::string::{clean, Transform};
 use log::debug;
-use rusqlite::Connection;
+use rusqlite::{params_from_iter, Connection, ToSql};
 use serde::Serialize;
 use std::fmt::Debug;
 
@@ -15,17 +15,16 @@ pub fn parse(
 
     // Select query statement.
     let select_query = format!(
-        "SELECT {}, {} FROM {} WHERE {}=='{}' COLLATE NOCASE",
+        "SELECT {}, {} FROM {} WHERE {}==?1 COLLATE NOCASE",
         item.get_id_field_name(),
         item.get_text_field_name(),
         item.get_table_name(),
         item.get_text_field_name(),
-        s,
     );
 
     // Perform select query.
     let mut stmt = db_connection.prepare(&select_query)?;
-    let mayerr_query = stmt.query_row((), |row| {
+    let mayerr_query = stmt.query_row([s], |row| {
         let id: u64 = row.get_unwrap(0);
         let text: String = row.get_unwrap(1);
 
@@ -67,11 +66,10 @@ pub fn get_many(
         item.get_table_name()
     );
 
-    if let Some(search) = filter.search.clone() {
+    if filter.search.is_some() {
         select_query.push_str(&format!(
-            " WHERE {} LIKE '%{}%'",
-            item.get_text_field_name(),
-            search
+            " WHERE {} LIKE '%?1%'",
+            item.get_text_field_name()
         ))
     } else if let Some(id) = filter.id {
         select_query.push_str(&format!(" WHERE {} = {}", item.get_id_field_name(), id))
@@ -99,21 +97,32 @@ pub fn get_many(
         item.get_table_name()
     );
 
-    if let Some(search) = filter.search.clone() {
+    let maybe_search = filter.search.clone();
+    let maybe_id = filter.id;
+
+    if maybe_search.is_some() {
         count_query.push_str(&format!(
-            " WHERE {} LIKE '%{}%'",
-            item.get_text_field_name(),
-            search
+            " WHERE {} LIKE '%?1%'",
+            item.get_text_field_name()
         ))
-    } else if let Some(id) = filter.id {
-        count_query.push_str(&format!(" WHERE {} = {}", item.get_id_field_name(), id))
+    } else if maybe_id.is_some() {
+        count_query.push_str(&format!(" WHERE {} = ?1", item.get_id_field_name()))
     }
 
     debug!("count_query:{:?}", count_query);
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_query.as_str())?;
-    let mut rows = stmt.query(())?;
+
+    let mut params: Vec<&dyn ToSql> = vec![];
+    if let Some(search) = &maybe_search {
+        params.fill(search);
+    } else if let Some(id) = &maybe_id {
+        params.fill(id);
+    }
+
+    let mut rows = stmt.query(params_from_iter(params.iter()))?;
+
     let count: usize = if let Some(row) = rows.next()? {
         row.get_unwrap(0)
     } else {
@@ -122,7 +131,17 @@ pub fn get_many(
 
     // Perform select query.
     let mut stmt = db_connection.prepare(&select_query)?;
-    let rows = stmt.query_map((), |row| {
+
+    // let mut rows: Rows<'_>;
+    // if let Some(search) = search {
+    //     rows = stmt.query([search])?;
+    // } else if let Some(id) = id {
+    //     rows = stmt.query([id])?;
+    // } else {
+    //     rows = stmt.query(())?;
+    // }
+
+    let rows = stmt.query_map(params_from_iter(params.iter()), |row| {
         let mut new_item = item.create();
 
         let row_id: u64 = row.get(0)?;
