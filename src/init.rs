@@ -1,6 +1,6 @@
 use log::{debug, info};
 use regex::Regex;
-use rusqlite::{Batch, Connection, Transaction};
+use rusqlite::{Batch, Connection, OpenFlags, Transaction};
 use std::path::Path;
 use std::{env, fs};
 
@@ -29,7 +29,12 @@ pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
         .expect("Missing SQLITE_EXTENSION_DIR environment variable.");
     let sql_extension_regex = Path::new(sql_extension_dir.as_str()).join("regex0.so");
 
-    let db_connection = Connection::open(db_path)?;
+    let db_connection = Connection::open_with_flags(
+        db_path,
+        OpenFlags::SQLITE_OPEN_READ_WRITE
+            | OpenFlags::SQLITE_OPEN_CREATE
+            | OpenFlags::SQLITE_OPEN_FULL_MUTEX,
+    )?;
     unsafe {
         db_connection
             .load_extension(sql_extension_regex, None)
@@ -61,6 +66,17 @@ pub fn init_db(
     // TEXT
     // BLOB
     // ANY
+
+    db_connection.execute_batch(
+        r#"
+    PRAGMA foreign_keys = ON;
+    PRAGMA journal_mode = WAL;
+    PRAGMA synchronous = NORMAL;
+    PRAGMA temp_store = MEMORY;
+    PRAGMA cache_size = -20000;
+    "#,
+    )?;
+
     let sql = include_str!("resources/shema.sql");
 
     info!("creating database structure");
@@ -160,15 +176,15 @@ pub fn init_db(
     tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (12,'°F',1.0,'temperature',11)", ())?;
     tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (13,'°C',1.0,'temperature',11)", ())?;
     tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (14,'nM',1.0,'concentration',NULL)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (14,'nM',1.0e-06,'concentration',16)",
         (),
     )?;
     tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (16,'mM',1.0,'concentration',16)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (15,'µM',1.0e-03,'concentration',16)",
         (),
     )?;
     tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (15,'µM',1.0,'concentration',16)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (16,'mM',1.0,'concentration',NULL)",
         (),
     )?;
     tx.execute(
@@ -176,15 +192,15 @@ pub fn init_db(
         (),
     )?;
     tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (17,'ng/L',1.0,'concentration',20)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (17,'ng/L',1.0e-09,'concentration',20)",
         (),
     )?;
     tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (18,'µg/L',1.0,'concentration',20)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (18,'µg/L',1.0e-06,'concentration',20)",
         (),
     )?;
     tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (19,'mg/L',1.0,'concentration',20)",
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (19,'mg/L',1.0e-03,'concentration',20)",
         (),
     )?;
     tx.execute(

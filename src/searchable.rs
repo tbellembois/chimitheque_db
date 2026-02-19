@@ -58,6 +58,19 @@ pub fn get_many(
 ) -> Result<(Vec<impl Searchable + Serialize>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{:?}", filter);
 
+    // Parameters.
+    let maybe_search = filter.search.clone();
+    let maybe_id = filter.id;
+
+    let mut params: Vec<&dyn ToSql> = vec![];
+    let wild_search: String;
+    if let Some(search) = &maybe_search {
+        wild_search = format!("%{}%", search);
+        params = vec![&wild_search];
+    } else if let Some(id) = &maybe_id {
+        params = vec![id];
+    }
+
     // Select query statement.
     let mut select_query = format!(
         "SELECT {}, {} FROM {}",
@@ -66,13 +79,10 @@ pub fn get_many(
         item.get_table_name()
     );
 
-    if filter.search.is_some() {
-        select_query.push_str(&format!(
-            " WHERE {} LIKE '%?1%'",
-            item.get_text_field_name()
-        ))
-    } else if let Some(id) = filter.id {
-        select_query.push_str(&format!(" WHERE {} = {}", item.get_id_field_name(), id))
+    if maybe_search.is_some() {
+        select_query.push_str(&format!(" WHERE {} LIKE (?1)", item.get_text_field_name()))
+    } else if maybe_id.is_some() {
+        select_query.push_str(&format!(" WHERE {} = (?1)", item.get_id_field_name()))
     }
 
     select_query.push_str(&format!(
@@ -90,57 +100,9 @@ pub fn get_many(
 
     debug!("select_query:{:?}", select_query);
 
-    // Count query statement.
-    let mut count_query = format!(
-        "SELECT COUNT(DISTINCT {}) FROM {}",
-        item.get_id_field_name(),
-        item.get_table_name()
-    );
-
-    let maybe_search = filter.search.clone();
-    let maybe_id = filter.id;
-
-    if maybe_search.is_some() {
-        count_query.push_str(&format!(
-            " WHERE {} LIKE '%?1%'",
-            item.get_text_field_name()
-        ))
-    } else if maybe_id.is_some() {
-        count_query.push_str(&format!(" WHERE {} = ?1", item.get_id_field_name()))
-    }
-
-    debug!("count_query:{:?}", count_query);
-
-    // Perform count query.
-    let mut stmt = db_connection.prepare(count_query.as_str())?;
-
-    let mut params: Vec<&dyn ToSql> = vec![];
-    if let Some(search) = &maybe_search {
-        params.fill(search);
-    } else if let Some(id) = &maybe_id {
-        params.fill(id);
-    }
-
-    let mut rows = stmt.query(params_from_iter(params.iter()))?;
-
-    let count: usize = if let Some(row) = rows.next()? {
-        row.get_unwrap(0)
-    } else {
-        0
-    };
-
-    // Perform select query.
     let mut stmt = db_connection.prepare(&select_query)?;
 
-    // let mut rows: Rows<'_>;
-    // if let Some(search) = search {
-    //     rows = stmt.query([search])?;
-    // } else if let Some(id) = id {
-    //     rows = stmt.query([id])?;
-    // } else {
-    //     rows = stmt.query(())?;
-    // }
-
+    // Perform select query.
     let rows = stmt.query_map(params_from_iter(params.iter()), |row| {
         let mut new_item = item.create();
 
@@ -174,7 +136,34 @@ pub fn get_many(
     }
 
     debug!("items:{:#?}", items);
-    debug!("items:{}", count);
+
+    // Count query statement.
+    let mut count_query = format!(
+        "SELECT COUNT(DISTINCT {}) FROM {}",
+        item.get_id_field_name(),
+        item.get_table_name()
+    );
+
+    if maybe_search.is_some() {
+        count_query.push_str(&format!(" WHERE {} LIKE (?1)", item.get_text_field_name()))
+    } else if maybe_id.is_some() {
+        count_query.push_str(&format!(" WHERE {} = (?1)", item.get_id_field_name()))
+    }
+
+    debug!("count_query:{:?}", count_query);
+
+    // Perform count query.
+    let mut stmt = db_connection.prepare(count_query.as_str())?;
+
+    let mut rows = stmt.query(params_from_iter(params.iter()))?;
+
+    let count: usize = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    debug!("count:{}", count);
 
     Ok((items, count))
 }
