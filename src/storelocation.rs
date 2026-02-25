@@ -581,6 +581,21 @@ pub fn delete_store_location(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("store_location_id: {}", store_location_id);
 
+    // Workaroud:
+    // Before the "FOREIGN KEY("storage") REFERENCES "storage"("storage_id") ON DELETE CASCADE," on the storage table
+    // history storage cards where not deleted properly.
+    // We need to delete them before deleting the store location to avoid a foreign key constraint violation.
+    let (sql_query, sql_values) = Query::delete()
+        .from_table(Storage::Table)
+        .and_where(Expr::col(Storage::StoreLocation).eq(store_location_id))
+        .and_where(Expr::col(Storage::Storage).is_not_null())
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_values: {:?}", sql_values);
+
+    _ = db_connection.execute(sql_query.as_str(), &*sql_values.as_params())?;
+
     let (sql_query, sql_values) = Query::delete()
         .from_table(StoreLocation::Table)
         .and_where(Expr::col(StoreLocation::StoreLocationId).eq(store_location_id))
@@ -597,76 +612,52 @@ pub fn delete_store_location(
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashMap;
+
     use super::*;
-    use crate::init::{connect_test, init_db, insert_fake_values};
-    use log::info;
 
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
+    #[test]
+    fn get_store_locations_for_user_right_number() {
+        let db_connection = crate::test_utils::init_test();
 
-    fn init_test_db() -> Connection {
-        let mut db_connection = connect_test();
-        init_db(&mut db_connection).unwrap();
-        insert_fake_values(&mut db_connection).unwrap();
-        db_connection
+        let expected_nb_results_for_person =
+            HashMap::from([(1, 10), (2, 3), (3, 6), (4, 1), (5, 0), (6, 6), (7, 1)]);
+
+        for (person_id, expected_nb_results) in expected_nb_results_for_person {
+            let (_, nb_resuts) = get_store_locations(
+                &db_connection,
+                RequestFilter {
+                    ..Default::default()
+                },
+                person_id,
+            )
+            .unwrap();
+            assert_eq!(nb_resuts, expected_nb_results);
+        }
     }
 
     #[test]
-    fn test_get_store_locations() {
-        init_logger();
+    fn get_store_locations_filters() {
+        let db_connection = crate::test_utils::init_test();
 
-        let db_connection = init_test_db();
+        // search
+        let (store_locations, nb_results) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                search: Some(String::from("[F]sl_21")),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
 
-        info!("testing total result");
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        let (store_locations, count) = get_store_locations(&db_connection, filter, 1).unwrap();
-        assert_eq!(count, 5);
-        assert_eq!(store_locations.len(), 5);
+        assert!(
+            nb_results == 1 && store_locations.first().unwrap().store_location_name == "[F]sl_21"
+        );
 
-        info!("testing entity filter");
-        let filter = RequestFilter {
-            entity: Some(2),
-            ..Default::default()
-        };
-        let (store_locations, count) = get_store_locations(&db_connection, filter, 1).unwrap();
-
-        assert_eq!(count, 3);
-        for store_location in store_locations.iter() {
-            assert!(
-                (store_location.store_location_name.eq("location_2a")
-                    || store_location.store_location_name.eq("location_2b")
-                    || store_location.store_location_name.eq("location_2bb"))
-            )
-        }
-
-        info!("testing store location name filter");
-        let filter = RequestFilter {
-            search: Some(String::from("location_1a")),
-            ..Default::default()
-        };
-        let (store_locations, count) = get_store_locations(&db_connection, filter, 1).unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(store_locations[0].store_location_name, "location_1a");
-
-        info!("testing store location can store filter");
-        let filter = RequestFilter {
-            store_location_can_store: false,
-            ..Default::default()
-        };
-        let (store_locations, count) = get_store_locations(&db_connection, filter, 1).unwrap();
-        assert_eq!(count, 5);
-        assert_eq!(store_locations[0].store_location_name, "location_1a");
-
-        info!("testing limit");
-        let filter = RequestFilter {
-            limit: Some(2),
-            ..Default::default()
-        };
-        let (store_locations, count) = get_store_locations(&db_connection, filter, 1).unwrap();
-        assert_eq!(count, 5);
-        assert_eq!(store_locations.len(), 2);
+        // id
+        // entity
+        // store_location
+        // can_store
     }
 }

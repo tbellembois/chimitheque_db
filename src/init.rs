@@ -1,8 +1,8 @@
 use log::{debug, info};
 use regex::Regex;
 use rusqlite::{Batch, Connection, OpenFlags, Transaction};
+use std::env;
 use std::path::Path;
-use std::{env, fs};
 
 use crate::define::{
     CATEGORIES, CLASSES_OF_COMPOUNDS, CMR_CAS, PHYSICAL_STATES, PRODUCERS, SIGNAL_WORDS, SUPPLIERS,
@@ -45,11 +45,11 @@ pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
 }
 
 pub fn insert_fake_values(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
-    let sql = fs::read_to_string("/tmp/sample.sql").expect("Can not read sample.sql file.");
+    let sql = include_str!("resources/sample.sql");
 
     info!("adding fake database values");
 
-    let mut batch = Batch::new(db_connection, &sql);
+    let mut batch = Batch::new(db_connection, sql);
     while let Some(mut stmt) = batch.next()? {
         stmt.execute([])?;
     }
@@ -176,15 +176,15 @@ pub fn init_db(
     tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (12,'°F',1.0,'temperature',11)", ())?;
     tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (13,'°C',1.0,'temperature',11)", ())?;
     tx.execute(
+        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (16,'mM',1.0,'concentration',NULL)",
+        (),
+    )?;
+    tx.execute(
         "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (14,'nM',1.0e-06,'concentration',16)",
         (),
     )?;
     tx.execute(
         "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (15,'µM',1.0e-03,'concentration',16)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (16,'mM',1.0,'concentration',NULL)",
         (),
     )?;
     tx.execute(
@@ -235,7 +235,7 @@ pub fn init_db(
 }
 
 // https://pubchem.ncbi.nlm.nih.gov/ghs/
-pub fn update_ghs_statements(
+fn update_ghs_statements(
     db_transaction: &Transaction,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let hazard_statement_re =
@@ -244,8 +244,6 @@ pub fn update_ghs_statements(
 
     let file = include_str!("resources/ghscode_11.txt");
     for line in file.lines() {
-        // debug!("{:?}", line);
-
         if let Some(captures) = hazard_statement_re.captures(line) {
             let reference = captures.name("reference").unwrap().as_str();
             let label = captures.name("label").unwrap().as_str();
@@ -282,42 +280,45 @@ pub fn update_ghs_statements(
 
 #[cfg(test)]
 mod tests {
-
-    use log::info;
-
     use super::*;
 
-    fn init_logger() {
+    fn init_test() {
         let _ = env_logger::builder().is_test(true).try_init();
+        unsafe {
+            std::env::set_var(
+                "SQLITE_EXTENSION_DIR",
+                "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions",
+            )
+        };
     }
 
     #[test]
-    fn test_connect() {
-        init_logger();
-
-        std::env::set_var(
-            "SQLITE_EXTENSION_DIR",
-            "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions",
-        );
-
+    fn connect_success() {
+        init_test();
         assert!(connect("/tmp/storage.db").is_ok());
     }
 
     #[test]
-    fn test_init_db() {
-        init_logger();
+    fn init_db_success() {
+        init_test();
+        let mut db_connection = connect_test();
+        assert!(init_db(&mut db_connection).is_ok());
+    }
 
-        std::env::set_var(
-            "SQLITE_EXTENSION_DIR",
-            "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions",
-        );
+    #[test]
+    fn update_ghs_statements_success() {
+        init_test();
+        let mut db_connection = connect_test();
+        init_db(&mut db_connection).unwrap();
+        let tx = db_connection.transaction().unwrap();
+        assert!(update_ghs_statements(&tx).is_ok());
+    }
 
-        // let mut db_connection = Connection::open_in_memory().unwrap();
-        let mut db_connection = Connection::open("/tmp/storage.db").unwrap();
-        let mayerr_initdb = init_db(&mut db_connection);
-
-        info!("mayerr_initdb: {:?}", mayerr_initdb);
-
-        assert!(mayerr_initdb.is_ok());
+    #[test]
+    fn insert_fake_values_success() {
+        init_test();
+        let mut db_connection = connect_test();
+        init_db(&mut db_connection).unwrap();
+        assert!(insert_fake_values(&mut db_connection).is_ok());
     }
 }
