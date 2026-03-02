@@ -612,7 +612,14 @@ pub fn delete_store_location(
 #[cfg(test)]
 mod tests {
 
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
+
+    use chimitheque_types::{person::Person, product::Product, storage::Storage};
+
+    use crate::{
+        storage::{create_update_storage, delete_storage, get_storages},
+        storelocation::populate_store_location_full_path,
+    };
 
     use super::*;
 
@@ -640,7 +647,7 @@ mod tests {
     fn get_store_locations_filters() {
         let db_connection = crate::test_utils::init_test();
 
-        // search
+        // search one
         let (store_locations, nb_results) = get_store_locations(
             &db_connection,
             RequestFilter {
@@ -655,9 +662,367 @@ mod tests {
             nb_results == 1 && store_locations.first().unwrap().store_location_name == "[F]sl_21"
         );
 
+        // search many
+        let (store_locations, nb_results) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                search: Some(String::from("sl_21")),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+
+        let target_store_location_names: HashSet<&str> =
+            ["[F]sl_21", "sl_211", "[I]sl_2111", "sl_21111"]
+                .into_iter()
+                .collect();
+
+        let found = store_locations.iter().any(|store_location| {
+            target_store_location_names.contains(store_location.store_location_name.as_str())
+        });
+
+        assert!(nb_results == 4 && found);
+
         // id
+        let (store_locations, nb_results) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                id: Some(1),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+
+        assert!(
+            nb_results == 1 && store_locations.first().unwrap().store_location_name == "root_sl_1"
+        );
+
         // entity
+        let (store_locations, nb_results) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                entity: Some(3),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+
+        assert!(
+            nb_results == 1
+                && store_locations.first().unwrap().store_location_name == "[P]root_sl_3"
+        );
+
         // store_location
+        let (store_locations, nb_results) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                store_location: Some(7),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+
+        assert!(
+            nb_results == 1 && store_locations.first().unwrap().store_location_name == "[I]sl_2111"
+        );
+
         // can_store
+        let (store_locations, nb_results) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                store_location_can_store: true,
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+
+        let target_store_location_names: HashSet<&str> = [
+            "root_sl_1",
+            "sl_11",
+            "sl_12",
+            "[F]sl_21",
+            "sl_22",
+            "sl_211",
+            "[I]sl_2111",
+            "sl_21111",
+            "[P]root_sl_3",
+        ]
+        .into_iter()
+        .collect();
+
+        let found = store_locations.iter().any(|store_location| {
+            target_store_location_names.contains(store_location.store_location_name.as_str())
+        });
+
+        assert!(nb_results == 9 && found);
     }
+
+    #[test]
+    fn populate_store_location_full_path_success() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        let store_location_a = StoreLocationStruct {
+            store_location_id: Some(1),
+            store_location_name: String::from("a"),
+            entity: Some(EntityStruct {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let store_location_b = StoreLocationStruct {
+            store_location_id: Some(2),
+            store_location_name: String::from("b"),
+            store_location: Some(Box::new(store_location_a.clone())),
+            entity: Some(EntityStruct {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let mut store_location_c = StoreLocationStruct {
+            store_location_id: Some(3),
+            store_location_name: String::from("c"),
+            store_location: Some(Box::new(store_location_b.clone())),
+            entity: Some(EntityStruct {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        create_update_store_location(&mut db_connection, store_location_a).unwrap();
+        create_update_store_location(&mut db_connection, store_location_b).unwrap();
+        create_update_store_location(&mut db_connection, store_location_c.clone()).unwrap();
+
+        let result = populate_store_location_full_path(&db_connection, &mut store_location_c);
+        assert!(
+            result.is_ok()
+                && store_location_c.store_location_full_path == Some(String::from("a/b/c"))
+        );
+    }
+
+    #[test]
+    fn create_store_location_success() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        let store_location_a = StoreLocationStruct {
+            store_location_id: Some(1),
+            store_location_name: String::from("store_location_a"),
+            entity: Some(EntityStruct {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        create_update_store_location(&mut db_connection, store_location_a).unwrap();
+
+        let (store_locations, nb_results) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                search: Some(String::from("store_location_a")),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+
+        assert!(
+            nb_results == 1
+                && store_locations.first().unwrap().store_location_name == "store_location_a"
+        );
+    }
+
+    #[test]
+    fn delete_store_location_success() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        // Create a new store location that can be deleted
+        let store_location = StoreLocationStruct {
+            store_location_id: None,
+            store_location_name: String::from("temp_store_location"),
+            store_location_can_store: true,
+            entity: Some(EntityStruct {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Create the store location
+        let store_location_id =
+            create_update_store_location(&mut db_connection, store_location).unwrap();
+
+        // Verify it was created
+        let (store_locations, _) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                id: Some(store_location_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        assert_eq!(store_locations.len(), 1);
+        assert_eq!(
+            store_locations[0].store_location_name,
+            "temp_store_location"
+        );
+
+        // Delete the store location
+        assert!(delete_store_location(&db_connection, store_location_id).is_ok());
+
+        // Verify it was deleted
+        let (store_locations, _) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                id: Some(store_location_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        assert!(store_locations.is_empty());
+    }
+
+    #[test]
+    fn delete_store_location_with_storages_fail() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        // Create a new store location
+        let store_location = StoreLocationStruct {
+            store_location_id: None,
+            store_location_name: String::from("temp_store_location_with_storage"),
+            store_location_can_store: true,
+            entity: Some(EntityStruct {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Create the store location
+        let store_location_id =
+            create_update_store_location(&mut db_connection, store_location).unwrap();
+
+        // Verify the store location exists
+        let (store_locations, _) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                id: Some(store_location_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        assert_eq!(store_locations.len(), 1);
+
+        // Create a storage in this location
+        let storage = Storage {
+            storage_id: None,
+            product: Product {
+                product_id: Some(1),
+                ..Default::default()
+            },
+            person: Person {
+                person_id: Some(1),
+                ..Default::default()
+            },
+            store_location: StoreLocationStruct {
+                store_location_id: Some(store_location_id),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        // Create the storage
+        let storage_id = create_update_storage(&mut db_connection, storage, 1, false).unwrap()[0];
+
+        // Verify the storage exists
+        let (storages, _) = get_storages(
+            &db_connection,
+            RequestFilter {
+                id: Some(storage_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        assert_eq!(storages.len(), 1);
+        assert_eq!(
+            storages[0].store_location.store_location_id,
+            Some(store_location_id)
+        );
+
+        // Attempt to delete the store location with storages
+        let result = delete_store_location(&db_connection, store_location_id);
+
+        // Expecting to fail with a foreign key constraint error
+        match result {
+            Err(err) => {
+                // Check if the error is indeed a foreign key constraint violation
+                if let Some(db_err) = err.downcast_ref::<rusqlite::Error>() {
+                    // Check if this is a foreign key violation error
+                    assert!(
+                        db_err.to_string().contains("FOREIGN KEY constraint failed"),
+                        "Expected foreign key constraint error but got: {}",
+                        db_err
+                    );
+                } else {
+                    panic!("Received error was not a database error: {:?}", err);
+                }
+            }
+            Ok(_) => {
+                panic!("Expected delete operation to fail but it succeeded!");
+            }
+        }
+
+        // Verification that the store location still exists
+        let (store_locations, _) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                id: Some(store_location_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        assert_eq!(store_locations.len(), 1);
+
+        // Verification that the storage still exists
+        let (storages, _) = get_storages(
+            &db_connection,
+            RequestFilter {
+                id: Some(storage_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        assert_eq!(storages.len(), 1);
+        assert_eq!(
+            storages[0].store_location.store_location_id,
+            Some(store_location_id)
+        );
+
+        // Clean up for the next tests
+        // First delete the storage
+        let delete_storage_result = delete_storage(&mut db_connection, storage_id);
+        assert!(delete_storage_result.is_ok());
+
+        // Now delete the store location (which should work now)
+        let delete_store_location_result = delete_store_location(&db_connection, store_location_id);
+        assert!(delete_store_location_result.is_ok());
+    }
+
+    #[test]
+    fn delete_store_location_with_children_fail() {}
 }

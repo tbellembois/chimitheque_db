@@ -230,4 +230,90 @@ INSERT INTO "store_location" VALUES
     (9,'sl_21111','',1,'root_sl_2/[F]sl_21/sl_211/[I]sl_2111/sl_21111',2,8),
     (10,'[P]root_sl_3','',1,'[P]root_sl_3',3,NULL);
 
+DELETE FROM storage;
+DELETE FROM borrowing;
+
+-- Storage entries for Store Location ID 2 (root_sl_1/sl_11)
+INSERT INTO storage (
+    storage_id,
+    storage_creation_date,
+    storage_modification_date,
+    storage_entry_date,
+    storage_quantity,
+    storage_comment,
+    storage_reference,
+    storage_batch_number,
+    person,
+    product,
+    store_location,
+    supplier,
+    unit_quantity
+) VALUES
+-- Chemical products in location 2 (sl_11)
+(1, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 5000, 'New stock', 'REF-ETH-001', 'B23456', 1, 1, 2, NULL, 2),
+(2, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 3000, 'For HPLC analysis', 'REF-MET-001', 'A12345', 1, 2, 2, NULL, 2),
+(3, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 2000, 'AC grade', 'REF-ACE-001', 'B09876', 1, 3, 2, NULL, 2),
+(4, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 1500, 'Corrosive', 'REF-HCL-001', 'C76543', 1, 4, 2, 1, 2),
+(5, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 1000, 'Caustic', 'REF-NAOH-001', 'D54321', 1, 5, 2, 2, 2),
+-- Storage for consumables in location 2 (sl_11)
+(17, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 50, '96-well plates, sterile', 'REF-96WP-001', NULL, 4, 17, 2, NULL, NULL),
+
+-- Storage entries for Store Location ID 3 (root_sl_1/sl_12)
+(6, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 800, 'ACS grade', 'REF-CU-001', 'E34567', 1, 6, 3, NULL, 2),
+(7, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 500, 'Cell culture grade', 'REF-DMSO-001', 'F23456', 1, 7, 3, 3, 2),
+(8, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 300, 'Sensitive to moisture', 'REF-PARA-001', 'G12345', 1, 8, 3, 4, 2),
+(19, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 100, 'Microscope slides', 'REF-MS-001', NULL, 5, 19, 3, NULL, NULL),
+(20, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 500, '2mL cryogenic vials', 'REF-CV-001', NULL, 6, 20, 3, NULL, NULL),
+
+-- Storage entries for Store Location ID 5 ([F]sl_21)
+(9, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 10, 'Carrier-free, -20°C', 'REF-EGF-001', 'H98765', 2, 9, 5, 5, 3),
+(10, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 5, 'Lyophilized, -20°C', 'REF-FGF-001', 'I87654', 2, 10, 5, 5, 3),
+(11, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 20, 'Mouse monoclonal', 'REF-AGAP-001', 'J56789', 2, 11, 5, 6, 3),
+(12, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 15, 'Rabbit recombinant', 'REF-ACD3-001', 'K45678', 2, 12, 5, 6, 3),
+(18, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 100, 'T25 flasks, sterile', 'REF-T25-001', NULL, 5, 18, 5, NULL, NULL),
+
+-- Storage entries for Store Location ID 6 (sl_22)
+(21, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 5000, 'New stock', 'REF-ETH-002', 'B23457', 1, 1, 6, NULL, 2),
+(22, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 3000, 'For HPLC analysis', 'REF-MET-002', 'A12346', 1, 2, 6, NULL, 2),
+(23, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 2000, 'AC grade', 'REF-ACE-002', 'B09877', 1, 3, 6, NULL, 2),
+(24, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 1500, 'Corrosive', 'REF-HCL-002', 'C76544', 1, 4, 6, 1, 2),
+(25, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 1000, 'Caustic', 'REF-NAOH-002', 'D54322', 1, 5, 6, 2, 2),
+
+-- Storage entries for Store Location ID 7 (sl_211)
+(26, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 800, 'ACS grade', 'REF-CU-002', 'E34568', 1, 6, 7, NULL, 2),
+(27, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 500, 'Cell culture grade', 'REF-DMSO-002', 'F23457', 1, 7, 7, 3, 2),
+(28, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 300, 'Sensitive to moisture', 'REF-PARA-002', 'G12346', 1, 8, 7, 4, 2),
+(13, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 5, 'High glucose, 4°C', 'REF-DMEM-001', 'L34567', 3, 13, 7, 7, 2),
+(14, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 3, 'Heat inactivated, 4°C', 'REF-FBS-001', 'M23456', 3, 14, 7, 7, 2),
+
+-- Storage entries for Store Location ID 8 ([I]sl_2111)
+(29, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 5000, 'New stock', 'REF-ETH-003', 'B23458', 1, 1, 8, NULL, 2),
+(30, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 3000, 'For HPLC analysis', 'REF-MET-003', 'A12347', 1, 2, 8, NULL, 2),
+(31, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 2000, 'AC grade', 'REF-ACE-003', 'B09878', 1, 3, 8, NULL, 2),
+(32, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 1500, 'Corrosive', 'REF-HCL-003', 'C76545', 1, 4, 8, 1, 2),
+(33, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 1000, 'Caustic', 'REF-NAOH-003', 'D54323', 1, 5, 8, 2, 2),
+
+-- Storage entries for Store Location ID 9 (sl_21111)
+(15, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 2, '0.05% solution, 4°C', 'REF-TRYP-001', 'N12345', 3, 15, 9, 7, 2),
+(16, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 1, 'Colorimetric assay, RT', 'REF-MTT-001', 'O98765', 3, 16, 9, 8, 3),
+(34, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 800, 'ACS grade', 'REF-CU-003', 'E34569', 1, 6, 9, NULL, 2),
+(35, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 500, 'Cell culture grade', 'REF-DMSO-003', 'F23458', 1, 7, 9, 3, 2),
+(36, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 300, 'Sensitive to moisture', 'REF-PARA-003', 'G12347', 1, 8, 9, 4, 2);
+
+-- Add some borrowing records
+INSERT INTO borrowing (
+    borrowing_id,
+    borrowing_comment,
+    person,
+    borrower,
+    storage
+) VALUES
+(1, 'Samples needed for analysis', 1, 5, 1),
+(2, 'Used for preparation', 1, 6, 2),
+(3, 'Using for buffer preparation', 2, 3, 4),
+(4, 'For cell culture', 3, 1, 9),
+(5, 'For immunofluorescence', 3, 2, 11),
+(6, 'For flow cytometry', 3, 4, 17),
+(7, 'For western blot', 4, 1, 12);
+
 COMMIT;
