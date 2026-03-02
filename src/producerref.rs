@@ -44,7 +44,7 @@ pub fn get_producer_refs(
     db_connection: &Connection,
     filter: RequestFilter,
 ) -> Result<(Vec<ProducerRefStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
+    debug!("filter:{filter:?}");
 
     // Create common query statement.
     let mut expression = Query::select();
@@ -80,7 +80,7 @@ pub fn get_producer_refs(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
-    debug!("count_values: {:?}", count_values);
+    debug!("count_values: {count_values:?}");
 
     // Create select query.
     let (select_sql, select_values) = expression
@@ -111,7 +111,7 @@ pub fn get_producer_refs(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -142,14 +142,14 @@ pub fn get_producer_refs(
             producer_ref.match_exact_search = true;
 
             // Inserting the producer at the beginning of the results.
-            producer_refs.insert(0, producer_ref)
+            producer_refs.insert(0, producer_ref);
         } else {
             // Inserting the producer at the end of the results.
             producer_refs.push(producer_ref);
         }
     }
 
-    debug!("producer_refs: {:#?}", producer_refs);
+    debug!("producer_refs: {producer_refs:#?}");
 
     Ok((producer_refs, count))
 }
@@ -158,7 +158,7 @@ pub fn create_update_producer_ref(
     db_connection: &Connection,
     producer_ref: &ProducerRefStruct,
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_producer_ref: {:#?}", producer_ref);
+    debug!("create_update_producer_ref: {producer_ref:#?}");
 
     let clean_producer_ref_label = clean(&producer_ref.producer_ref_label, Transform::None);
 
@@ -201,7 +201,7 @@ pub fn create_update_producer_ref(
     }
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -213,7 +213,7 @@ pub fn create_update_producer_ref(
         last_insert_update_id = db_connection.last_insert_rowid().try_into()?;
     }
 
-    debug!("last_insert_update_id: {}", last_insert_update_id);
+    debug!("last_insert_update_id: {last_insert_update_id}");
 
     Ok(last_insert_update_id)
 }

@@ -17,7 +17,7 @@ pub struct ProductprecautionarystatementsWrapper(pub Productprecautionarystateme
 
 impl From<&Row<'_>> for ProductprecautionarystatementsWrapper {
     fn from(row: &Row) -> Self {
-        debug!("row:{:?}", row);
+        debug!("row:{row:?}");
 
         Self({
             ProductprecautionarystatementsStruct {

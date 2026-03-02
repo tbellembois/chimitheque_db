@@ -83,7 +83,7 @@ fn populate_entities(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -105,10 +105,10 @@ fn populate_entities(
             });
         }
 
-        if !entities.is_empty() {
-            person.entities = Some(entities);
-        } else {
+        if entities.is_empty() {
             person.entities = None;
+        } else {
+            person.entities = Some(entities);
         }
     }
 
@@ -153,7 +153,7 @@ fn populate_managed_entities(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -175,10 +175,10 @@ fn populate_managed_entities(
             });
         }
 
-        if !entities.is_empty() {
-            person.managed_entities = Some(entities);
-        } else {
+        if entities.is_empty() {
             person.managed_entities = None;
+        } else {
+            person.managed_entities = Some(entities);
         }
     }
 
@@ -213,7 +213,7 @@ fn populate_permissions(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -224,10 +224,10 @@ fn populate_permissions(
             permissions.push(permission.0);
         }
 
-        if !permissions.is_empty() {
-            person.permissions = Some(permissions);
-        } else {
+        if permissions.is_empty() {
             person.permissions = None;
+        } else {
+            person.permissions = Some(permissions);
         }
     }
 
@@ -239,8 +239,8 @@ pub fn get_people(
     filter: RequestFilter,
     person_id: u64,
 ) -> Result<(Vec<PersonStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
-    debug!("person_id:{:?}", person_id);
+    debug!("filter:{filter:?}");
+    debug!("person_id:{person_id:?}");
 
     let order = if filter.order.eq_ignore_ascii_case("desc") {
         Order::Desc
@@ -334,7 +334,7 @@ pub fn get_people(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
-    debug!("count_values: {:?}", count_values);
+    debug!("count_values: {count_values:?}");
 
     // Create select query.
     let (select_sql, select_values) = expression
@@ -384,7 +384,7 @@ pub fn get_people(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -413,7 +413,7 @@ pub fn get_people(
     populate_managed_entities(db_connection, &mut people)?;
     populate_permissions(db_connection, &mut people)?;
 
-    debug!("people: {:#?}", people);
+    debug!("people: {people:#?}");
 
     Ok((people, count))
 }
@@ -487,7 +487,7 @@ fn create_update_person_permissions(
             .to_string(SqliteQueryBuilder);
 
         debug!("sql_query: {}", sql_query.clone().as_str());
-        debug!("sql_values: {:?}", sql_values);
+        debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
     }
@@ -527,7 +527,7 @@ fn create_update_person_membership(
                 .to_string(SqliteQueryBuilder);
 
             debug!("sql_query: {}", sql_query.clone().as_str());
-            debug!("sql_values: {:?}", sql_values);
+            debug!("sql_values: {sql_values:?}");
 
             _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -555,7 +555,7 @@ fn create_update_person_membership(
                 .to_string(SqliteQueryBuilder);
 
             debug!("sql_query: {}", sql_query.clone().as_str());
-            debug!("sql_values: {:?}", sql_values);
+            debug!("sql_values: {sql_values:?}");
 
             _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
         }
@@ -567,7 +567,7 @@ pub fn create_update_person(
     db_connection: &mut Connection,
     mut person: PersonStruct,
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_person: {:#?}", person);
+    debug!("create_update_person: {person:#?}");
 
     let db_transaction = db_connection.transaction()?;
 
@@ -611,7 +611,7 @@ pub fn create_update_person(
     }
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -624,7 +624,7 @@ pub fn create_update_person(
         person.person_id = Some(last_insert_update_id);
     }
 
-    debug!("last_insert_update_id: {}", last_insert_update_id);
+    debug!("last_insert_update_id: {last_insert_update_id}");
 
     create_update_person_permissions(&db_transaction, &person)?;
     create_update_person_membership(&db_transaction, &person)?;
@@ -639,7 +639,7 @@ pub fn unset_person_manager(
     person_id: u64,
     entity_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("unset_person_manager: {:#?} {:#?}", person_id, entity_id);
+    debug!("unset_person_manager: {person_id:#?} {entity_id:#?}");
 
     // Unsetting the person manager.
     let (delete_sql, delete_values) = Query::delete()
@@ -669,7 +669,7 @@ pub fn set_person_manager(
     person_id: u64,
     entity_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("set_person_manager: {:#?} {:#?}", person_id, entity_id);
+    debug!("set_person_manager: {person_id:#?} {entity_id:#?}");
 
     // Adding the manager to the entity.
     let columns = vec![
@@ -690,7 +690,7 @@ pub fn set_person_manager(
         .to_string(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -713,7 +713,7 @@ pub fn set_person_manager(
         .to_string(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -740,7 +740,7 @@ pub fn set_person_manager(
         .to_string(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -775,7 +775,7 @@ pub fn get_admins(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
@@ -798,7 +798,7 @@ pub fn set_person_admin(
     db_connection: &mut Connection,
     person_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("set_person_admin: {:#?}", person_id);
+    debug!("set_person_admin: {person_id:#?}");
 
     let columns = vec![
         Permission::PermissionItem,
@@ -822,7 +822,7 @@ pub fn set_person_admin(
         .to_string(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -833,7 +833,7 @@ pub fn unset_person_admin(
     db_connection: &mut Connection,
     person_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("unset_person_admin: {:#?}", person_id);
+    debug!("unset_person_admin: {person_id:#?}");
 
     let (delete_sql, delete_values) = Query::delete()
         .from_table(Permission::Table)
@@ -852,7 +852,7 @@ pub fn delete_person(
     db_connection: &mut Connection,
     person_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("delete_person: {:#?}", person_id);
+    debug!("delete_person: {person_id:#?}");
 
     let (delete_sql, delete_values) = Query::delete()
         .from_table(Person::Table)

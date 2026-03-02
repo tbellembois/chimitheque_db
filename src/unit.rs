@@ -57,7 +57,7 @@ pub fn parse(
     db_connection: &Connection,
     s: &str,
 ) -> Result<Option<UnitStruct>, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("s:{:?}", s);
+    debug!("s:{s:?}");
 
     let (select_sql, select_values) = Query::select()
         .expr(Expr::col((Unit::Table, Unit::UnitId)))
@@ -88,7 +88,7 @@ pub fn parse(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform select query.
     let mut stmt = db_connection.prepare(&select_sql)?;
@@ -114,7 +114,7 @@ pub fn get_units(
     db_connection: &Connection,
     filter: RequestFilter,
 ) -> Result<(Vec<UnitStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
+    debug!("filter:{filter:?}");
 
     // Create common query statement.
     let mut expression = Query::select();
@@ -152,7 +152,7 @@ pub fn get_units(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
-    debug!("count_values: {:?}", count_values);
+    debug!("count_values: {count_values:?}");
 
     // Create select query.
     let (select_sql, select_values) = expression
@@ -193,7 +193,7 @@ pub fn get_units(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -213,7 +213,7 @@ pub fn get_units(
         units.push(unit.0);
     }
 
-    debug!("units: {:#?}", units);
+    debug!("units: {units:#?}");
 
     Ok((units, count))
 }

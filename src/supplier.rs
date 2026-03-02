@@ -31,7 +31,7 @@ pub fn get_suppliers(
     db_connection: &Connection,
     filter: RequestFilter,
 ) -> Result<(Vec<SupplierStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
+    debug!("filter:{filter:?}");
 
     // Create common query statement.
     let mut expression = Query::select();
@@ -53,7 +53,7 @@ pub fn get_suppliers(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
-    debug!("count_values: {:?}", count_values);
+    debug!("count_values: {count_values:?}");
 
     // Create select query.
     let (select_sql, select_values) = expression
@@ -76,7 +76,7 @@ pub fn get_suppliers(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -103,14 +103,14 @@ pub fn get_suppliers(
             supplier.match_exact_search = true;
 
             // Inserting the supplier at the beginning of the results.
-            suppliers.insert(0, supplier)
+            suppliers.insert(0, supplier);
         } else {
             // Inserting the supplier at the end of the results.
             suppliers.push(supplier);
         }
     }
 
-    debug!("suppliers: {:#?}", suppliers);
+    debug!("suppliers: {suppliers:#?}");
 
     Ok((suppliers, count))
 }

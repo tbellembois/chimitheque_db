@@ -38,7 +38,7 @@ pub fn toggle_product_bookmark(
     person_id: u64,
     product_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("person_id: {:?} product_id:{:?}", person_id, product_id);
+    debug!("person_id: {person_id:?} product_id:{product_id:?}");
 
     let db_transaction = db_connection.transaction()?;
 
@@ -61,7 +61,7 @@ pub fn toggle_product_bookmark(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("exist_sql: {}", exist_sql.clone().as_str());
-    debug!("exist_values: {:?}", exist_values);
+    debug!("exist_values: {exist_values:?}");
 
     // Perform exist query.
     let bookmark_exists: bool;
@@ -75,40 +75,37 @@ pub fn toggle_product_bookmark(
         };
     }
 
-    debug!("bookmark_exists: {:?}", bookmark_exists);
+    debug!("bookmark_exists: {bookmark_exists:?}");
 
     // Toggle bookmark.
-    match bookmark_exists {
-        true => {
-            // Delete bookmark.
-            let (delete_sql, delete_values) = Query::delete()
-                .from_table(Bookmark::Table)
-                .and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id))
-                .and_where(Expr::col((Bookmark::Table, Bookmark::Product)).eq(product_id))
-                .build_rusqlite(SqliteQueryBuilder);
+    if bookmark_exists {
+        // Delete bookmark.
+        let (delete_sql, delete_values) = Query::delete()
+            .from_table(Bookmark::Table)
+            .and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id))
+            .and_where(Expr::col((Bookmark::Table, Bookmark::Product)).eq(product_id))
+            .build_rusqlite(SqliteQueryBuilder);
 
-            debug!("delete_sql: {}", delete_sql.clone().as_str());
-            debug!("delete_values: {:?}", delete_values);
+        debug!("delete_sql: {}", delete_sql.clone().as_str());
+        debug!("delete_values: {delete_values:?}");
 
-            // Perform delete query.
-            let mut stmt = db_transaction.prepare(delete_sql.as_str())?;
-            stmt.execute(&*delete_values.as_params())?;
-        }
-        false => {
-            // Insert bookmark.
-            let (insert_sql, insert_values) = Query::insert()
-                .into_table(Bookmark::Table)
-                .columns([Bookmark::Person, Bookmark::Product])
-                .values([person_id.into(), product_id.into()])?
-                .build_rusqlite(SqliteQueryBuilder);
+        // Perform delete query.
+        let mut stmt = db_transaction.prepare(delete_sql.as_str())?;
+        stmt.execute(&*delete_values.as_params())?;
+    } else {
+        // Insert bookmark.
+        let (insert_sql, insert_values) = Query::insert()
+            .into_table(Bookmark::Table)
+            .columns([Bookmark::Person, Bookmark::Product])
+            .values([person_id.into(), product_id.into()])?
+            .build_rusqlite(SqliteQueryBuilder);
 
-            debug!("insert_sql: {}", insert_sql.clone().as_str());
-            debug!("insert_values: {:?}", insert_values);
+        debug!("insert_sql: {}", insert_sql.clone().as_str());
+        debug!("insert_values: {insert_values:?}");
 
-            // Perform insert query.
-            let mut stmt = db_transaction.prepare(insert_sql.as_str())?;
-            stmt.execute(&*insert_values.as_params())?;
-        }
+        // Perform insert query.
+        let mut stmt = db_transaction.prepare(insert_sql.as_str())?;
+        stmt.execute(&*insert_values.as_params())?;
     }
 
     db_transaction.commit()?;

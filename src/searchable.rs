@@ -11,7 +11,7 @@ pub fn parse(
     db_connection: &Connection,
     s: &str,
 ) -> Result<Option<impl Searchable + Serialize>, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("s:{:?}", s);
+    debug!("s:{s:?}");
 
     // Select query statement.
     let select_query = format!(
@@ -56,7 +56,7 @@ pub fn get_many(
     db_connection: &Connection,
     filter: RequestFilter,
 ) -> Result<(Vec<impl Searchable + Serialize>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
+    debug!("filter:{filter:?}");
 
     // Parameters.
     let maybe_search = filter.search.clone();
@@ -65,7 +65,7 @@ pub fn get_many(
     let mut params: Vec<&dyn ToSql> = vec![];
     let wild_search: String;
     if let Some(search) = &maybe_search {
-        wild_search = format!("%{}%", search);
+        wild_search = format!("%{search}%");
         params = vec![&wild_search];
     } else if let Some(id) = &maybe_id {
         params = vec![id];
@@ -80,9 +80,9 @@ pub fn get_many(
     );
 
     if maybe_search.is_some() {
-        select_query.push_str(&format!(" WHERE {} LIKE (?1)", item.get_text_field_name()))
+        select_query.push_str(&format!(" WHERE {} LIKE (?1)", item.get_text_field_name()));
     } else if maybe_id.is_some() {
-        select_query.push_str(&format!(" WHERE {} = (?1)", item.get_id_field_name()))
+        select_query.push_str(&format!(" WHERE {} = (?1)", item.get_id_field_name()));
     }
 
     select_query.push_str(&format!(
@@ -91,14 +91,14 @@ pub fn get_many(
     ));
 
     if let Some(limit) = filter.limit {
-        select_query.push_str(&format!(" LIMIT {}", limit))
+        select_query.push_str(&format!(" LIMIT {limit}"));
     }
 
     if let Some(offset) = filter.offset {
-        select_query.push_str(&format!(" OFFSET {}", offset))
+        select_query.push_str(&format!(" OFFSET {offset}"));
     }
 
-    debug!("select_query:{:?}", select_query);
+    debug!("select_query:{select_query:?}");
 
     let mut stmt = db_connection.prepare(&select_query)?;
 
@@ -129,13 +129,13 @@ pub fn get_many(
         let item = mayerr_item?;
 
         if item.get_exact_search() {
-            items.insert(0, item)
+            items.insert(0, item);
         } else {
             items.push(item);
         }
     }
 
-    debug!("items:{:#?}", items);
+    debug!("items:{items:#?}");
 
     // Count query statement.
     let mut count_query = format!(
@@ -145,12 +145,12 @@ pub fn get_many(
     );
 
     if maybe_search.is_some() {
-        count_query.push_str(&format!(" WHERE {} LIKE (?1)", item.get_text_field_name()))
+        count_query.push_str(&format!(" WHERE {} LIKE (?1)", item.get_text_field_name()));
     } else if maybe_id.is_some() {
-        count_query.push_str(&format!(" WHERE {} = (?1)", item.get_id_field_name()))
+        count_query.push_str(&format!(" WHERE {} = (?1)", item.get_id_field_name()));
     }
 
-    debug!("count_query:{:?}", count_query);
+    debug!("count_query:{count_query:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_query.as_str())?;
@@ -163,7 +163,7 @@ pub fn get_many(
         0
     };
 
-    debug!("count:{}", count);
+    debug!("count:{count}");
 
     Ok((items, count))
 }

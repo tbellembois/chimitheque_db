@@ -9,6 +9,7 @@ use crate::define::{
     SYMBOLS, TAGS,
 };
 
+#[must_use] 
 pub fn connect_test() -> Connection {
     let sql_extension_dir = env::var("SQLITE_EXTENSION_DIR")
         .expect("Missing SQLITE_EXTENSION_DIR environment variable.");
@@ -18,7 +19,7 @@ pub fn connect_test() -> Connection {
     unsafe {
         db_connection
             .load_extension(sql_extension_regex, None)
-            .expect("Unable to load regexp extension.")
+            .expect("Unable to load regexp extension.");
     };
 
     db_connection
@@ -38,7 +39,7 @@ pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
     unsafe {
         db_connection
             .load_extension(sql_extension_regex, None)
-            .expect("Unable to load regexp extension.")
+            .expect("Unable to load regexp extension.");
     };
 
     Ok(db_connection)
@@ -68,13 +69,13 @@ pub fn init_db(
     // ANY
 
     db_connection.execute_batch(
-        r#"
+        r"
     PRAGMA foreign_keys = ON;
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = NORMAL;
     PRAGMA temp_store = MEMORY;
     PRAGMA cache_size = -20000;
-    "#,
+    ",
     )?;
 
     let sql = include_str!("resources/shema.sql");
@@ -272,7 +273,7 @@ fn update_ghs_statements(
             SET precautionary_statement_reference = ?2;",
             (&label, &reference),
             )?;
-        };
+        }
     }
 
     Ok(())

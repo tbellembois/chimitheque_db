@@ -85,8 +85,8 @@ pub fn get_store_locations(
     filter: RequestFilter,
     person_id: u64,
 ) -> Result<(Vec<StoreLocationStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
-    debug!("person_id:{:?}", person_id);
+    debug!("filter:{filter:?}");
+    debug!("person_id:{person_id:?}");
 
     let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {
         match order_by_string.as_str() {
@@ -229,7 +229,7 @@ pub fn get_store_locations(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
-    debug!("count_values: {:?}", count_values);
+    debug!("count_values: {count_values:?}");
 
     // Create select query.
     let (select_sql, select_values) = expression
@@ -305,7 +305,7 @@ pub fn get_store_locations(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -330,7 +330,7 @@ pub fn get_store_locations(
         store_locations.push(store_location.0);
     }
 
-    debug!("store_locations: {:#?}", store_locations);
+    debug!("store_locations: {store_locations:#?}");
 
     Ok((store_locations, count))
 }
@@ -420,7 +420,7 @@ fn populate_store_location_full_path(
     let (select_sql, select_values) = select.with(with_clause).build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
@@ -455,7 +455,7 @@ pub fn create_update_store_location(
     db_connection: &mut Connection,
     mut store_location: StoreLocationStruct,
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_store_location: {:#?}", store_location);
+    debug!("create_update_store_location: {store_location:#?}");
 
     let db_transaction = db_connection.transaction()?;
 
@@ -556,7 +556,7 @@ pub fn create_update_store_location(
     }
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -568,7 +568,7 @@ pub fn create_update_store_location(
         last_insert_update_id = db_transaction.last_insert_rowid().try_into()?;
     }
 
-    debug!("last_insert_update_id: {}", last_insert_update_id);
+    debug!("last_insert_update_id: {last_insert_update_id}");
 
     db_transaction.commit()?;
 
@@ -579,7 +579,7 @@ pub fn delete_store_location(
     db_connection: &Connection,
     store_location_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("store_location_id: {}", store_location_id);
+    debug!("store_location_id: {store_location_id}");
 
     // Workaroud:
     // Before the "FOREIGN KEY("storage") REFERENCES "storage"("storage_id") ON DELETE CASCADE," on the storage table
@@ -592,7 +592,7 @@ pub fn delete_store_location(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_connection.execute(sql_query.as_str(), &*sql_values.as_params())?;
 
@@ -602,7 +602,7 @@ pub fn delete_store_location(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_connection.execute(sql_query.as_str(), &*sql_values.as_params())?;
 

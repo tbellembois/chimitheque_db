@@ -102,7 +102,7 @@ fn populate_managers(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -121,10 +121,10 @@ fn populate_managers(
             });
         }
 
-        if !managers.is_empty() {
-            entity.managers = Some(managers);
-        } else {
+        if managers.is_empty() {
             entity.managers = None;
+        } else {
+            entity.managers = Some(managers);
         }
     }
 
@@ -136,8 +136,8 @@ pub fn get_entities(
     filter: RequestFilter,
     person_id: u64,
 ) -> Result<(Vec<EntityStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
-    debug!("person_id:{:?}", person_id);
+    debug!("filter:{filter:?}");
+    debug!("person_id:{person_id:?}");
 
     let order_by: ColumnRef = (Entity::Table, Entity::EntityName).into_column_ref();
 
@@ -234,7 +234,7 @@ pub fn get_entities(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
-    debug!("count_values: {:?}", count_values);
+    debug!("count_values: {count_values:?}");
 
     // Create select query.
     let (select_sql, select_values) = expression
@@ -270,7 +270,7 @@ pub fn get_entities(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -297,7 +297,7 @@ pub fn get_entities(
 
     populate_managers(db_connection, &mut entities)?;
 
-    debug!("entities: {:#?}", entities);
+    debug!("entities: {entities:#?}");
 
     Ok((entities, count))
 }
@@ -306,7 +306,7 @@ fn create_update_entity_managers(
     db_transaction: &Transaction,
     entity: &EntityStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_entity_managers: {:#?}", entity);
+    debug!("create_update_entity_managers: {entity:#?}");
 
     let entity_id = match entity.entity_id {
         Some(entity_id) => entity_id,
@@ -333,7 +333,7 @@ fn create_update_entity_managers(
 
             set_person_manager(db_transaction, person_id, entity_id)?;
         }
-    };
+    }
 
     Ok(())
 }
@@ -342,7 +342,7 @@ pub fn create_update_entity(
     db_connection: &mut Connection,
     mut entity: EntityStruct,
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_entity: {:#?}", entity);
+    debug!("create_update_entity: {entity:#?}");
 
     let db_transaction = db_connection.transaction()?;
 
@@ -392,7 +392,7 @@ pub fn create_update_entity(
     }
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -402,10 +402,10 @@ pub fn create_update_entity(
         last_insert_update_id = entity_id;
     } else {
         last_insert_update_id = db_transaction.last_insert_rowid().try_into()?;
-        entity.entity_id = Some(last_insert_update_id)
+        entity.entity_id = Some(last_insert_update_id);
     }
 
-    debug!("last_insert_update_id: {}", last_insert_update_id);
+    debug!("last_insert_update_id: {last_insert_update_id}");
 
     create_update_entity_managers(&db_transaction, &entity)?;
 
@@ -418,7 +418,7 @@ pub fn delete_entity(
     db_connection: &mut Connection,
     entity_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("delete_entity: {:#?}", entity_id);
+    debug!("delete_entity: {entity_id:#?}");
 
     let (delete_sql, delete_values) = Query::delete()
         .from_table(Entity::Table)

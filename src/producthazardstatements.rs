@@ -17,7 +17,7 @@ pub struct ProducthazardstatementsWrapper(pub ProducthazardstatementsStruct);
 
 impl From<&Row<'_>> for ProducthazardstatementsWrapper {
     fn from(row: &Row) -> Self {
-        debug!("row:{:?}", row);
+        debug!("row:{row:?}");
 
         Self({
             ProducthazardstatementsStruct {

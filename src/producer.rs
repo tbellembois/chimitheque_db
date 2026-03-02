@@ -30,7 +30,7 @@ pub fn get_producers(
     db_connection: &Connection,
     filter: RequestFilter,
 ) -> Result<(Vec<ProducerStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
+    debug!("filter:{filter:?}");
 
     // Create common query statement.
     let mut expression = Query::select();
@@ -52,7 +52,7 @@ pub fn get_producers(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
-    debug!("count_values: {:?}", count_values);
+    debug!("count_values: {count_values:?}");
 
     // Create select query.
     let (select_sql, select_values) = expression
@@ -75,7 +75,7 @@ pub fn get_producers(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -102,14 +102,14 @@ pub fn get_producers(
             producer.match_exact_search = true;
 
             // Inserting the producer at the beginning of the results.
-            producers.insert(0, producer)
+            producers.insert(0, producer);
         } else {
             // Inserting the producer at the end of the results.
             producers.push(producer);
         }
     }
 
-    debug!("producers: {:#?}", producers);
+    debug!("producers: {producers:#?}");
 
     Ok((producers, count))
 }

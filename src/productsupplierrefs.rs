@@ -20,7 +20,7 @@ pub struct ProductsupplierrefsWrapper(pub ProductsupplierrefsStruct);
 
 impl From<&Row<'_>> for ProductsupplierrefsWrapper {
     fn from(row: &Row) -> Self {
-        debug!("row:{:?}", row);
+        debug!("row:{row:?}");
 
         Self({
             ProductsupplierrefsStruct {

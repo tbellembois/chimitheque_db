@@ -52,8 +52,8 @@ pub fn compute_stock(
     product_id: u64,
     person_id: u64,
 ) -> Result<Vec<Stock>, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("product_id:{:?}", product_id);
-    debug!("person_id:{:?}", person_id);
+    debug!("product_id:{product_id:?}");
+    debug!("person_id:{person_id:?}");
 
     let (select_sql, select_values) = Query::select()
         .columns([
@@ -153,7 +153,7 @@ pub fn compute_stock(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
@@ -169,7 +169,7 @@ pub fn compute_stock(
         stocks.push(stock.0);
     }
 
-    debug!("stocks: {:#?}", stocks);
+    debug!("stocks: {stocks:#?}");
 
     Ok(stocks)
 }

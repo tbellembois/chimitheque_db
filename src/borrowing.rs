@@ -45,8 +45,7 @@ pub fn toggle_storage_borrowing(
     borrowing_comment: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!(
-        "person_id: {:?} borrower_id:{:?} storage_id:{:?}",
-        person_id, borrower_id, storage_id
+        "person_id: {person_id:?} borrower_id:{borrower_id:?} storage_id:{storage_id:?}"
     );
 
     let db_transaction = db_connection.transaction()?;
@@ -73,7 +72,7 @@ pub fn toggle_storage_borrowing(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("exist_sql: {}", exist_sql.clone().as_str());
-    debug!("exist_values: {:?}", exist_values);
+    debug!("exist_values: {exist_values:?}");
 
     // Perform exist query.
     let borrowing_exists: bool;
@@ -87,51 +86,48 @@ pub fn toggle_storage_borrowing(
         };
     }
 
-    debug!("borrowing_exists: {:?}", borrowing_exists);
+    debug!("borrowing_exists: {borrowing_exists:?}");
 
     // Toggle borrowing.
-    match borrowing_exists {
-        true => {
-            // Delete borrowing.
-            let (delete_sql, delete_values) = Query::delete()
-                .from_table(Borrowing::Table)
-                .and_where(Expr::col((Borrowing::Table, Borrowing::Person)).eq(person_id))
-                .and_where(Expr::col((Borrowing::Table, Borrowing::Storage)).eq(storage_id))
-                .and_where(Expr::col((Borrowing::Table, Borrowing::Borrower)).eq(borrower_id))
-                .build_rusqlite(SqliteQueryBuilder);
+    if borrowing_exists {
+        // Delete borrowing.
+        let (delete_sql, delete_values) = Query::delete()
+            .from_table(Borrowing::Table)
+            .and_where(Expr::col((Borrowing::Table, Borrowing::Person)).eq(person_id))
+            .and_where(Expr::col((Borrowing::Table, Borrowing::Storage)).eq(storage_id))
+            .and_where(Expr::col((Borrowing::Table, Borrowing::Borrower)).eq(borrower_id))
+            .build_rusqlite(SqliteQueryBuilder);
 
-            debug!("delete_sql: {}", delete_sql.clone().as_str());
-            debug!("delete_values: {:?}", delete_values);
+        debug!("delete_sql: {}", delete_sql.clone().as_str());
+        debug!("delete_values: {delete_values:?}");
 
-            // Perform delete query.
-            let mut stmt = db_transaction.prepare(delete_sql.as_str())?;
-            stmt.execute(&*delete_values.as_params())?;
-        }
-        false => {
-            // Insert borrowing.
-            let (insert_sql, insert_values) = Query::insert()
-                .into_table(Borrowing::Table)
-                .columns([
-                    Borrowing::Person,
-                    Borrowing::Storage,
-                    Borrowing::Borrower,
-                    Borrowing::BorrowingComment,
-                ])
-                .values([
-                    person_id.into(),
-                    storage_id.into(),
-                    borrower_id.into(),
-                    borrowing_comment.into(),
-                ])?
-                .build_rusqlite(SqliteQueryBuilder);
+        // Perform delete query.
+        let mut stmt = db_transaction.prepare(delete_sql.as_str())?;
+        stmt.execute(&*delete_values.as_params())?;
+    } else {
+        // Insert borrowing.
+        let (insert_sql, insert_values) = Query::insert()
+            .into_table(Borrowing::Table)
+            .columns([
+                Borrowing::Person,
+                Borrowing::Storage,
+                Borrowing::Borrower,
+                Borrowing::BorrowingComment,
+            ])
+            .values([
+                person_id.into(),
+                storage_id.into(),
+                borrower_id.into(),
+                borrowing_comment.into(),
+            ])?
+            .build_rusqlite(SqliteQueryBuilder);
 
-            debug!("insert_sql: {}", insert_sql.clone().as_str());
-            debug!("insert_values: {:?}", insert_values);
+        debug!("insert_sql: {}", insert_sql.clone().as_str());
+        debug!("insert_values: {insert_values:?}");
 
-            // Perform insert query.
-            let mut stmt = db_transaction.prepare(insert_sql.as_str())?;
-            stmt.execute(&*insert_values.as_params())?;
-        }
+        // Perform insert query.
+        let mut stmt = db_transaction.prepare(insert_sql.as_str())?;
+        stmt.execute(&*insert_values.as_params())?;
     }
 
     db_transaction.commit()?;

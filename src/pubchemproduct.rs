@@ -75,7 +75,7 @@ pub fn create_update_product_from_pubchem(
     person_id: u64,
     product_id: Option<u64>,
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("pubchem_product: {:#?}", pubchem_product);
+    debug!("pubchem_product: {pubchem_product:#?}");
 
     // Mandatory name.
     let name_id: Option<u64>;
@@ -204,9 +204,9 @@ pub fn create_update_product_from_pubchem(
     if let Some(casnumber_text) = pubchem_product.cas {
         if let Err(err) = is_cas_number(&casnumber_text) {
             return Err(Box::new(ImportPubchemProductError::InvalidCasnumber(
-                format!("{}: {}", casnumber_text, err),
+                format!("{casnumber_text}: {err}"),
             )));
-        };
+        }
 
         let maybe_casnumber = parse(
             &CasNumber {
@@ -239,9 +239,9 @@ pub fn create_update_product_from_pubchem(
     if let Some(cenumber_text) = pubchem_product.ec {
         if let Err(err) = is_ce_number(&cenumber_text) {
             return Err(Box::new(ImportPubchemProductError::InvalidCenumber(
-                format!("{}: {}", cenumber_text, err),
+                format!("{cenumber_text}: {err}"),
             )));
-        };
+        }
 
         let maybe_ecnumber = parse(
             &CeNumber {
@@ -319,7 +319,7 @@ pub fn create_update_product_from_pubchem(
                 Some(signalword) => signalword.get_id(),
                 None => {
                     return Err(Box::new(ImportPubchemProductError::UnknownSignalword(
-                        signalword.to_string(),
+                        signalword.clone(),
                     )))
                 }
             };
@@ -432,8 +432,8 @@ pub fn create_update_product_from_pubchem(
     }
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
-    debug!("last_insert_update_id: {}", last_insert_update_id);
+    debug!("sql_values: {sql_values:?}");
+    debug!("last_insert_update_id: {last_insert_update_id}");
 
     // Insert symbols.
     for symbol_id in symbol_ids {

@@ -44,7 +44,7 @@ pub fn get_supplier_refs(
     db_connection: &Connection,
     filter: RequestFilter,
 ) -> Result<(Vec<SupplierRefStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
+    debug!("filter:{filter:?}");
 
     // Create common query statement.
     let mut expression = Query::select();
@@ -80,7 +80,7 @@ pub fn get_supplier_refs(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
-    debug!("count_values: {:?}", count_values);
+    debug!("count_values: {count_values:?}");
 
     // Create select query.
 
@@ -112,7 +112,7 @@ pub fn get_supplier_refs(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -143,14 +143,14 @@ pub fn get_supplier_refs(
             supplier_ref.match_exact_search = true;
 
             // Inserting the supplier at the beginning of the results.
-            supplier_refs.insert(0, supplier_ref)
+            supplier_refs.insert(0, supplier_ref);
         } else {
             // Inserting the supplier at the end of the results.
             supplier_refs.push(supplier_ref);
         }
     }
 
-    debug!("supplier_refs: {:#?}", supplier_refs);
+    debug!("supplier_refs: {supplier_refs:#?}");
 
     Ok((supplier_refs, count))
 }
@@ -159,7 +159,7 @@ pub fn create_update_supplier_ref(
     db_connection: &Connection,
     supplier_ref: &SupplierRefStruct,
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_supplier_ref: {:#?}", supplier_ref);
+    debug!("create_update_supplier_ref: {supplier_ref:#?}");
 
     let clean_supplier_ref_label = clean(&supplier_ref.supplier_ref_label, Transform::None);
 
@@ -202,7 +202,7 @@ pub fn create_update_supplier_ref(
     }
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -214,7 +214,7 @@ pub fn create_update_supplier_ref(
         last_insert_update_id = db_connection.last_insert_rowid().try_into()?;
     }
 
-    debug!("last_insert_update_id: {}", last_insert_update_id);
+    debug!("last_insert_update_id: {last_insert_update_id}");
 
     Ok(last_insert_update_id)
 }

@@ -263,7 +263,7 @@ fn populate_entity_managers(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql: {}", sql.clone().as_str());
-    debug!("values: {:?}", values);
+    debug!("values: {values:?}");
 
     // Perform select query.
     let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -277,13 +277,13 @@ fn populate_entity_managers(
             person_id: person_wrapper.0.person_id,
             person_email: person_wrapper.0.person_email,
             ..Default::default()
-        })
+        });
     }
 
-    if !people.is_empty() {
-        entity.managers = Some(people);
-    } else {
+    if people.is_empty() {
         entity.managers = None;
+    } else {
+        entity.managers = Some(people);
     }
 
     Ok(())
@@ -365,7 +365,7 @@ fn populate_product_availability(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -380,17 +380,17 @@ fn populate_product_availability(
                 entity_name: entity_wrapper.0.entity_name,
                 entity_description: entity_wrapper.0.entity_description,
                 ..Default::default()
-            })
+            });
         }
 
-        if !entities.is_empty() {
+        if entities.is_empty() {
+            product.product_availability = None;
+        } else {
             for entity in &mut entities {
                 populate_entity_managers(db_connection, entity)?;
             }
 
             product.product_availability = Some(entities);
-        } else {
-            product.product_availability = None;
         }
     }
 
@@ -402,7 +402,7 @@ fn populate_product_sl(
     products: &mut [ProductStruct],
     person_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("person_id:{:?}", person_id);
+    debug!("person_id:{person_id:?}");
 
     let storage_barecode_regex = Regex::new(r"([_a-zA-Z]+[0-9]+)\.[0-9]+").unwrap();
 
@@ -413,9 +413,9 @@ fn populate_product_sl(
         let (sql, values) = Query::select()
             .expr_as(
                 Expr::cust(
-                    r#"
+                    r"
                     COALESCE(GROUP_CONCAT(storage.storage_barecode), '')
-                    "#,
+                    ",
                 ),
                 Alias::new("product_sl"),
             )
@@ -461,7 +461,7 @@ fn populate_product_sl(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(&sql)?;
@@ -496,8 +496,8 @@ fn populate_product_sc(
     total: bool,
     archived: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("person_id:{:?}", person_id);
-    debug!("archived:{:?}", archived);
+    debug!("person_id:{person_id:?}");
+    debug!("archived:{archived:?}");
 
     for product in products.iter_mut() {
         let product_id = product.product_id;
@@ -573,7 +573,7 @@ fn populate_product_sc(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", count_sql.clone().as_str());
-        debug!("values: {:?}", count_values);
+        debug!("values: {count_values:?}");
 
         // Perform count query.
         let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -628,7 +628,7 @@ fn populate_synonyms(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -647,10 +647,10 @@ fn populate_synonyms(
             });
         }
 
-        if !synonyms.is_empty() {
-            product.synonyms = Some(synonyms);
-        } else {
+        if synonyms.is_empty() {
             product.synonyms = None;
+        } else {
+            product.synonyms = Some(synonyms);
         }
     }
 
@@ -691,7 +691,7 @@ fn populate_classes_of_compound(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -717,10 +717,10 @@ fn populate_classes_of_compound(
             });
         }
 
-        if !classes_of_compound.is_empty() {
-            product.classes_of_compound = Some(classes_of_compound);
-        } else {
+        if classes_of_compound.is_empty() {
             product.classes_of_compound = None;
+        } else {
+            product.classes_of_compound = Some(classes_of_compound);
         }
     }
 
@@ -758,7 +758,7 @@ fn populate_symbols(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -777,10 +777,10 @@ fn populate_symbols(
             });
         }
 
-        if !symbols.is_empty() {
-            product.symbols = Some(symbols);
-        } else {
+        if symbols.is_empty() {
             product.symbols = None;
+        } else {
+            product.symbols = Some(symbols);
         }
     }
 
@@ -822,7 +822,7 @@ fn populate_hazard_statements(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -854,10 +854,10 @@ fn populate_hazard_statements(
             });
         }
 
-        if !hazard_statements.is_empty() {
-            product.hazard_statements = Some(hazard_statements);
-        } else {
+        if hazard_statements.is_empty() {
             product.hazard_statements = None;
+        } else {
+            product.hazard_statements = Some(hazard_statements);
         }
     }
 
@@ -898,7 +898,7 @@ fn populate_precautionary_statements(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -930,10 +930,10 @@ fn populate_precautionary_statements(
             );
         }
 
-        if !precautionary_statements.is_empty() {
-            product.precautionary_statements = Some(precautionary_statements);
-        } else {
+        if precautionary_statements.is_empty() {
             product.precautionary_statements = None;
+        } else {
+            product.precautionary_statements = Some(precautionary_statements);
         }
     }
 
@@ -981,7 +981,7 @@ fn populate_supplier_refs(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -1017,10 +1017,10 @@ fn populate_supplier_refs(
             });
         }
 
-        if !supplier_refs.is_empty() {
-            product.supplier_refs = Some(supplier_refs);
-        } else {
+        if supplier_refs.is_empty() {
             product.supplier_refs = None;
+        } else {
+            product.supplier_refs = Some(supplier_refs);
         }
     }
 
@@ -1055,7 +1055,7 @@ fn populate_tags(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.clone().as_str());
-        debug!("values: {:?}", values);
+        debug!("values: {values:?}");
 
         // Perform select query.
         let mut stmt = db_connection.prepare(sql.as_str())?;
@@ -1074,10 +1074,10 @@ fn populate_tags(
             });
         }
 
-        if !tags.is_empty() {
-            product.tags = Some(tags);
-        } else {
+        if tags.is_empty() {
             product.tags = None;
+        } else {
+            product.tags = Some(tags);
         }
     }
 
@@ -1089,8 +1089,8 @@ pub fn export_products(
     filter: RequestFilter,
     person_id: u64,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
-    debug!("person_id:{:?}", person_id);
+    debug!("filter:{filter:?}");
+    debug!("person_id:{person_id:?}");
 
     let (products, _) = get_products(db_connection, filter, person_id)?;
 
@@ -1136,7 +1136,7 @@ pub fn export_products(
 
     let csv = String::from_utf8(inner_buffer_content.into_inner()?).unwrap();
 
-    debug!("csv:{:?}", csv);
+    debug!("csv:{csv:?}");
 
     Ok(csv)
 }
@@ -1146,8 +1146,8 @@ pub fn get_products(
     filter: RequestFilter,
     person_id: u64,
 ) -> Result<(Vec<ProductStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
-    debug!("person_id:{:?}", person_id);
+    debug!("filter:{filter:?}");
+    debug!("person_id:{person_id:?}");
 
     // Does the person has the permission to access the restricted products?
     // We do not use the person::get_people function to retrieve the person as this function
@@ -1176,7 +1176,7 @@ pub fn get_products(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("exist_sql: {}", exist_sql.clone().as_str());
-    debug!("exist_values: {:?}", exist_values);
+    debug!("exist_values: {exist_values:?}");
 
     // Perform exist query.
     let mut stmt = db_connection.prepare(exist_sql.as_str())?;
@@ -1714,7 +1714,7 @@ pub fn get_products(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
-    debug!("count_values: {:?}", count_values);
+    debug!("count_values: {count_values:?}");
 
     // Create select query.
     let (select_sql, select_values) = expression
@@ -1882,7 +1882,7 @@ pub fn get_products(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -1916,7 +1916,7 @@ pub fn get_products(
     populate_product_sc(db_connection, &mut products, person_id, true, false)?;
     populate_product_sc(db_connection, &mut products, person_id, false, true)?;
 
-    debug!("products: {:#?}", products);
+    debug!("products: {products:#?}");
 
     Ok((products, count))
 }
@@ -1925,7 +1925,7 @@ pub fn create_update_product(
     db_connection: &mut Connection,
     mut product: ProductStruct,
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_product: {:#?}", product);
+    debug!("create_update_product: {product:#?}");
 
     let db_transaction = db_connection.transaction()?;
 
@@ -2153,7 +2153,7 @@ pub fn create_update_product(
                 supplier_ref_id,
                 supplier_ref_label: supplier_ref.supplier_ref_label,
                 ..Default::default()
-            })
+            });
         }
 
         product.supplier_refs = Some(product_supplier_refs);
@@ -2549,7 +2549,7 @@ pub fn create_update_product(
     }
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -2559,10 +2559,10 @@ pub fn create_update_product(
         last_insert_update_id = product_id;
     } else {
         last_insert_update_id = db_transaction.last_insert_rowid().try_into()?;
-        product.product_id = Some(last_insert_update_id)
+        product.product_id = Some(last_insert_update_id);
     }
 
-    debug!("last_insert_update_id: {}", last_insert_update_id);
+    debug!("last_insert_update_id: {last_insert_update_id}");
 
     // --
 
@@ -2583,7 +2583,7 @@ fn create_update_product_symbols(
     db_transaction: &Transaction,
     product: &ProductStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_product_symbols: {:#?}", product);
+    debug!("create_update_product_symbols: {product:#?}");
 
     let mut product_symbols_ids: Vec<u64> = Vec::new();
 
@@ -2608,7 +2608,7 @@ fn create_update_product_symbols(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
 
@@ -2633,7 +2633,7 @@ fn create_update_product_symbols(
             .to_string(SqliteQueryBuilder);
 
         debug!("sql_query: {}", sql_query.clone().as_str());
-        debug!("sql_values: {:?}", sql_values);
+        debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
     }
@@ -2645,7 +2645,7 @@ fn create_update_product_tags(
     db_transaction: &Transaction,
     product: &ProductStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_product_tags: {:#?}", product);
+    debug!("create_update_product_tags: {product:#?}");
 
     let mut product_tags_ids: Vec<u64> = Vec::new();
 
@@ -2667,7 +2667,7 @@ fn create_update_product_tags(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
 
@@ -2692,7 +2692,7 @@ fn create_update_product_tags(
             .to_string(SqliteQueryBuilder);
 
         debug!("sql_query: {}", sql_query.clone().as_str());
-        debug!("sql_values: {:?}", sql_values);
+        debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
     }
@@ -2704,7 +2704,7 @@ fn create_update_product_synonyms(
     db_transaction: &Transaction,
     product: &ProductStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_product_synonyms: {:#?}", product);
+    debug!("create_update_product_synonyms: {product:#?}");
 
     let mut product_synonyms_ids: Vec<u64> = Vec::new();
 
@@ -2729,7 +2729,7 @@ fn create_update_product_synonyms(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
 
@@ -2754,7 +2754,7 @@ fn create_update_product_synonyms(
             .to_string(SqliteQueryBuilder);
 
         debug!("sql_query: {}", sql_query.clone().as_str());
-        debug!("sql_values: {:?}", sql_values);
+        debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
     }
@@ -2766,7 +2766,7 @@ fn create_update_product_supplier_refs(
     db_transaction: &Transaction,
     product: &ProductStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_product_supplier_ref: {:#?}", product);
+    debug!("create_update_product_supplier_ref: {product:#?}");
 
     let mut product_supplier_refs_ids: Vec<u64> = Vec::new();
 
@@ -2794,7 +2794,7 @@ fn create_update_product_supplier_refs(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
 
@@ -2819,7 +2819,7 @@ fn create_update_product_supplier_refs(
             .to_string(SqliteQueryBuilder);
 
         debug!("sql_query: {}", sql_query.clone().as_str());
-        debug!("sql_values: {:?}", sql_values);
+        debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
     }
@@ -2831,7 +2831,7 @@ fn create_update_product_hazard_statements(
     db_transaction: &Transaction,
     product: &ProductStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_product_hazard_statement: {:#?}", product);
+    debug!("create_update_product_hazard_statement: {product:#?}");
 
     let mut product_hazard_statements_ids: Vec<u64> = Vec::new();
 
@@ -2859,7 +2859,7 @@ fn create_update_product_hazard_statements(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
 
@@ -2884,7 +2884,7 @@ fn create_update_product_hazard_statements(
             .to_string(SqliteQueryBuilder);
 
         debug!("sql_query: {}", sql_query.clone().as_str());
-        debug!("sql_values: {:?}", sql_values);
+        debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
     }
@@ -2897,8 +2897,7 @@ fn create_update_product_precautionary_statements(
     product: &ProductStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!(
-        "create_update_product_precautionary_statement: {:#?}",
-        product
+        "create_update_product_precautionary_statement: {product:#?}"
     );
 
     let mut product_precautionary_statements_ids: Vec<u64> = Vec::new();
@@ -2927,7 +2926,7 @@ fn create_update_product_precautionary_statements(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
 
@@ -2952,7 +2951,7 @@ fn create_update_product_precautionary_statements(
             .to_string(SqliteQueryBuilder);
 
         debug!("sql_query: {}", sql_query.clone().as_str());
-        debug!("sql_values: {:?}", sql_values);
+        debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
     }
@@ -2964,7 +2963,7 @@ fn create_update_product_classes_of_compound(
     db_transaction: &Transaction,
     product: &ProductStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_product_classes_of_compound: {:#?}", product);
+    debug!("create_update_product_classes_of_compound: {product:#?}");
 
     let mut product_classes_of_compounds_ids: Vec<u64> = Vec::new();
 
@@ -2994,7 +2993,7 @@ fn create_update_product_classes_of_compound(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
 
@@ -3019,7 +3018,7 @@ fn create_update_product_classes_of_compound(
             .to_string(SqliteQueryBuilder);
 
         debug!("sql_query: {}", sql_query.clone().as_str());
-        debug!("sql_values: {:?}", sql_values);
+        debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
     }
@@ -3031,7 +3030,7 @@ pub fn delete_product(
     db_connection: &mut Connection,
     product_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("delete_product: {:#?}", product_id);
+    debug!("delete_product: {product_id:#?}");
 
     let (delete_sql, delete_values) = Query::delete()
         .from_table(Product::Table)

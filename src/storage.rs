@@ -79,7 +79,7 @@ impl Display for StorageError {
             StorageError::MissingStorageId => write!(f, "missing storage id"),
             StorageError::MissingSupplierId => write!(f, "missing supplier id"),
             StorageError::StoreLocationNotFoundForId(id) => {
-                write!(f, "store location not found for id {}", id)
+                write!(f, "store location not found for id {id}")
             }
         }
     }
@@ -264,7 +264,7 @@ fn populate_history_count(
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("count_sql: {}", count_sql.clone().as_str());
-        debug!("count_values: {:?}", count_values);
+        debug!("count_values: {count_values:?}");
 
         // Perform count query.
         let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -286,8 +286,8 @@ pub fn export_storages(
     filter: RequestFilter,
     person_id: u64,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
-    debug!("person_id:{:?}", person_id);
+    debug!("filter:{filter:?}");
+    debug!("person_id:{person_id:?}");
 
     let (storages, _) = get_storages(db_connection, filter, person_id)?;
 
@@ -313,7 +313,7 @@ pub fn export_storages(
 
     let csv = String::from_utf8(inner_buffer_content.into_inner()?).unwrap();
 
-    debug!("csv:{:?}", csv);
+    debug!("csv:{csv:?}");
 
     Ok(csv)
 }
@@ -323,8 +323,8 @@ pub fn get_storages(
     filter: RequestFilter,
     person_id: u64,
 ) -> Result<(Vec<StorageStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("filter:{:?}", filter);
-    debug!("person_id:{:?}", person_id);
+    debug!("filter:{filter:?}");
+    debug!("person_id:{person_id:?}");
 
     // Does the person has the permission to access the restricted products?
     // We do not use the person::get_people function to retrieve the person as this function
@@ -353,7 +353,7 @@ pub fn get_storages(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("exist_sql: {}", exist_sql.clone().as_str());
-    debug!("exist_values: {:?}", exist_values);
+    debug!("exist_values: {exist_values:?}");
 
     // Perform exist query.
     let mut stmt = db_connection.prepare(exist_sql.as_str())?;
@@ -967,7 +967,7 @@ pub fn get_storages(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
-    debug!("count_values: {:?}", count_values);
+    debug!("count_values: {count_values:?}");
 
     // Create select query.
     let (select_sql, select_values) = expression
@@ -1066,7 +1066,7 @@ pub fn get_storages(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {:?}", select_values);
+    debug!("select_values: {select_values:?}");
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -1088,7 +1088,7 @@ pub fn get_storages(
 
     populate_history_count(db_connection, &mut storages)?;
 
-    debug!("storages: {:#?}", storages);
+    debug!("storages: {storages:#?}");
 
     Ok((storages, count))
 }
@@ -1111,7 +1111,7 @@ fn create_storage_qrcode(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("update_sql: {}", update_sql.clone().as_str());
-    debug!("update_values: {:?}", update_values);
+    debug!("update_values: {update_values:?}");
 
     _ = db_transaction.execute(update_sql.as_str(), &*update_values.as_params())?;
 
@@ -1199,8 +1199,8 @@ fn compute_storage_barecode_parts(
     )?;
 
     if nb_results == 0 {
-        return Err(format!("no store location found for id {}", store_location_id).into());
-    };
+        return Err(format!("no store location found for id {store_location_id}").into());
+    }
 
     let store_location = store_locations.first().unwrap();
     let store_location_full_path = store_location
@@ -1217,10 +1217,10 @@ fn compute_storage_barecode_parts(
         None => return Err(Box::new(StorageError::MissingEntity)),
     };
 
-    debug!("store_location_id: {}", store_location_id);
-    debug!("store_location_full_path: {}", store_location_full_path);
-    debug!("product_id: {}", product_id);
-    debug!("entity_id: {}", entity_id);
+    debug!("store_location_id: {store_location_id}");
+    debug!("store_location_full_path: {store_location_full_path}");
+    debug!("product_id: {product_id}");
+    debug!("entity_id: {entity_id}");
 
     // Capture the most right match.
     let re = Regex::new(r"\[(?P<groupone>[_a-zA-Z]+)\]")?;
@@ -1229,7 +1229,7 @@ fn compute_storage_barecode_parts(
         None => "_".to_string(),
     };
 
-    debug!("barecode_string: {:#?}", barecode_string);
+    debug!("barecode_string: {barecode_string:#?}");
 
     let (maybe_barecode_major, maybe_barecode_minor): (Option<u64>, Option<u64>) = db_transaction
         .query_row(
@@ -1263,8 +1263,8 @@ fn compute_storage_barecode_parts(
         |row| Ok((row.get("barecode_major")?, row.get("barecode_minor")?)),
     )?;
 
-    debug!("maybe_barecode_major: {:#?}", maybe_barecode_major);
-    debug!("barecode_minor: {:#?}", maybe_barecode_minor);
+    debug!("maybe_barecode_major: {maybe_barecode_major:#?}");
+    debug!("barecode_minor: {maybe_barecode_minor:#?}");
 
     let barecode_major = maybe_barecode_major.unwrap_or(product_id);
     let barecode_minor = maybe_barecode_minor.unwrap_or(0);
@@ -1278,7 +1278,7 @@ pub fn create_update_storage(
     nb_items: u64,
     identical_barecode: bool,
 ) -> Result<Vec<u64>, Box<dyn std::error::Error + Send + Sync>> {
-    debug!("create_update_storage: {:#?}", storage);
+    debug!("create_update_storage: {storage:#?}");
 
     // Created storage ids
     let mut storage_ids = vec![];
@@ -1310,7 +1310,7 @@ pub fn create_update_storage(
     //
     // Generate barcode if empty.
     //
-    let mut barecode_string = "".to_string();
+    let mut barecode_string = String::new();
     let mut barecode_major: u64 = product_id;
     let mut barecode_minor: u64 = 1;
     if storage.storage_barecode.is_none() {
@@ -1318,12 +1318,11 @@ pub fn create_update_storage(
             compute_storage_barecode_parts(&db_transaction, &storage, product_id, person_id)?;
 
         storage.storage_barecode = Some(format!(
-            "{}{}.{}",
-            barecode_string, barecode_major, barecode_minor
+            "{barecode_string}{barecode_major}.{barecode_minor}"
         ));
     }
 
-    debug!("barecode_minor: {:#?}", barecode_minor);
+    debug!("barecode_minor: {barecode_minor:#?}");
 
     // Create nb_items storages.
     let mut nb_items_created = 0;
@@ -1662,7 +1661,7 @@ pub fn create_update_storage(
         }
 
         debug!("sql_query: {}", sql_query.clone().as_str());
-        debug!("sql_values: {:?}", sql_values);
+        debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -1676,7 +1675,7 @@ pub fn create_update_storage(
             create_storage_qrcode(&db_transaction, last_insert_update_id)?;
         }
 
-        debug!("last_insert_update_id: {}", last_insert_update_id);
+        debug!("last_insert_update_id: {last_insert_update_id}");
 
         storage_ids.push(last_insert_update_id);
 
@@ -1686,8 +1685,7 @@ pub fn create_update_storage(
             barecode_minor += 1;
 
             storage.storage_barecode = Some(format!(
-                "{}{}.{}",
-                barecode_string, barecode_major, barecode_minor
+                "{barecode_string}{barecode_major}.{barecode_minor}"
             ));
         }
 
@@ -1703,7 +1701,7 @@ pub fn delete_storage(
     db_connection: &mut Connection,
     storage_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("delete_storage: {:#?}", storage_id);
+    debug!("delete_storage: {storage_id:#?}");
 
     // History deletion managed by ON DELETE CASCADE.
     let (delete_sql, delete_values) = Query::delete()
@@ -1720,7 +1718,7 @@ pub fn archive_storage(
     db_connection: &mut Connection,
     storage_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("archive_storage: {:#?}", storage_id);
+    debug!("archive_storage: {storage_id:#?}");
 
     // Update request: list of (columns, values) pairs to insert.
     let columns_values = vec![(Storage::StorageArchive, true.into())];
@@ -1736,7 +1734,7 @@ pub fn archive_storage(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
 
@@ -1747,7 +1745,7 @@ pub fn unarchive_storage(
     db_connection: &mut Connection,
     storage_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("unarchive_storage: {:#?}", storage_id);
+    debug!("unarchive_storage: {storage_id:#?}");
 
     // Update request: list of (columns, values) pairs to insert.
     let columns_values = vec![(Storage::StorageArchive, false.into())];
@@ -1763,7 +1761,7 @@ pub fn unarchive_storage(
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.clone().as_str());
-    debug!("sql_values: {:?}", sql_values);
+    debug!("sql_values: {sql_values:?}");
 
     _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
 
