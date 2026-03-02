@@ -1024,5 +1024,139 @@ mod tests {
     }
 
     #[test]
-    fn delete_store_location_with_children_fail() {}
+    fn delete_store_location_with_children_fail() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        // Create parent store location
+        let parent_store_location = StoreLocationStruct {
+            store_location_id: None,
+            store_location_name: String::from("parent_store_location"),
+            store_location_can_store: true,
+            entity: Some(EntityStruct {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Create the parent store location
+        let parent_store_location_id =
+            create_update_store_location(&mut db_connection, parent_store_location).unwrap();
+
+        // Verify the parent store location exists
+        let (store_locations, _) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                id: Some(parent_store_location_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        assert_eq!(store_locations.len(), 1);
+
+        // Create a child store location
+        let child_store_location = StoreLocationStruct {
+            store_location_id: None,
+            store_location_name: String::from("child_store_location"),
+            store_location_can_store: true,
+            store_location: Some(Box::new(StoreLocationStruct {
+                store_location_id: Some(parent_store_location_id),
+                ..Default::default()
+            })),
+            entity: Some(EntityStruct {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Create the child store location
+        let _child_store_location_id =
+            create_update_store_location(&mut db_connection, child_store_location).unwrap();
+
+        // Verify the child store location exists
+        let (store_locations, _) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                store_location: Some(parent_store_location_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        assert_eq!(store_locations.len(), 1); // Should find exactly one child
+
+        // Attempt to delete the parent store location with child
+        let result = delete_store_location(&db_connection, parent_store_location_id);
+
+        // Expecting to fail with a foreign key constraint error
+        match result {
+            Err(err) => {
+                // Check if the error is indeed a foreign key constraint violation
+                if let Some(db_err) = err.downcast_ref::<rusqlite::Error>() {
+                    // Check if this is a foreign key violation error
+                    assert!(
+                        db_err.to_string().contains("FOREIGN KEY constraint failed"),
+                        "Expected foreign key constraint error but got: {}",
+                        db_err
+                    );
+                } else {
+                    panic!("Received error was not a database error: {:?}", err);
+                }
+            }
+            Ok(_) => {
+                panic!("Expected delete operation to fail but it succeeded!");
+            }
+        }
+
+        // Verification that the parent store location still exists
+        let (store_locations, _) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                id: Some(parent_store_location_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        assert_eq!(store_locations.len(), 1);
+
+        // Verification that the child store location still exists
+        let (store_locations, _) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                store_location: Some(parent_store_location_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        assert_eq!(store_locations.len(), 1); // Should still find exactly one child
+
+        // Clean up for the next tests
+        // First delete the child store location
+        let (child_store_locations, _) = get_store_locations(
+            &db_connection,
+            RequestFilter {
+                store_location: Some(parent_store_location_id),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+        let child_id = child_store_locations
+            .first()
+            .and_then(|sl| sl.store_location_id);
+
+        if let Some(child_id) = child_id {
+            let delete_child_result = delete_store_location(&db_connection, child_id);
+            assert!(delete_child_result.is_ok());
+        }
+
+        // Now delete the parent store location (which should work now)
+        let delete_store_location_result =
+            delete_store_location(&db_connection, parent_store_location_id);
+        assert!(delete_store_location_result.is_ok());
+    }
 }

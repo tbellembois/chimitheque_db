@@ -429,3 +429,30 @@ pub fn delete_entity(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+
+    #[test]
+    fn get_entities_for_user_right_number() {
+        let db_connection = crate::test_utils::init_test();
+
+        let expected_nb_results_for_person =
+            HashMap::from([(1, 3), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)]);
+
+        for (person_id, expected_nb_results) in expected_nb_results_for_person {
+            let (_, nb_resuts) = get_entities(
+                &db_connection,
+                RequestFilter {
+                    ..Default::default()
+                },
+                person_id,
+            )
+            .unwrap();
+            assert_eq!(nb_resuts, expected_nb_results);
+        }
+    }
+}
