@@ -5,6 +5,7 @@ use log::debug;
 use rusqlite::{params_from_iter, Connection, ToSql};
 use serde::Serialize;
 use std::fmt::Debug;
+use std::fmt::Write as _; // import without risk of name clashing
 
 pub fn parse(
     item: &(impl Searchable + Debug + Default + Serialize),
@@ -54,20 +55,20 @@ pub fn parse(
 pub fn get_many(
     item: &(impl Searchable + Debug + Default + Serialize),
     db_connection: &Connection,
-    filter: RequestFilter,
+    filter: &RequestFilter, // Changed to take reference instead of cloning
 ) -> Result<(Vec<impl Searchable + Serialize>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{filter:?}");
 
     // Parameters.
-    let maybe_search = filter.search.clone();
-    let maybe_id = filter.id;
+    let maybe_search = &filter.search;
+    let maybe_id = &filter.id;
 
     let mut params: Vec<&dyn ToSql> = vec![];
     let wild_search: String;
-    if let Some(search) = &maybe_search {
+    if let Some(search) = maybe_search {
         wild_search = format!("%{search}%");
         params = vec![&wild_search];
-    } else if let Some(id) = &maybe_id {
+    } else if let Some(id) = maybe_id {
         params = vec![id];
     }
 
@@ -79,23 +80,35 @@ pub fn get_many(
         item.get_table_name()
     );
 
-    if maybe_search.is_some() {
-        select_query.push_str(&format!(" WHERE {} LIKE (?1)", item.get_text_field_name()));
-    } else if maybe_id.is_some() {
-        select_query.push_str(&format!(" WHERE {} = (?1)", item.get_id_field_name()));
+    if let Some(_search) = maybe_search {
+        write!(
+            &mut select_query,
+            " WHERE {} LIKE (?1)",
+            item.get_text_field_name()
+        )
+        .unwrap();
+    } else if let Some(_id) = maybe_id {
+        write!(
+            &mut select_query,
+            " WHERE {} = (?1)",
+            item.get_id_field_name()
+        )
+        .unwrap();
     }
 
-    select_query.push_str(&format!(
+    write!(
+        &mut select_query,
         " ORDER BY {} COLLATE NOCASE ASC",
         item.get_text_field_name()
-    ));
+    )
+    .unwrap();
 
     if let Some(limit) = filter.limit {
-        select_query.push_str(&format!(" LIMIT {limit}"));
+        write!(&mut select_query, " LIMIT {limit}").unwrap();
     }
 
     if let Some(offset) = filter.offset {
-        select_query.push_str(&format!(" OFFSET {offset}"));
+        write!(&mut select_query, " OFFSET {offset}").unwrap();
     }
 
     debug!("select_query:{select_query:?}");
@@ -115,8 +128,10 @@ pub fn get_many(
         new_item.set_id_field(row_id);
         new_item.set_text_field(&row_text);
 
-        if filter.search.is_some() && row_text.eq(&filter.search.clone().unwrap()) {
-            new_item.set_exact_search(true);
+        if let Some(search) = maybe_search {
+            if row_text.eq(search) {
+                new_item.set_exact_search(true);
+            }
         }
 
         Ok(new_item)
@@ -144,10 +159,20 @@ pub fn get_many(
         item.get_table_name()
     );
 
-    if maybe_search.is_some() {
-        count_query.push_str(&format!(" WHERE {} LIKE (?1)", item.get_text_field_name()));
-    } else if maybe_id.is_some() {
-        count_query.push_str(&format!(" WHERE {} = (?1)", item.get_id_field_name()));
+    if let Some(_search) = maybe_search {
+        write!(
+            &mut count_query,
+            " WHERE {} LIKE (?1)",
+            item.get_text_field_name()
+        )
+        .unwrap();
+    } else if let Some(_id) = maybe_id {
+        write!(
+            &mut count_query,
+            " WHERE {} = (?1)",
+            item.get_id_field_name()
+        )
+        .unwrap();
     }
 
     debug!("count_query:{count_query:?}");
@@ -200,7 +225,7 @@ pub fn create_update(
             [new_text],
         )?;
 
-        last_insert_id = db_connection.last_insert_rowid() as u64;
+        last_insert_id = u64::try_from(db_connection.last_insert_rowid())?;
     }
 
     Ok(last_insert_id)
@@ -223,48 +248,46 @@ pub mod tests {
     }
 
     pub fn test_searchable(
-        searchable: impl Searchable + Debug + Default + Serialize,
-        fake_searchables: Vec<&str>,
+        searchable: &(impl Searchable + Debug + Default + Serialize),
+        fake_searchables: &[&str],
         test_search_count: usize,
         test_search_first_result: &str,
     ) {
         init_logger();
 
-        let mut db_connection = Connection::open_in_memory().unwrap();
+        let mut db_connection =
+            Connection::open_in_memory().expect("Failed to open in-memory database");
         init_db(&mut db_connection).unwrap();
 
         let table_name = searchable.get_table_name();
         let text_field_name = searchable.get_text_field_name();
 
         // Insert samples.
-        for fake_searchable in fake_searchables.iter() {
-            let _ = db_connection
+        for fake_searchable in fake_searchables {
+            db_connection
                 .execute(
-                    &format!(
-                        "INSERT INTO {} ({}) VALUES (?1)",
-                        table_name, text_field_name
-                    ),
+                    &format!("INSERT INTO {table_name} ({text_field_name}) VALUES (?1)"),
                     [fake_searchable],
                 )
                 .unwrap();
         }
 
-        info!("- testing total result for {}", table_name);
+        info!("- testing total result for {table_name}");
         let (searchables, total_count) = get_many(
-            &searchable,
+            searchable,
             &db_connection,
-            RequestFilter {
+            &RequestFilter {
                 ..Default::default()
             },
         )
         .unwrap();
         assert_eq!(total_count, searchables.len());
 
-        info!("- testing filter search for {}", table_name);
+        info!("- testing filter search for {table_name}");
         let (searchables, count) = get_many(
-            &searchable,
+            searchable,
             &db_connection,
-            RequestFilter {
+            &RequestFilter {
                 search: Some(fake_searchables[0].to_owned()),
                 ..Default::default()
             },
@@ -275,17 +298,17 @@ pub mod tests {
         // expected exact match appears first.
         assert!(searchables[0].get_text().eq(test_search_first_result));
 
-        info!("- testing parse for {}", table_name);
-        let searchables = parse(&searchable, &db_connection, fake_searchables[0]).unwrap();
+        info!("- testing parse for {table_name}");
+        let searchables = parse(searchable, &db_connection, fake_searchables[0]).unwrap();
         assert_eq!(
             searchables.unwrap().get_text(),
             fake_searchables[0].to_string()
         );
 
-        let searchables = parse(&searchable, &db_connection, "does not exist").unwrap();
+        let searchables = parse(searchable, &db_connection, "does not exist").unwrap();
         assert!(searchables.is_none());
 
-        info!("- testing parse case insensitive for {}", table_name);
+        info!("- testing parse case insensitive for {table_name}");
         let mut randomized_chars: Vec<char> = Vec::new();
         let mut switch: bool = false;
         for c in fake_searchables[0].chars() {
@@ -297,19 +320,19 @@ pub mod tests {
             switch = !switch;
         }
         let randomized_string: String = randomized_chars.iter().collect();
-        info!("-> generated {}", randomized_string);
+        info!("-> generated {randomized_string}");
 
-        let searchables = parse(&searchable, &db_connection, &randomized_string)
+        let searchables = parse(searchable, &db_connection, &randomized_string)
             .unwrap()
             .unwrap();
         assert_eq!(searchables.get_text(), fake_searchables[0].to_string());
         assert!(searchables.get_id().is_some());
 
-        info!("- testing count with limit for {}", table_name);
+        info!("- testing count with limit for {table_name}");
         let (searchables, count) = get_many(
-            &searchable,
+            searchable,
             &db_connection,
-            RequestFilter {
+            &RequestFilter {
                 offset: Some(0),
                 limit: Some(5),
                 ..Default::default()
@@ -319,10 +342,10 @@ pub mod tests {
         assert_eq!(count, total_count);
         assert_eq!(searchables.len(), 5);
 
-        info!("- testing create for {}", table_name);
+        info!("- testing create for {table_name}");
 
         let last_insert_id = create_update(
-            &searchable,
+            searchable,
             None,
             &db_connection,
             "a non existing item",
@@ -330,7 +353,7 @@ pub mod tests {
         )
         .unwrap();
         let mayerr_last_insert_id = create_update(
-            &searchable,
+            searchable,
             None,
             &db_connection,
             fake_searchables[0],

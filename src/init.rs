@@ -9,7 +9,7 @@ use crate::define::{
     SYMBOLS, TAGS,
 };
 
-#[must_use] 
+#[must_use]
 pub fn connect_test() -> Connection {
     let sql_extension_dir = env::var("SQLITE_EXTENSION_DIR")
         .expect("Missing SQLITE_EXTENSION_DIR environment variable.");
@@ -289,7 +289,7 @@ mod tests {
             std::env::set_var(
                 "SQLITE_EXTENSION_DIR",
                 "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions",
-            )
+            );
         };
     }
 

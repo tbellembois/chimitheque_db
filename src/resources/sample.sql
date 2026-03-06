@@ -1,5 +1,7 @@
 BEGIN TRANSACTION;
 
+DELETE FROM borrowing;
+DELETE FROM storage;
 DELETE FROM product;
 
 -- =========================
@@ -80,11 +82,13 @@ INSERT INTO name VALUES
 (17,'96-Well Culture Plate'),
 (18,'T25 Culture Flask'),
 (19,'Microscope Slides'),
-(20,'Cryogenic Vials 2mL');
+(20,'Cryogenic Vials 2mL'),
+(21,'Micropipette Tips (20 µL)');
 
 -- =========================
 -- PRODUCERS
 -- =========================
+DELETE FROM producer_ref;
 DELETE FROM producer;
 INSERT INTO producer VALUES
 (1,'Merck / Sigma'),
@@ -101,7 +105,6 @@ INSERT INTO producer VALUES
 -- =========================
 -- PRODUCER REFS
 -- =========================
-DELETE FROM producer_ref;
 INSERT INTO producer_ref VALUES
 (1,'1.00983',1),
 (2,'A/4060/17',2),
@@ -113,6 +116,46 @@ INSERT INTO producer_ref VALUES
 (8,'G4100',8),
 (9,'3599',9),
 (10,'83.3925',10);
+
+-- Supplier data for chemicals, biological reagents, and consumables
+DELETE FROM supplier_ref;
+DELETE FROM supplier;
+INSERT INTO supplier VALUES
+(1, 'VWR International'),
+(2, 'Avantor Performance Materials'),
+(3, 'Carl Roth'),
+(4, 'Bio-Rad'),
+(5, 'Greiner Bio-One'),
+(6, 'Eppendorf'),
+(7, 'VWR France'),
+(8, 'Thermo Scientific'),
+(9, 'Agilent Technologies'),
+(10, 'Corning Incorporated');
+
+-- Supplier Reference data linking suppliers to specific products
+INSERT INTO supplier_ref VALUES
+-- Chemical suppliers
+(1, 'EMSURE®, ACS, Reag. Ph Eur', 1),
+(2, 'High Performance LC-MS Grade', 2),
+(3, 'Suprapur® grade', 3),
+(4, 'Pro Analysis' , 4),
+(5, 'Ultrapure for HPLC', 5),
+(6, 'TraceSELECT™ Ultra', 6),
+
+-- Biological reagent suppliers
+(7, 'Chemicon® International', 7),
+(8, 'UntraPURE', 8),
+(9, ' allows in vitro culture of human fibroblasts at confluence', 9),
+(10, 'contains 1 mg/mL Trypsin + 0.53 mM EDTA •4Na', 10),
+(11, 'used in a wide range of colorimetric assays including cell viability, proliferation, and cytotoxicity', 1),
+
+-- Consumable suppliers
+(12, 'Certified sterile and non-pyrogenic', 2),
+(13, 'Optical Quality', 3),
+(14, 'Sterile, CELLSTAR®', 4),
+(15, 'Graduated, Self Standing', 2),
+(16, 'RNA/DNA free, Certified RNase/RNase free', 2),
+(17, 'SnakeSkin® Plaqtes', 5);
 
 DELETE FROM person;
 INSERT INTO person (
@@ -134,7 +177,8 @@ entity_name
 ) VALUES
 (1, 'Entity 1'),
 (2, 'Entity 2'),
-(3, 'Entity 3');
+(3, 'Entity 3'),
+(4, 'Entity 4');
 
 DELETE FROM entitypeople;
 INSERT INTO "entitypeople" VALUES
@@ -215,7 +259,8 @@ category
 (17,'cons','Flat bottom TC treated',NULL,NULL,NULL,NULL,NULL,NULL,1,2,17,9,NULL,NULL,7),
 (18,'cons','Vent cap sterile',NULL,NULL,NULL,NULL,NULL,NULL,1,2,18,10,NULL,NULL,7),
 (19,'cons','Pre-cleaned glass',NULL,NULL,NULL,NULL,NULL,NULL,1,2,19,NULL,NULL,NULL,2),
-(20,'cons','External thread sterile',NULL,NULL,NULL,NULL,NULL,NULL,1,2,20,10,NULL,NULL,2);
+(20,'cons','External thread sterile',NULL,NULL,NULL,NULL,NULL,NULL,1,2,20,10,NULL,NULL,2),
+(21,'cons','Generic',NULL,NULL,NULL,NULL,NULL,NULL,1,2,21,10,NULL,NULL,2);
 
 DELETE FROM store_location;
 INSERT INTO "store_location" VALUES
@@ -229,9 +274,6 @@ INSERT INTO "store_location" VALUES
     (8,'[I]sl_2111','',1,'root_sl_2/[F]sl_21/sl_211/[I]sl_2111',2,7),
     (9,'sl_21111','',1,'root_sl_2/[F]sl_21/sl_211/[I]sl_2111/sl_21111',2,8),
     (10,'[P]root_sl_3','',1,'[P]root_sl_3',3,NULL);
-
-DELETE FROM storage;
-DELETE FROM borrowing;
 
 -- Storage entries for Store Location ID 2 (root_sl_1/sl_11)
 INSERT INTO storage (
@@ -301,19 +343,19 @@ INSERT INTO storage (
 (36, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'), 300, 'Sensitive to moisture', 'REF-PARA-003', 'G12347', 1, 8, 9, 4, 2);
 
 -- Add some borrowing records
-INSERT INTO borrowing (
-    borrowing_id,
-    borrowing_comment,
-    person,
-    borrower,
-    storage
-) VALUES
-(1, 'Samples needed for analysis', 1, 5, 1),
-(2, 'Used for preparation', 1, 6, 2),
-(3, 'Using for buffer preparation', 2, 3, 4),
-(4, 'For cell culture', 3, 1, 9),
-(5, 'For immunofluorescence', 3, 2, 11),
-(6, 'For flow cytometry', 3, 4, 17),
-(7, 'For western blot', 4, 1, 12);
+-- INSERT INTO borrowing (
+--     borrowing_id,
+--     borrowing_comment,
+--     person,
+--     borrower,
+--     storage
+-- ) VALUES
+-- (1, 'Samples needed for analysis', 1, 5, 1),
+-- (2, 'Used for preparation', 1, 6, 2),
+-- (3, 'Using for buffer preparation', 2, 3, 4),
+-- (4, 'For cell culture', 3, 1, 9),
+-- (5, 'For immunofluorescence', 3, 2, 11),
+-- (6, 'For flow cytometry', 3, 4, 17),
+-- (7, 'For western blot', 4, 1, 12);
 
 COMMIT;

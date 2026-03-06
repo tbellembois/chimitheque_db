@@ -22,12 +22,12 @@ mod tests {
     #[test]
     fn test_get_symbols() {
         test_searchable(
-            SymbolStruct {
+            &SymbolStruct {
                 ..Default::default()
             },
-            vec!["symbol1", "aa symbol1", "bb sYmBoL1", "symbol2", "symbol3"],
+            &["symbol1", "aa symbol1", "bb sYmBoL1", "symbol2", "symbol3"],
             3,
             "symbol1",
-        )
+        );
     }
 }

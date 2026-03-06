@@ -11,6 +11,7 @@ use chimitheque_types::{
     storelocation::StoreLocation as StoreLocationStruct, supplier::Supplier as SupplierStruct,
     unit::Unit as UnitStruct,
 };
+use chimitheque_utils::string::Transform;
 use chrono::{DateTime, Utc};
 use csv::WriterBuilder;
 use log::debug;
@@ -45,6 +46,7 @@ use crate::{
     productsymbols::Productsymbols,
     productsynonyms::Productsynonyms,
     producttags::Producttags,
+    searchable,
     signalword::SignalWord,
     storelocation::{get_store_locations, StoreLocation},
     supplier::Supplier,
@@ -1183,9 +1185,8 @@ fn compute_storage_barecode_parts(
     product_id: u64,
     person_id: u64,
 ) -> Result<(String, u64, u64), Box<dyn std::error::Error + Send + Sync>> {
-    let store_location_id = match storage.store_location.store_location_id {
-        Some(store_location_id) => store_location_id,
-        None => return Err(Box::new(StorageError::MissingStoreLocationId)),
+    let Some(store_location_id) = storage.store_location.store_location_id else {
+        return Err(Box::new(StorageError::MissingStoreLocationId));
     };
 
     // Getting the store location and its full path.
@@ -1257,14 +1258,14 @@ fn compute_storage_barecode_parts(
           AND regexp(
             "^[_a-zA-Z]+[0-9]+\.[0-9]+$",
             storage_barecode
-          );
+          ) OR NULL;
 		"#,
         [product_id, entity_id],
         |row| Ok((row.get("barecode_major")?, row.get("barecode_minor")?)),
     )?;
 
     debug!("maybe_barecode_major: {maybe_barecode_major:#?}");
-    debug!("barecode_minor: {maybe_barecode_minor:#?}");
+    debug!("maybe_barecode_minor: {maybe_barecode_minor:#?}");
 
     let barecode_major = maybe_barecode_major.unwrap_or(product_id);
     let barecode_minor = maybe_barecode_minor.unwrap_or(0);
@@ -1280,25 +1281,44 @@ pub fn create_update_storage(
 ) -> Result<Vec<u64>, Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_storage: {storage:#?}");
 
+    let db_transaction = db_connection.transaction()?;
+
+    //
+    // supplier
+    //
+    if let Some(supplier) = storage.supplier.clone() {
+        if supplier.supplier_id.is_none() {
+            let supplier_id = searchable::create_update(
+                &SupplierStruct {
+                    ..Default::default()
+                },
+                None,
+                &db_transaction,
+                supplier.supplier_label.as_str(),
+                Transform::None,
+            )?;
+            storage.supplier = Some(SupplierStruct {
+                supplier_id: Some(supplier_id),
+                supplier_label: supplier.supplier_label,
+                ..Default::default()
+            });
+        }
+    }
+
     // Created storage ids
     let mut storage_ids = vec![];
 
-    let product_id = match storage.product.product_id {
-        Some(product_id) => product_id,
-        None => return Err(Box::new(StorageError::MissingProductId)),
+    let Some(product_id) = storage.product.product_id else {
+        return Err(Box::new(StorageError::MissingProductId));
     };
 
-    let person_id = match storage.person.person_id {
-        Some(person_id) => person_id,
-        None => return Err(Box::new(StorageError::MissingPersonId)),
+    let Some(person_id) = storage.person.person_id else {
+        return Err(Box::new(StorageError::MissingPersonId));
     };
 
-    let store_location_id = match storage.store_location.store_location_id {
-        Some(store_location_id) => store_location_id,
-        None => return Err(Box::new(StorageError::MissingStoreLocationId)),
+    let Some(store_location_id) = storage.store_location.store_location_id else {
+        return Err(Box::new(StorageError::MissingStoreLocationId));
     };
-
-    let db_transaction = db_connection.transaction()?;
 
     //
     // Create history on update.
@@ -1551,9 +1571,8 @@ pub fn create_update_storage(
         }
 
         if let Some(supplier) = &storage.supplier {
-            let supplier_id = match supplier.supplier_id {
-                Some(supplier_id) => supplier_id,
-                None => return Err(Box::new(StorageError::MissingSupplierId)),
+            let Some(supplier_id) = supplier.supplier_id else {
+                return Err(Box::new(StorageError::MissingSupplierId));
             };
 
             columns_values.push((Storage::Supplier, SimpleExpr::Value(supplier_id.into())));
@@ -1565,9 +1584,8 @@ pub fn create_update_storage(
         }
 
         if let Some(unit_quantity) = storage.unit_quantity.clone() {
-            let unit_id = match unit_quantity.unit_id {
-                Some(unit_id) => unit_id,
-                None => return Err(Box::new(StorageError::MissingUnitId)),
+            let Some(unit_id) = unit_quantity.unit_id else {
+                return Err(Box::new(StorageError::MissingUnitId));
             };
 
             columns_values.push((Storage::UnitQuantity, SimpleExpr::Value(unit_id.into())));
@@ -1579,9 +1597,8 @@ pub fn create_update_storage(
         }
 
         if let Some(unit_concentration) = storage.unit_concentration.clone() {
-            let unit_id = match unit_concentration.unit_id {
-                Some(unit_id) => unit_id,
-                None => return Err(Box::new(StorageError::MissingUnitId)),
+            let Some(unit_id) = unit_concentration.unit_id else {
+                return Err(Box::new(StorageError::MissingUnitId));
             };
 
             columns_values.push((
@@ -1599,9 +1616,8 @@ pub fn create_update_storage(
         }
 
         if let Some(storage) = storage.storage.clone() {
-            let storage_id = match storage.storage_id {
-                Some(storage_id) => storage_id,
-                None => return Err(Box::new(StorageError::MissingStorageId)),
+            let Some(storage_id) = storage.storage_id else {
+                return Err(Box::new(StorageError::MissingStorageId));
             };
 
             columns_values.push((Storage::Storage, SimpleExpr::Value(storage_id.into())));

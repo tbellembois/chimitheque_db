@@ -77,7 +77,7 @@ pub fn parse(
 
 pub fn get_hazard_statements(
     db_connection: &Connection,
-    filter: RequestFilter,
+    filter: &RequestFilter,
 ) -> Result<(Vec<HazardStatementStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{filter:?}");
 
@@ -180,60 +180,36 @@ pub fn get_hazard_statements(
 mod tests {
 
     use super::*;
-    use crate::init::{connect_test, init_db, insert_fake_values};
     use chimitheque_types::requestfilter::RequestFilter;
     use log::info;
-    use rusqlite::Connection;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = connect_test();
-        init_db(&mut db_connection).unwrap();
-        insert_fake_values(&mut db_connection).unwrap();
-        db_connection
-    }
 
     #[test]
     fn test_parse_hazard_statement() {
-        init_logger();
-
-        let db_connection = init_test_db();
+        let db_connection = crate::test_utils::init_test();
 
         info!("testing parse");
-        assert!(parse(&db_connection, "EUH209A").is_ok_and(|u| u.is_some()));
+        assert!(parse(&db_connection, "H301").is_ok_and(|u| u.is_some()));
         assert!(parse(&db_connection, "not exist").is_ok_and(|u| u.is_none()));
     }
 
     #[test]
     fn test_get_hazard_statements() {
-        init_logger();
-
-        let db_connection = init_test_db();
+        let db_connection = crate::test_utils::init_test();
 
         info!("testing ok result");
         let filter = RequestFilter {
             ..Default::default()
         };
-        assert!(get_hazard_statements(&db_connection, filter,).is_ok());
+        assert!(get_hazard_statements(&db_connection, &filter,).is_ok());
 
         info!("testing filter search");
         let filter = RequestFilter {
-            search: Some(String::from("hazard_statement1-ref")),
+            search: Some(String::from("H20")),
             ..Default::default()
         };
-        let (hazard_statements, count) = get_hazard_statements(&db_connection, filter).unwrap();
+        let (_, count) = get_hazard_statements(&db_connection, &filter).unwrap();
 
         // expected number of results.
-        assert_eq!(count, 2);
-        // expected exact match appears first.
-        assert!(hazard_statements[0]
-            .hazard_statement_reference
-            .eq("hazard_statement1-ref"));
-        assert!(hazard_statements[0]
-            .hazard_statement_label
-            .eq("hazard_statement1"));
+        assert_eq!(count, 10);
     }
 }

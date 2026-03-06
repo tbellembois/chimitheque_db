@@ -89,7 +89,7 @@ fn get_person_by_id(
 ) -> Result<Person, Box<dyn std::error::Error + Send + Sync>> {
     let (people, nb_results) = get_people(
         db_connection,
-        RequestFilter {
+        &RequestFilter {
             id: Some(person_id),
             ..Default::default()
         },
@@ -247,9 +247,7 @@ pub fn match_person_is_in_person_entity(
     person_id: u64,
     other_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-    debug!(
-        "match_person_is_in_person_entity: {person_id} {other_person_id}"
-    );
+    debug!("match_person_is_in_person_entity: {person_id} {other_person_id}");
 
     // Get person.
     let person = get_person_by_id(db_connection, person_id)?;
@@ -280,9 +278,7 @@ pub fn match_person_is_in_store_location_entity(
     person_id: u64,
     store_location_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-    debug!(
-        "match_person_is_in_store_location_entity: {person_id} {store_location_id}"
-    );
+    debug!("match_person_is_in_store_location_entity: {person_id} {store_location_id}");
 
     // Get person.
     let person = get_person_by_id(db_connection, person_id)?;
@@ -321,9 +317,7 @@ pub fn match_person_is_in_storage_entity(
     person_id: u64,
     storage_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-    debug!(
-        "match_person_is_in_storage_entity: {person_id} {storage_id}"
-    );
+    debug!("match_person_is_in_storage_entity: {person_id} {storage_id}");
 
     // Get person.
     let person = get_person_by_id(db_connection, person_id)?;
@@ -547,9 +541,7 @@ pub fn match_store_location_is_in_entity(
     store_location_id: u64,
     entity_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-    debug!(
-        "match_store_location_is_in_entity: {store_location_id} {entity_id}"
-    );
+    debug!("match_store_location_is_in_entity: {store_location_id} {entity_id}");
 
     // Get store location from the database.
     let store_location = get_store_location_by_id(db_connection, store_location_id)?;
@@ -573,61 +565,47 @@ pub fn match_store_location_is_in_entity(
 mod tests {
 
     use super::*;
-    use crate::init::{connect_test, init_db, insert_fake_values};
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = connect_test();
-        init_db(&mut db_connection).unwrap();
-        insert_fake_values(&mut db_connection).unwrap();
-        db_connection
-    }
 
     #[test]
     fn test_casbin() {
-        init_logger();
+        let db_connection = crate::test_utils::init_test();
 
-        let db_connection = init_test_db();
+        assert!(match_person_is_in_entity(&db_connection, 5, 1).unwrap());
+        assert!(!match_person_is_in_entity(&db_connection, 5, 2).unwrap());
 
-        assert!(match_person_is_in_entity(&db_connection, 2, 1).unwrap());
-        assert!(!match_person_is_in_entity(&db_connection, 2, 2).unwrap());
-
-        assert!(match_person_is_in_person_entity(&db_connection, 2, 4).unwrap());
-        assert!(!match_person_is_in_person_entity(&db_connection, 2, 3).unwrap());
+        assert!(match_person_is_in_person_entity(&db_connection, 2, 5).unwrap());
+        assert!(!match_person_is_in_person_entity(&db_connection, 2, 6).unwrap());
 
         assert!(match_person_is_in_store_location_entity(&db_connection, 2, 1).unwrap());
-        assert!(!match_person_is_in_store_location_entity(&db_connection, 2, 3).unwrap());
+        assert!(!match_person_is_in_store_location_entity(&db_connection, 2, 4).unwrap());
 
         assert!(match_person_is_in_storage_entity(&db_connection, 2, 1).unwrap());
-        assert!(!match_person_is_in_storage_entity(&db_connection, 2, 3).unwrap());
+        assert!(!match_person_is_in_storage_entity(&db_connection, 2, 18).unwrap());
 
         assert!(match_product_has_storages(&db_connection, 1).unwrap());
         assert!(match_product_has_storages(&db_connection, 2).unwrap());
-        assert!(!match_product_has_storages(&db_connection, 5).unwrap());
+        assert!(!match_product_has_storages(&db_connection, 21).unwrap());
 
-        assert!(match_store_location_has_children(&db_connection, 4).unwrap());
-        assert!(!match_store_location_has_children(&db_connection, 1).unwrap());
+        assert!(match_store_location_has_children(&db_connection, 1).unwrap());
+        assert!(!match_store_location_has_children(&db_connection, 10).unwrap());
 
-        assert!(match_store_location_has_storages(&db_connection, 4).unwrap());
-        assert!(!match_store_location_has_storages(&db_connection, 5).unwrap());
+        assert!(match_store_location_has_storages(&db_connection, 2).unwrap());
+        assert!(!match_store_location_has_storages(&db_connection, 4).unwrap());
 
         assert!(match_person_is_admin(&db_connection, 1).unwrap());
         assert!(!match_person_is_admin(&db_connection, 2).unwrap());
 
         assert!(match_person_is_manager(&db_connection, 2).unwrap());
-        assert!(!match_person_is_manager(&db_connection, 4).unwrap());
+        assert!(!match_person_is_manager(&db_connection, 5).unwrap());
 
         assert!(match_entity_has_members(&db_connection, 2).unwrap());
-        assert!(!match_entity_has_members(&db_connection, 3).unwrap());
+        assert!(!match_entity_has_members(&db_connection, 4).unwrap());
 
         assert!(match_entity_has_store_locations(&db_connection, 2).unwrap());
-        assert!(!match_entity_has_store_locations(&db_connection, 3).unwrap());
+        assert!(!match_entity_has_store_locations(&db_connection, 4).unwrap());
 
         assert!(match_store_location_is_in_entity(&db_connection, 1, 1).unwrap());
-        assert!(!match_store_location_is_in_entity(&db_connection, 1, 2).unwrap());
+        assert!(!match_store_location_is_in_entity(&db_connection, 1, 3).unwrap());
 
         assert!(match_storage_is_in_entity(&db_connection, 1, 1).unwrap());
         assert!(!match_storage_is_in_entity(&db_connection, 1, 3).unwrap());

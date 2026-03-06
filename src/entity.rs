@@ -308,9 +308,8 @@ fn create_update_entity_managers(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_entity_managers: {entity:#?}");
 
-    let entity_id = match entity.entity_id {
-        Some(entity_id) => entity_id,
-        None => return Err(Box::new(EntityError::MissingEntityId)),
+    let Some(entity_id) = entity.entity_id else {
+        return Err(Box::new(EntityError::MissingEntityId));
     };
 
     // Lazily remove all entity managers.
@@ -326,9 +325,8 @@ fn create_update_entity_managers(
     // Adding new ones.
     if let Some(managers) = &entity.managers {
         for manager in managers {
-            let person_id = match manager.person_id {
-                Some(person_id) => person_id,
-                None => return Err(Box::new(EntityError::MissingPersonId)),
+            let Some(person_id) = manager.person_id else {
+                return Err(Box::new(EntityError::MissingPersonId));
             };
 
             set_person_manager(db_transaction, person_id, entity_id)?;
@@ -437,11 +435,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn get_entities_for_user_right_number() {
+    fn test_get_entities_for_user_right_number() {
         let db_connection = crate::test_utils::init_test();
 
         let expected_nb_results_for_person =
-            HashMap::from([(1, 3), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)]);
+            HashMap::from([(1, 4), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)]);
 
         for (person_id, expected_nb_results) in expected_nb_results_for_person {
             let (_, nb_resuts) = get_entities(

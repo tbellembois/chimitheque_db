@@ -22,10 +22,10 @@ mod tests {
     #[test]
     fn test_get_categories() {
         test_searchable(
-            CategoryStruct {
+            &CategoryStruct {
                 ..Default::default()
             },
-            vec![
+            &[
                 "category1",
                 "aa category1",
                 "bb cAtEgOrY1",
@@ -34,6 +34,6 @@ mod tests {
             ],
             3,
             "category1",
-        )
+        );
     }
 }

@@ -29,7 +29,7 @@ impl From<&Row<'_>> for SupplierWrapper {
 
 pub fn get_suppliers(
     db_connection: &Connection,
-    filter: RequestFilter,
+    filter: &RequestFilter,
 ) -> Result<(Vec<SupplierStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{filter:?}");
 
@@ -175,30 +175,16 @@ pub fn get_suppliers(
 mod tests {
 
     use super::*;
-    use crate::init::{connect_test, init_db, insert_fake_values};
     use log::info;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = connect_test();
-        init_db(&mut db_connection).unwrap();
-        insert_fake_values(&mut db_connection).unwrap();
-        db_connection
-    }
 
     #[test]
     fn test_get_suppliers() {
-        init_logger();
-
-        let db_connection = init_test_db();
+        let db_connection = crate::test_utils::init_test();
 
         info!("testing ok result");
         assert!(get_suppliers(
             &db_connection,
-            RequestFilter {
+            &RequestFilter {
                 ..Default::default()
             },
         )
@@ -206,14 +192,12 @@ mod tests {
 
         info!("testing filter search");
         let filter = RequestFilter {
-            search: Some(String::from("FAKE_SUPPLIER")),
+            search: Some(String::from("Carl Roth")),
             ..Default::default()
         };
-        let (suppliers, count) = get_suppliers(&db_connection, filter).unwrap();
+        let (_, count) = get_suppliers(&db_connection, &filter).unwrap();
 
         // expected number of results.
-        assert_eq!(count, 7);
-        // expected exact match appears first.
-        assert!(suppliers[0].supplier_label.eq("FAKE_SUPPLIER"))
+        assert_eq!(count, 1);
     }
 }

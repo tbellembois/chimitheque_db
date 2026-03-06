@@ -510,25 +510,11 @@ mod tests {
     use std::vec;
 
     use super::*;
-    use crate::init::{connect_test, init_db, insert_fake_values};
     use log::info;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = connect_test();
-        init_db(&mut db_connection).unwrap();
-        insert_fake_values(&mut db_connection).unwrap();
-        db_connection
-    }
 
     #[test]
     fn test_create_product_from_pubchem() {
-        init_logger();
-
-        let mut db_connection = init_test_db();
+        let mut db_connection = crate::test_utils::init_test();
 
         info!("testing create product from pubchem");
         assert!(create_update_product_from_pubchem(
@@ -617,7 +603,7 @@ mod tests {
                 synonyms: Some(vec!["foo".to_string(), "bar".to_string()]),
                 symbols: Some(vec!["GHS01".to_string(), "GHS02".to_string()]),
                 signal: Some(vec!["danger".to_string()]),
-                hs: Some(vec!["EUH209A".to_string(), "EUH209".to_string()]),
+                hs: Some(vec!["H371".to_string(), "H372".to_string()]),
                 ps: Some(vec!["P390".to_string(), "P261".to_string()]),
                 twodpicture: Some("twodpicture".to_string()),
             },

@@ -339,6 +339,14 @@ fn populate_store_location_full_path(
     db_connection: &Connection,
     store_location: &mut StoreLocationStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    struct MyGroupConcatFunction;
+
+    impl Iden for MyGroupConcatFunction {
+        fn unquoted(&self, s: &mut dyn Write) {
+            write!(s, "group_concat").unwrap();
+        }
+    }
+
     // If the store location has no parent setting its name as full path.
     if store_location.store_location.is_none() {
         store_location.store_location_full_path = Some(store_location.store_location_name.clone());
@@ -356,14 +364,6 @@ fn populate_store_location_full_path(
      *    SELECT store_location, store_location_name FROM ancestor, store_location
      *    WHERE ancestor.p = store_location.store_location_id)
      *    SELECT group_concat(n, '/') AS store_location_full_path FROM ancestor */
-
-    struct MyGroupConcatFunction;
-
-    impl Iden for MyGroupConcatFunction {
-        fn unquoted(&self, s: &mut dyn Write) {
-            write!(s, "group_concat").unwrap();
-        }
-    }
 
     let base_query = SelectStatement::new()
         .expr_as(Expr::col(StoreLocation::StoreLocation), Alias::new("p"))
@@ -973,14 +973,13 @@ mod tests {
                     // Check if this is a foreign key violation error
                     assert!(
                         db_err.to_string().contains("FOREIGN KEY constraint failed"),
-                        "Expected foreign key constraint error but got: {}",
-                        db_err
+                        "Expected foreign key constraint error but got: {db_err}"
                     );
                 } else {
-                    panic!("Received error was not a database error: {:?}", err);
+                    panic!("Received error was not a database error: {err:?}");
                 }
             }
-            Ok(_) => {
+            Ok(()) => {
                 panic!("Expected delete operation to fail but it succeeded!");
             }
         }
@@ -1098,14 +1097,13 @@ mod tests {
                     // Check if this is a foreign key violation error
                     assert!(
                         db_err.to_string().contains("FOREIGN KEY constraint failed"),
-                        "Expected foreign key constraint error but got: {}",
-                        db_err
+                        "Expected foreign key constraint error but got: {db_err}"
                     );
                 } else {
-                    panic!("Received error was not a database error: {:?}", err);
+                    panic!("Received error was not a database error: {err:?}");
                 }
             }
-            Ok(_) => {
+            Ok(()) => {
                 panic!("Expected delete operation to fail but it succeeded!");
             }
         }

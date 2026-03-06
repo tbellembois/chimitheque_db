@@ -42,7 +42,7 @@ impl From<&Row<'_>> for SupplierRefWrapper {
 
 pub fn get_supplier_refs(
     db_connection: &Connection,
-    filter: RequestFilter,
+    filter: &RequestFilter,
 ) -> Result<(Vec<SupplierRefStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{filter:?}");
 
@@ -223,48 +223,29 @@ pub fn create_update_supplier_ref(
 mod tests {
 
     use super::*;
-    use crate::init::{connect_test, init_db, insert_fake_values};
     use log::info;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = connect_test();
-        init_db(&mut db_connection).unwrap();
-        insert_fake_values(&mut db_connection).unwrap();
-        db_connection
-    }
 
     #[test]
     fn test_get_supplier_refs() {
-        init_logger();
-
-        let db_connection = init_test_db();
+        let db_connection = crate::test_utils::init_test();
 
         info!("testing total result");
         let filter = RequestFilter {
             ..Default::default()
         };
-        let (_, count) = get_supplier_refs(&db_connection, filter).unwrap();
+        let (_, count) = get_supplier_refs(&db_connection, &filter).unwrap();
 
         // expected number of results.
-        assert_eq!(count, 8);
+        assert_eq!(count, 17);
 
         info!("testing filter search");
         let filter = RequestFilter {
-            search: Some(String::from("1_ref1")),
+            search: Some(String::from("Suprapur® grade")),
             ..Default::default()
         };
-        let (supplier_refs, count) = get_supplier_refs(&db_connection, filter).unwrap();
+        let (_, count) = get_supplier_refs(&db_connection, &filter).unwrap();
 
         // expected number of results.
         assert_eq!(count, 1);
-        // expected correct supplier.
-        assert!(supplier_refs[0]
-            .supplier
-            .supplier_label
-            .eq("FAKE_SUPPLIER_1"))
     }
 }

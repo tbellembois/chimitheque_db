@@ -22,12 +22,12 @@ mod tests {
     #[test]
     fn test_get_tags() {
         test_searchable(
-            TagStruct {
+            &TagStruct {
                 ..Default::default()
             },
-            vec!["tag1", "aa tag1", "bb tAg1", "tag2", "tag3"],
+            &["tag1", "aa tag1", "bb tAg1", "tag2", "tag3"],
             3,
             "tag1",
-        )
+        );
     }
 }

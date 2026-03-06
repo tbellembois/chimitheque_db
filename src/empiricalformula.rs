@@ -22,10 +22,10 @@ mod tests {
     #[test]
     fn test_get_empirical_formulas() {
         test_searchable(
-            EmpiricalFormulaStruct {
+            &EmpiricalFormulaStruct {
                 ..Default::default()
             },
-            vec![
+            &[
                 "empiricalformula1",
                 "aa empiricalformula1",
                 "bb eMpIrIcAlFoRmULa1",
@@ -34,6 +34,6 @@ mod tests {
             ],
             3,
             "empiricalformula1",
-        )
+        );
     }
 }

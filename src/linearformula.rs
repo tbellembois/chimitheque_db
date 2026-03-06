@@ -22,10 +22,10 @@ mod tests {
     #[test]
     fn test_get_linear_formulas() {
         test_searchable(
-            LinearFormulaStruct {
+            &LinearFormulaStruct {
                 ..Default::default()
             },
-            vec![
+            &[
                 "linearformula1",
                 "aa linearformula1",
                 "bb lInEaRFoRmULa1",
@@ -34,6 +34,6 @@ mod tests {
             ],
             3,
             "linearformula1",
-        )
+        );
     }
 }

@@ -22,10 +22,10 @@ mod tests {
     #[test]
     fn test_get_signal_words() {
         test_searchable(
-            SignalWordStruct {
+            &SignalWordStruct {
                 ..Default::default()
             },
-            vec![
+            &[
                 "signalword1",
                 "aa signalword1",
                 "bb sIgNaLwOrD1",
@@ -34,6 +34,6 @@ mod tests {
             ],
             3,
             "signalword1",
-        )
+        );
     }
 }

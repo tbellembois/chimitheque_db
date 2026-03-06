@@ -22,10 +22,10 @@ mod tests {
     #[test]
     fn test_get_ce_numbers() {
         test_searchable(
-            CeNumberStruct {
+            &CeNumberStruct {
                 ..Default::default()
             },
-            vec![
+            &[
                 "cenumber1",
                 "aa cenumber1",
                 "bb cENuMbEr1",
@@ -34,6 +34,6 @@ mod tests {
             ],
             3,
             "cenumber1",
-        )
+        );
     }
 }

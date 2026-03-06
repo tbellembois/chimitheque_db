@@ -112,3 +112,161 @@ pub fn toggle_product_bookmark(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn bookmark_exists(
+        db_connection: &Connection,
+        person_id: u64,
+        product_id: u64,
+    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        // Create query using sea_query
+        let (count_sql, count_values) = Query::select()
+            .expr(Expr::col((Bookmark::Table, Bookmark::BookmarkId)).count())
+            .from(Bookmark::Table)
+            .and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id))
+            .and_where(Expr::col((Bookmark::Table, Bookmark::Product)).eq(product_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("Exist check query: {}", count_sql.clone().as_str());
+
+        // Perform count query
+        let mut stmt = db_connection.prepare(count_sql.as_str())?;
+        let count: i64 = stmt.query_row(&*count_values.as_params(), |row| row.get(0))?;
+
+        Ok(count > 0)
+    }
+
+    #[test]
+    fn test_toggle_product_bookmark() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        // Test the base case where a bookmark doesn't exist yet
+        let person_id = 1;
+        let product_id = 1;
+
+        // First toggle should create the bookmark
+        toggle_product_bookmark(&mut db_connection, person_id, product_id).unwrap();
+        assert!(bookmark_exists(&db_connection, person_id, product_id).unwrap());
+
+        // Second toggle should remove the bookmark
+        toggle_product_bookmark(&mut db_connection, person_id, product_id).unwrap();
+        assert!(!bookmark_exists(&db_connection, person_id, product_id).unwrap());
+    }
+
+    #[test]
+    fn test_toggle_product_bookmark_invalid_input() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        // First test case: Existing person, non-existing product
+        let existing_person_id = 1; // We know this person exists in our test database
+        let non_existing_product_id = 999_999; // Doesn't exist
+
+        // Attempt to bookmark a non-existing product
+        let result = toggle_product_bookmark(
+            &mut db_connection,
+            existing_person_id,
+            non_existing_product_id,
+        );
+        assert!(result.is_err());
+
+        // Verify no bookmark was actually created
+        assert!(
+            !bookmark_exists(&db_connection, existing_person_id, non_existing_product_id).unwrap()
+        );
+
+        // Second test case: Non-existing person, existing product
+        let non_existing_person_id = 999_999; // Doesn't exist
+        let existing_product_id = 1; // We know this product exists
+
+        // Attempt to bookmark an existing product for a non-existing person
+        let result = toggle_product_bookmark(
+            &mut db_connection,
+            non_existing_person_id,
+            existing_product_id,
+        );
+        assert!(result.is_err());
+
+        // Verify no bookmark was actually created
+        assert!(
+            !bookmark_exists(&db_connection, non_existing_person_id, existing_product_id).unwrap()
+        );
+
+        // Finally, verify the existing product is still properly bookmarkable
+        toggle_product_bookmark(&mut db_connection, 1, existing_product_id).unwrap();
+        assert!(bookmark_exists(&db_connection, 1, existing_product_id).unwrap());
+    }
+
+    #[test]
+    fn test_toggle_product_bookmark_multiple_products() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        let person_id = 4;
+
+        // Toggle multiple products
+        let products = [5, 6, 7];
+
+        for &product_id in &products {
+            toggle_product_bookmark(&mut db_connection, person_id, product_id).unwrap();
+            assert!(bookmark_exists(&db_connection, person_id, product_id).unwrap());
+        }
+
+        // Now un-toggle them
+        for &product_id in &products {
+            toggle_product_bookmark(&mut db_connection, person_id, product_id).unwrap();
+            assert!(!bookmark_exists(&db_connection, person_id, product_id).unwrap());
+        }
+    }
+
+    #[test]
+    fn test_toggle_product_bookmark_duplicate_calls() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        let person_id = 7;
+        let product_id = 8;
+
+        // Toggle multiple times to ensure no errors
+        for _ in 0..5 {
+            toggle_product_bookmark(&mut db_connection, person_id, product_id).unwrap();
+        }
+
+        // Check the state - should be true because of odd toggles
+        let exists = bookmark_exists(&db_connection, person_id, product_id).unwrap();
+        assert!(exists);
+
+        // Toggle multiple times to ensure no errors
+        for _ in 0..5 {
+            toggle_product_bookmark(&mut db_connection, person_id, product_id).unwrap();
+        }
+
+        // Check the state - should be false because of odd toggles
+        let exists = bookmark_exists(&db_connection, person_id, product_id).unwrap();
+        assert!(!exists);
+    }
+
+    #[test]
+    fn test_toggle_product_bookmark_concurrent_users() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        // Two different users bookmarking the same product
+        let product_id = 9;
+
+        // User 1 bookmarks
+        toggle_product_bookmark(&mut db_connection, 1, product_id).unwrap();
+        assert!(bookmark_exists(&db_connection, 1, product_id).unwrap());
+
+        // User 2 bookmarks
+        toggle_product_bookmark(&mut db_connection, 2, product_id).unwrap();
+        assert!(bookmark_exists(&db_connection, 2, product_id).unwrap());
+
+        // User 1 un-bookmarks
+        toggle_product_bookmark(&mut db_connection, 1, product_id).unwrap();
+        assert!(!bookmark_exists(&db_connection, 1, product_id).unwrap());
+
+        // User 2's bookmark is still there
+        assert!(bookmark_exists(&db_connection, 2, product_id).unwrap());
+    }
+}

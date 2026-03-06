@@ -44,9 +44,7 @@ pub fn toggle_storage_borrowing(
     borrower_id: u64,
     borrowing_comment: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!(
-        "person_id: {person_id:?} borrower_id:{borrower_id:?} storage_id:{storage_id:?}"
-    );
+    debug!("person_id: {person_id:?} borrower_id:{borrower_id:?} storage_id:{storage_id:?}");
 
     let db_transaction = db_connection.transaction()?;
 
@@ -133,4 +131,214 @@ pub fn toggle_storage_borrowing(
     db_transaction.commit()?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::borrowing::{toggle_storage_borrowing, Borrowing};
+    use rusqlite::Connection;
+
+    fn borrowing_exists(
+        db_connection: &Connection,
+        person_id: u64,
+        storage_id: u64,
+        borrower_id: u64,
+    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        // Create query using sea_query
+        let (count_sql, count_values) = Query::select()
+            .expr(Expr::col((Borrowing::Table, Borrowing::BorrowingId)).count())
+            .from(Borrowing::Table)
+            .and_where(Expr::col((Borrowing::Table, Borrowing::Person)).eq(person_id))
+            .and_where(Expr::col((Borrowing::Table, Borrowing::Storage)).eq(storage_id))
+            .and_where(Expr::col((Borrowing::Table, Borrowing::Borrower)).eq(borrower_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        // Perform count query
+        let mut stmt = db_connection.prepare(count_sql.as_str())?;
+        let count: i64 = stmt.query_row(&*count_values.as_params(), |row| row.get(0))?;
+
+        Ok(count > 0)
+    }
+
+    #[test]
+    fn test_toggle_storage_borrowing() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        // Get an existing person, storage, and add another person for borrower
+        let person_id = 1; // Existing person
+        let storage_id = 1; // // Existing storage
+        let borrower_id = 2; // Existing person
+
+        // First toggle should create the borrowing
+        toggle_storage_borrowing(
+            &mut db_connection,
+            person_id,
+            storage_id,
+            borrower_id,
+            Some("Test borrowing comment".to_string()),
+        )
+        .unwrap();
+
+        assert!(borrowing_exists(&db_connection, person_id, storage_id, borrower_id).unwrap());
+
+        // Second toggle should remove the borrowing
+        toggle_storage_borrowing(&mut db_connection, person_id, storage_id, borrower_id, None)
+            .unwrap();
+
+        assert!(!borrowing_exists(&db_connection, person_id, storage_id, borrower_id).unwrap());
+    }
+
+    #[test]
+    fn test_toggle_storage_borrowing_non_existent_person() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        let storage_id = 1; // Existing storage
+        let non_existing_person_id = 999_999; // Non-existing person
+        let borrower_id = 2; // Existing borrower
+
+        // First toggle should fail because the person doesn't exist
+        let result = toggle_storage_borrowing(
+            &mut db_connection,
+            non_existing_person_id,
+            storage_id,
+            borrower_id,
+            Some("Test borrowing comment".to_string()),
+        );
+
+        assert!(result.is_err());
+        assert!(!borrowing_exists(
+            &db_connection,
+            non_existing_person_id,
+            storage_id,
+            borrower_id
+        )
+        .unwrap());
+    }
+
+    #[test]
+    fn test_toggle_storage_borrowing_concurent_storage() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        let storage_id = 1; // Existing storage
+        let person_id = 2; // Existing person
+        let borrower_id_1 = 3; // Existing borrower
+        let borrower_id_2 = 4; // Existing borrower
+
+        // Create a first borrowing
+        toggle_storage_borrowing(
+            &mut db_connection,
+            person_id,
+            storage_id,
+            borrower_id_1,
+            Some("Test borrowing comment".to_string()),
+        )
+        .unwrap();
+
+        // Then a second for the same storage that should fail
+        let result = toggle_storage_borrowing(
+            &mut db_connection,
+            person_id,
+            storage_id,
+            borrower_id_2,
+            Some("Test borrowing comment".to_string()),
+        );
+
+        assert!(result.is_err());
+        assert!(!borrowing_exists(&db_connection, person_id, storage_id, borrower_id_2).unwrap());
+    }
+
+    #[test]
+    fn test_toggle_storage_borrowing_non_existent_storage() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        let person_id = 1; // Existing person
+        let non_existing_storage_id = 999_999; // Non-existing storage
+        let borrower_id = 2; // Existing borrower
+
+        // First toggle should fail because the storage doesn't exist
+        let result = toggle_storage_borrowing(
+            &mut db_connection,
+            person_id,
+            non_existing_storage_id,
+            borrower_id,
+            Some("Test borrowing comment".to_string()),
+        );
+
+        assert!(result.is_err());
+        assert!(!borrowing_exists(
+            &db_connection,
+            person_id,
+            non_existing_storage_id,
+            borrower_id
+        )
+        .unwrap());
+    }
+
+    #[test]
+    fn test_toggle_storage_borrowing_non_existent_borrower() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        let person_id = 1; // Existing person
+        let storage_id = 1; // Existing storage
+        let non_existing_borrower_id = 999_999; // Non-existing borrower
+
+        // First toggle should fail because the borrower doesn't exist
+        let result = toggle_storage_borrowing(
+            &mut db_connection,
+            person_id,
+            storage_id,
+            non_existing_borrower_id,
+            Some("Test borrowing comment".to_string()),
+        );
+
+        assert!(result.is_err());
+        assert!(!borrowing_exists(
+            &db_connection,
+            person_id,
+            storage_id,
+            non_existing_borrower_id
+        )
+        .unwrap());
+    }
+
+    #[test]
+    fn test_toggle_storage_borrowing_with_comment() {
+        let mut db_connection = crate::test_utils::init_test();
+
+        let person_id = 1; // Existing person
+        let storage_id = 1; // Existing storage
+        let borrower_id = 2; // Existing borrower
+
+        // Create borrowing with comment
+        toggle_storage_borrowing(
+            &mut db_connection,
+            person_id,
+            storage_id,
+            borrower_id,
+            Some("Important borrowing comment".to_string()),
+        )
+        .unwrap();
+
+        // Verify the comment is stored
+        let (query, params) = Query::select()
+            .from(Borrowing::Table)
+            .expr(Expr::col((Borrowing::Table, Borrowing::BorrowingComment)))
+            .and_where(Expr::col((Borrowing::Table, Borrowing::Person)).eq(person_id))
+            .and_where(Expr::col((Borrowing::Table, Borrowing::Storage)).eq(storage_id))
+            .and_where(Expr::col((Borrowing::Table, Borrowing::Borrower)).eq(borrower_id))
+            .build_rusqlite(SqliteQueryBuilder);
+
+        let mut stmt = db_connection.prepare(query.as_str()).unwrap();
+        let comment = stmt
+            .query(&*params.as_params())
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .get::<_, String>(0)
+            .unwrap();
+
+        assert_eq!(comment, "Important borrowing comment".to_string());
+    }
 }

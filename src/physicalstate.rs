@@ -22,10 +22,10 @@ mod tests {
     #[test]
     fn test_get_physical_states() {
         test_searchable(
-            PhysicalStateStruct {
+            &PhysicalStateStruct {
                 ..Default::default()
             },
-            vec![
+            &[
                 "physicalstate1",
                 "aa physicalstate1",
                 "bb pHySiCaLsTaTe1",
@@ -34,6 +34,6 @@ mod tests {
             ],
             3,
             "physicalstate1",
-        )
+        );
     }
 }

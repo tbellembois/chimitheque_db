@@ -22,10 +22,10 @@ mod tests {
     #[test]
     fn test_get_classes_of_compound() {
         test_searchable(
-            ClassOfCompoundStruct {
+            &ClassOfCompoundStruct {
                 ..Default::default()
             },
-            vec![
+            &[
                 "classesofcompound1",
                 "aa classesofcompound1",
                 "bb cLaSsOfCoMpOuNd1",
@@ -34,6 +34,6 @@ mod tests {
             ],
             2,
             "classesofcompound1",
-        )
+        );
     }
 }

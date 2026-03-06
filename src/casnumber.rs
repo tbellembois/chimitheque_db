@@ -23,10 +23,10 @@ mod tests {
     #[test]
     fn test_get_cas_numbers() {
         test_searchable(
-            CasNumberStruct {
+            &CasNumberStruct {
                 ..Default::default()
             },
-            vec![
+            &[
                 "casnumber1",
                 "aa casnumber1",
                 "bb cAsNuMbEr1",
@@ -35,6 +35,6 @@ mod tests {
             ],
             3,
             "casnumber1",
-        )
+        );
     }
 }

@@ -126,14 +126,14 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
         let unit_temperature_type: UnitType = if maybe_unit_temperature.is_some() {
             UnitType::from_str(&maybe_unit_temperature_type_string.unwrap())?
         } else {
-            Default::default()
+            UnitType::default()
         };
 
         // Extract unit molecular weight type if some.
         let unit_molecular_weight_type: UnitType = if maybe_unit_molecular_weight.is_some() {
             UnitType::from_str(&maybe_unit_molecular_weight_type_string.unwrap())?
         } else {
-            Default::default()
+            UnitType::default()
         };
 
         Ok(Self(ProductStruct {
@@ -198,14 +198,14 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
                 unit_label: row.get_unwrap("unit_temperature_unit_label"),
                 unit_multiplier: row.get_unwrap("unit_temperature_unit_multiplier"),
                 unit_type: unit_temperature_type,
-                unit: Default::default(),
+                unit: Option::default(),
             }),
             unit_molecular_weight: maybe_unit_molecular_weight.map(|_| UnitStruct {
                 unit_id: row.get_unwrap("unit_molecular_weight_unit_id"),
                 unit_label: row.get_unwrap("unit_molecular_weight_unit_label"),
                 unit_multiplier: row.get_unwrap("unit_molecular_weight_unit_multiplier"),
                 unit_type: unit_molecular_weight_type,
-                unit: Default::default(),
+                unit: Option::default(),
             }),
 
             product_type: ProductType::from_str(&product_type_string)?,
@@ -2896,9 +2896,7 @@ fn create_update_product_precautionary_statements(
     db_transaction: &Transaction,
     product: &ProductStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    debug!(
-        "create_update_product_precautionary_statement: {product:#?}"
-    );
+    debug!("create_update_product_precautionary_statement: {product:#?}");
 
     let mut product_precautionary_statements_ids: Vec<u64> = Vec::new();
 
@@ -3074,7 +3072,7 @@ mod tests {
         let count: usize;
         (_, count) = get_products(&db_connection, filter, 1).unwrap();
 
-        info!("count: {}", count);
+        info!("count: {count}");
         assert!(count > 0);
     }
 
@@ -3094,6 +3092,6 @@ mod tests {
             1,
         );
 
-        info!("export: {:?}", export);
+        info!("export: {export:?}");
     }
 }

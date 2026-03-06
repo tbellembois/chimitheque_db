@@ -236,7 +236,7 @@ fn populate_permissions(
 
 pub fn get_people(
     db_connection: &Connection,
-    filter: RequestFilter,
+    filter: &RequestFilter,
     person_id: u64,
 ) -> Result<(Vec<PersonStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{filter:?}");
@@ -458,7 +458,7 @@ fn create_update_person_permissions(
                 },
                 permission_name: PermissionName::All,
                 permission_item: PermissionItem::All,
-                permission_entity: entity.entity_id.unwrap() as i64,
+                permission_entity: i64::try_from(entity.entity_id.unwrap())?,
             });
         }
     }
@@ -748,7 +748,7 @@ pub fn set_person_manager(
 }
 
 pub fn get_admins(
-    db_connection: &mut Connection,
+    db_connection: &Connection,
 ) -> Result<Vec<PersonStruct>, Box<dyn std::error::Error + Send + Sync>> {
     debug!("get_admins");
     // Create select query.
@@ -868,39 +868,21 @@ pub fn delete_person(
 mod tests {
 
     use super::*;
-    use crate::init::{connect_test, init_db, insert_fake_values};
     use log::info;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = connect_test();
-        init_db(&mut db_connection).unwrap();
-        insert_fake_values(&mut db_connection).unwrap();
-        db_connection
-    }
 
     #[test]
     fn test_get_people() {
-        init_logger();
-
-        let mut db_connection = init_test_db();
+        let db_connection = crate::test_utils::init_test();
 
         info!("testing total result");
         let filter = RequestFilter {
             ..Default::default()
         };
-        let (people, count) = get_people(&db_connection, filter, 1).unwrap();
-        info!("people: {:?}", people);
-        info!("count: {:?}", count);
-
-        assert_eq!(count, 5);
+        let (_, count) = get_people(&db_connection, &filter, 1).unwrap();
+        assert_eq!(count, 7);
 
         info!("testing get admins");
-        let maybe_admins = get_admins(&mut db_connection);
+        let maybe_admins = get_admins(&db_connection);
         assert!(maybe_admins.is_ok());
-        info!("maybe_admins: {:?}", maybe_admins);
     }
 }

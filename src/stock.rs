@@ -1,5 +1,6 @@
 use chimitheque_types::{
-    stock::Stock, storelocation::StoreLocation as StoreLocationStruct, unit::Unit as UnitStruct,
+    product::Product, stock::Stock, storelocation::StoreLocation as StoreLocationStruct,
+    unit::Unit as UnitStruct,
 };
 use log::debug;
 use rusqlite::{Connection, Row};
@@ -28,7 +29,7 @@ impl From<&Row<'_>> for StockWrapper {
                     store_location_full_path: row.get_unwrap("store_location_full_path"),
                     ..Default::default()
                 },
-                product: Default::default(),
+                product: Product::default(),
                 quantity: row.get("quantity").unwrap_or_default(), // quantity = 0 is returned null by sql.
                 unit: maybe_parent_unit.map(|_| UnitStruct {
                     unit_id: row.get_unwrap("parent_unit_id"),
