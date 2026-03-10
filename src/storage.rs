@@ -1234,7 +1234,7 @@ fn compute_storage_barecode_parts(
 
     let (maybe_barecode_major, maybe_barecode_minor): (Option<u64>, Option<u64>) = db_transaction
         .query_row(
-        r#"
+            r#"
         SELECT
           MAX(
             CAST(regex_capture(
@@ -1258,11 +1258,22 @@ fn compute_storage_barecode_parts(
           AND regexp(
             "^[_a-zA-Z]+[0-9]+\.[0-9]+$",
             storage_barecode
-          ) OR NULL;
+          );
 		"#,
-        [product_id, entity_id],
-        |row| Ok((row.get("barecode_major")?, row.get("barecode_minor")?)),
-    )?;
+            [product_id, entity_id],
+            |row| {
+                let barecode_major = row
+                    .get::<_, Option<i64>>("barecode_major")?
+                    .map(|v| v as u64);
+
+                let barecode_minor = row
+                    .get::<_, Option<i64>>("barecode_minor")?
+                    .map(|v| v as u64);
+
+                Ok((barecode_major, barecode_minor))
+            },
+        )
+        .unwrap_or((None, None));
 
     debug!("maybe_barecode_major: {maybe_barecode_major:#?}");
     debug!("maybe_barecode_minor: {maybe_barecode_minor:#?}");

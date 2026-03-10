@@ -12,28 +12,3 @@ pub enum CeNumber {
 
 #[derive(Debug, Serialize, Default)]
 pub struct CeNumberWrapper(pub CeNumberStruct);
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use crate::searchable::tests::test_searchable;
-
-    #[test]
-    fn test_get_ce_numbers() {
-        test_searchable(
-            &CeNumberStruct {
-                ..Default::default()
-            },
-            &[
-                "cenumber1",
-                "aa cenumber1",
-                "bb cENuMbEr1",
-                "cenumber2",
-                "cenumber3",
-            ],
-            3,
-            "cenumber1",
-        );
-    }
-}

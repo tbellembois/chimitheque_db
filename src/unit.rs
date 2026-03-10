@@ -219,55 +219,5 @@ pub fn get_units(
 }
 
 #[cfg(test)]
-mod tests {
-
-    use super::*;
-    use crate::init::{connect_test, init_db, insert_fake_values};
-    use log::info;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = connect_test();
-        init_db(&mut db_connection).unwrap();
-        insert_fake_values(&mut db_connection).unwrap();
-        db_connection
-    }
-
-    #[test]
-    fn test_parse_unit() {
-        init_logger();
-
-        let db_connection = init_test_db();
-
-        info!("testing parse");
-        assert!(parse(&db_connection, "mL").is_ok_and(|u| u.is_some()));
-        assert!(parse(&db_connection, "not exist").is_ok_and(|u| u.is_none()));
-    }
-
-    #[test]
-    fn test_get_units() {
-        init_logger();
-
-        let db_connection = init_test_db();
-
-        info!("testing total result");
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        let (units, count) = get_units(&db_connection, filter).unwrap();
-        assert_eq!(count, 23);
-        assert_eq!(units.len(), 23);
-
-        info!("testing filter");
-        let filter = RequestFilter {
-            unit_type: Some(UnitType::Quantity.to_string()),
-            ..Default::default()
-        };
-        let (units, count) = get_units(&db_connection, filter).unwrap();
-        assert_eq!(count, 10);
-        assert_eq!(units.len(), 10);
-    }
-}
+#[path = "unit_tests.rs"]
+mod unit_tests;

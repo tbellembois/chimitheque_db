@@ -3044,7 +3044,7 @@ pub fn delete_product(
 mod tests {
 
     use super::*;
-    use crate::init::{connect_test, init_db, insert_fake_values};
+    use crate::init::{connect_test, insert_fake_values, populate_db_with_base_data};
     use log::info;
 
     fn init_logger() {
@@ -3053,7 +3053,7 @@ mod tests {
 
     fn init_test_db() -> Connection {
         let mut db_connection = connect_test();
-        init_db(&mut db_connection).unwrap();
+        populate_db_with_base_data(&mut db_connection).unwrap();
         insert_fake_values(&mut db_connection).unwrap();
         db_connection
     }

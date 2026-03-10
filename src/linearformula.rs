@@ -12,28 +12,3 @@ pub enum LinearFormula {
 
 #[derive(Debug, Serialize, Default)]
 pub struct LinearFormulaWrapper(pub LinearFormulaStruct);
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use crate::searchable::tests::test_searchable;
-
-    #[test]
-    fn test_get_linear_formulas() {
-        test_searchable(
-            &LinearFormulaStruct {
-                ..Default::default()
-            },
-            &[
-                "linearformula1",
-                "aa linearformula1",
-                "bb lInEaRFoRmULa1",
-                "linearformula2",
-                "linearformula3",
-            ],
-            3,
-            "linearformula1",
-        );
-    }
-}

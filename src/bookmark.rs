@@ -118,6 +118,7 @@ mod tests {
     use super::*;
     use rusqlite::Connection;
 
+    // Helper function to verify that a bookmark exists in the database
     fn bookmark_exists(
         db_connection: &Connection,
         person_id: u64,

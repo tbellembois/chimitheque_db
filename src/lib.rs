@@ -38,5 +38,5 @@ pub mod supplier;
 pub mod supplierref;
 pub mod symbol;
 pub mod tag;
-pub mod unit;
 pub mod test_utils;
+pub mod unit;

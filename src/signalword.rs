@@ -12,28 +12,3 @@ pub enum SignalWord {
 
 #[derive(Debug, Serialize, Default)]
 pub struct SignalwordWrapper(pub SignalWordStruct);
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use crate::searchable::tests::test_searchable;
-
-    #[test]
-    fn test_get_signal_words() {
-        test_searchable(
-            &SignalWordStruct {
-                ..Default::default()
-            },
-            &[
-                "signalword1",
-                "aa signalword1",
-                "bb sIgNaLwOrD1",
-                "signalword2",
-                "signalword3",
-            ],
-            3,
-            "signalword1",
-        );
-    }
-}

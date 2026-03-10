@@ -139,6 +139,7 @@ mod tests {
     use crate::borrowing::{toggle_storage_borrowing, Borrowing};
     use rusqlite::Connection;
 
+    // Helper function to verify that a borrowing exists in the database
     fn borrowing_exists(
         db_connection: &Connection,
         person_id: u64,

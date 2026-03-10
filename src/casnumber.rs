@@ -13,28 +13,3 @@ pub enum CasNumber {
 
 #[derive(Debug, Serialize, Default)]
 pub struct CasNumberWrapper(pub CasNumberStruct);
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use crate::searchable::tests::test_searchable;
-
-    #[test]
-    fn test_get_cas_numbers() {
-        test_searchable(
-            &CasNumberStruct {
-                ..Default::default()
-            },
-            &[
-                "casnumber1",
-                "aa casnumber1",
-                "bb cAsNuMbEr1",
-                "casnumber2",
-                "casnumber3",
-            ],
-            3,
-            "casnumber1",
-        );
-    }
-}

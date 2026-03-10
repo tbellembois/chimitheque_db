@@ -236,7 +236,7 @@ pub mod tests {
 
     use super::*;
     use crate::{
-        init::init_db,
+        init::populate_db_with_base_data,
         searchable::{get_many, parse},
     };
     use chimitheque_types::requestfilter::RequestFilter;
@@ -257,7 +257,7 @@ pub mod tests {
 
         let mut db_connection =
             Connection::open_in_memory().expect("Failed to open in-memory database");
-        init_db(&mut db_connection).unwrap();
+        populate_db_with_base_data(&mut db_connection).unwrap();
 
         let table_name = searchable.get_table_name();
         let text_field_name = searchable.get_text_field_name();

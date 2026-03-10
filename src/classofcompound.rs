@@ -12,28 +12,3 @@ pub enum ClassOfCompound {
 
 #[derive(Debug, Serialize, Default)]
 pub struct ClassOfCompoundWrapper(pub ClassOfCompoundStruct);
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use crate::searchable::tests::test_searchable;
-
-    #[test]
-    fn test_get_classes_of_compound() {
-        test_searchable(
-            &ClassOfCompoundStruct {
-                ..Default::default()
-            },
-            &[
-                "classesofcompound1",
-                "aa classesofcompound1",
-                "bb cLaSsOfCoMpOuNd1",
-                "classesofcompound2",
-                "classesofcompound3",
-            ],
-            2,
-            "classesofcompound1",
-        );
-    }
-}

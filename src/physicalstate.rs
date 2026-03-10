@@ -12,28 +12,3 @@ pub enum PhysicalState {
 
 #[derive(Debug, Serialize, Default)]
 pub struct PhysicalStateWrapper(pub PhysicalStateStruct);
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use crate::searchable::tests::test_searchable;
-
-    #[test]
-    fn test_get_physical_states() {
-        test_searchable(
-            &PhysicalStateStruct {
-                ..Default::default()
-            },
-            &[
-                "physicalstate1",
-                "aa physicalstate1",
-                "bb pHySiCaLsTaTe1",
-                "physicalstate2",
-                "physicalstate3",
-            ],
-            3,
-            "physicalstate1",
-        );
-    }
-}

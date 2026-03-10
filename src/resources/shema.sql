@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS "producer" (
 CREATE TABLE IF NOT EXISTS "producer_ref" (
 	"producer_ref_id"	INTEGER,
 	"producer_ref_label"	TEXT NOT NULL,
-	"producer"	INTEGER,
+	"producer"	INTEGER NOT NULL,
 	PRIMARY KEY("producer_ref_id"),
 	FOREIGN KEY("producer") REFERENCES "producer"("producer_id") ON DELETE CASCADE
 ) STRICT;
@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS "supplier" (
 CREATE TABLE IF NOT EXISTS "supplier_ref" (
 	"supplier_ref_id"	INTEGER,
 	"supplier_ref_label"	TEXT NOT NULL,
-	"supplier"	INTEGER,
+	"supplier"	INTEGER NOT NULL,
 	PRIMARY KEY("supplier_ref_id"),
 	FOREIGN KEY("supplier") REFERENCES "supplier"("supplier_id") ON DELETE CASCADE
 ) STRICT;

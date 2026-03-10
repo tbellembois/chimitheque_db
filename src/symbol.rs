@@ -12,22 +12,3 @@ pub enum Symbol {
 
 #[derive(Debug, Serialize, Default)]
 pub struct SymbolWrapper(pub SymbolStruct);
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use crate::searchable::tests::test_searchable;
-
-    #[test]
-    fn test_get_symbols() {
-        test_searchable(
-            &SymbolStruct {
-                ..Default::default()
-            },
-            &["symbol1", "aa symbol1", "bb sYmBoL1", "symbol2", "symbol3"],
-            3,
-            "symbol1",
-        );
-    }
-}

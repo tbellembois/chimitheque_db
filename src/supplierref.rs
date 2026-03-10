@@ -83,7 +83,6 @@ pub fn get_supplier_refs(
     debug!("count_values: {count_values:?}");
 
     // Create select query.
-
     let (select_sql, select_values) = expression
         .columns([SupplierRef::SupplierRefId, SupplierRef::SupplierRefLabel])
         .expr_as(
@@ -220,32 +219,5 @@ pub fn create_update_supplier_ref(
 }
 
 #[cfg(test)]
-mod tests {
-
-    use super::*;
-    use log::info;
-
-    #[test]
-    fn test_get_supplier_refs() {
-        let db_connection = crate::test_utils::init_test();
-
-        info!("testing total result");
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        let (_, count) = get_supplier_refs(&db_connection, &filter).unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 17);
-
-        info!("testing filter search");
-        let filter = RequestFilter {
-            search: Some(String::from("Suprapur® grade")),
-            ..Default::default()
-        };
-        let (_, count) = get_supplier_refs(&db_connection, &filter).unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 1);
-    }
-}
+#[path = "supplierref_tests.rs"]
+mod supplierref_tests;

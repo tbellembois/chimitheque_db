@@ -1,4 +1,4 @@
-use crate::init::{connect_test, init_db, insert_fake_values};
+use crate::init::{connect_test, create_tables};
 use rusqlite::Connection;
 use std::sync::Once;
 
@@ -18,7 +18,8 @@ pub fn init_test() -> Connection {
     };
 
     let mut db_connection = connect_test();
-    init_db(&mut db_connection).unwrap();
-    insert_fake_values(&mut db_connection).unwrap();
+
+    create_tables(&mut db_connection).unwrap();
+
     db_connection
 }

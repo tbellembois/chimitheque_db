@@ -219,32 +219,5 @@ pub fn create_update_producer_ref(
 }
 
 #[cfg(test)]
-mod tests {
-
-    use super::*;
-    use log::info;
-
-    #[test]
-    fn test_get_producer_refs() {
-        let db_connection = crate::test_utils::init_test();
-
-        info!("testing total result");
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        let (_, count) = get_producer_refs(&db_connection, &filter).unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 10);
-
-        info!("testing filter search");
-        let filter = RequestFilter {
-            search: Some(String::from("ab8245")),
-            ..Default::default()
-        };
-        let (_, count) = get_producer_refs(&db_connection, &filter).unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 1);
-    }
-}
+#[path = "producerref_tests.rs"]
+mod producerref_tests;
