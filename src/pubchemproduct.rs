@@ -290,25 +290,25 @@ pub fn create_update_product_from_pubchem(
     }
 
     // Signal word.
-    if let Some(signals_text) = pubchem_product.signal {
-        if let Some(signalword_text) = signals_text.first() {
-            let signalword = SignalWord::default();
-            let maybe_signalword = parse(&signalword, db_connection, signalword_text)?;
+    if let Some(signals_text) = pubchem_product.signal
+        && let Some(signalword_text) = signals_text.first()
+    {
+        let signalword = SignalWord::default();
+        let maybe_signalword = parse(&signalword, db_connection, signalword_text)?;
 
-            let signalword_id = match maybe_signalword {
-                Some(signalword) => signalword.get_id(),
-                None => {
-                    return Err(Box::new(ImportPubchemProductError::UnknownSignalword(
-                        signalword_text.to_string(),
-                    )));
-                }
-            };
+        let signalword_id = match maybe_signalword {
+            Some(signalword) => signalword.get_id(),
+            None => {
+                return Err(Box::new(ImportPubchemProductError::UnknownSignalword(
+                    signalword_text.clone(),
+                )));
+            }
+        };
 
-            columns.push(Product::SignalWord);
-            values.push(SimpleExpr::Value(signalword_id.into()));
+        columns.push(Product::SignalWord);
+        values.push(SimpleExpr::Value(signalword_id.into()));
 
-            columns_values.push((Product::SignalWord, SimpleExpr::Value(signalword_id.into())));
-        }
+        columns_values.push((Product::SignalWord, SimpleExpr::Value(signalword_id.into())));
     }
 
     // Symbols.
@@ -323,7 +323,7 @@ pub fn create_update_product_from_pubchem(
                 Some(symbol) => symbol.get_id().unwrap(),
                 None => {
                     return Err(Box::new(ImportPubchemProductError::UnknownSymbol(
-                        symbol_text.to_string(),
+                        symbol_text.clone(),
                     )));
                 }
             };

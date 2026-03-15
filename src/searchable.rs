@@ -128,11 +128,10 @@ pub fn get_many<Var: Searchable + Debug + Default + Serialize>(
         new_item.set_id_field(row_id);
         new_item.set_text_field(&row_text);
 
-        if let Some(search) = maybe_search {
-            if row_text.eq(search) {
+        if let Some(search) = maybe_search
+            && row_text.eq(search) {
                 new_item.set_exact_search(true);
             }
-        }
 
         Ok(new_item)
     })?;

@@ -1953,8 +1953,8 @@ pub fn create_update_product(
     //
     // cas number
     //
-    if let Some(cas_number) = product.cas_number.clone() {
-        if cas_number.cas_number_id.is_none() {
+    if let Some(cas_number) = product.cas_number.clone()
+        && cas_number.cas_number_id.is_none() {
             let cas_number_id = searchable::create_update(
                 &CasNumberStruct {
                     ..Default::default()
@@ -1970,13 +1970,12 @@ pub fn create_update_product(
                 ..Default::default()
             });
         }
-    }
 
     //
     // ce number
     //
-    if let Some(ce_number) = product.ce_number.clone() {
-        if ce_number.ce_number_id.is_none() {
+    if let Some(ce_number) = product.ce_number.clone()
+        && ce_number.ce_number_id.is_none() {
             let ce_number_id = searchable::create_update(
                 &CeNumberStruct {
                     ..Default::default()
@@ -1992,13 +1991,12 @@ pub fn create_update_product(
                 ..Default::default()
             });
         }
-    }
 
     //
     // empirical formula
     //
-    if let Some(empirical_formula) = product.empirical_formula.clone() {
-        if empirical_formula.empirical_formula_id.is_none() {
+    if let Some(empirical_formula) = product.empirical_formula.clone()
+        && empirical_formula.empirical_formula_id.is_none() {
             let empirical_formula_id = searchable::create_update(
                 &EmpiricalFormulaStruct {
                     ..Default::default()
@@ -2014,13 +2012,12 @@ pub fn create_update_product(
                 ..Default::default()
             });
         }
-    }
 
     //
     // linear formula
     //
-    if let Some(linear_formula) = product.linear_formula.clone() {
-        if linear_formula.linear_formula_id.is_none() {
+    if let Some(linear_formula) = product.linear_formula.clone()
+        && linear_formula.linear_formula_id.is_none() {
             let linear_formula_id = searchable::create_update(
                 &LinearFormulaStruct {
                     ..Default::default()
@@ -2036,13 +2033,12 @@ pub fn create_update_product(
                 ..Default::default()
             });
         }
-    }
 
     //
     // category
     //
-    if let Some(category) = product.category.clone() {
-        if category.category_id.is_none() {
+    if let Some(category) = product.category.clone()
+        && category.category_id.is_none() {
             let category_id = searchable::create_update(
                 &CategoryStruct {
                     ..Default::default()
@@ -2058,13 +2054,12 @@ pub fn create_update_product(
                 ..Default::default()
             });
         }
-    }
 
     //
     // producer reference
     //
-    if let Some(producer_ref) = product.producer_ref.clone() {
-        if producer_ref.producer_ref_id.is_none() {
+    if let Some(producer_ref) = product.producer_ref.clone()
+        && producer_ref.producer_ref_id.is_none() {
             let producer_ref_id = Some(producerref::create_update_producer_ref(
                 &db_transaction,
                 &producer_ref,
@@ -2075,7 +2070,6 @@ pub fn create_update_product(
                 ..Default::default()
             });
         }
-    }
 
     //
     // synonyms

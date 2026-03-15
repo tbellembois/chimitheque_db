@@ -1297,8 +1297,8 @@ pub fn create_update_storage(
     //
     // supplier
     //
-    if let Some(supplier) = storage.supplier.clone() {
-        if supplier.supplier_id.is_none() {
+    if let Some(supplier) = storage.supplier.clone()
+        && supplier.supplier_id.is_none() {
             let supplier_id = searchable::create_update(
                 &SupplierStruct {
                     ..Default::default()
@@ -1314,7 +1314,6 @@ pub fn create_update_storage(
                 ..Default::default()
             });
         }
-    }
 
     // Created storage ids
     let mut storage_ids = vec![];
