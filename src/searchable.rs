@@ -1,8 +1,8 @@
 use chimitheque_traits::searchable::Searchable;
 use chimitheque_types::requestfilter::RequestFilter;
-use chimitheque_utils::string::{clean, Transform};
+use chimitheque_utils::string::{Transform, clean};
 use log::debug;
-use rusqlite::{params_from_iter, Connection, ToSql};
+use rusqlite::{Connection, ToSql, params_from_iter};
 use serde::Serialize;
 use std::fmt::Debug;
 use std::fmt::Write as _; // import without risk of name clashing
@@ -52,11 +52,11 @@ pub fn parse(
 // The filter is either 'search' or 'id' or None.
 // 'search' will search by the get_text_field_name() item.
 // 'id' will search by the get_id_field_name() item. This should return only one item by not enforced by this function.
-pub fn get_many(
-    item: &(impl Searchable + Debug + Default + Serialize),
+pub fn get_many<Var: Searchable + Debug + Default + Serialize>(
+    item: &Var,
     db_connection: &Connection,
     filter: &RequestFilter, // Changed to take reference instead of cloning
-) -> Result<(Vec<impl Searchable + Serialize>, usize), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(Vec<Var>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{filter:?}");
 
     // Parameters.
@@ -273,26 +273,18 @@ pub mod tests {
         }
 
         info!("- testing total result for {table_name}");
-        let (searchables, total_count) = get_many(
-            searchable,
-            &db_connection,
-            &RequestFilter {
-                ..Default::default()
-            },
-        )
-        .unwrap();
+        let request_filter = RequestFilter {
+            ..Default::default()
+        };
+        let (searchables, total_count) =
+            get_many(searchable, &db_connection, &request_filter).unwrap();
         assert_eq!(total_count, searchables.len());
 
         info!("- testing filter search for {table_name}");
-        let (searchables, count) = get_many(
-            searchable,
-            &db_connection,
-            &RequestFilter {
-                search: Some(fake_searchables[0].to_owned()),
-                ..Default::default()
-            },
-        )
-        .unwrap();
+        let request_filter = RequestFilter {
+            ..Default::default()
+        };
+        let (searchables, count) = get_many(searchable, &db_connection, &request_filter).unwrap();
         // expected number of results.
         assert_eq!(count, test_search_count);
         // expected exact match appears first.
@@ -329,16 +321,10 @@ pub mod tests {
         assert!(searchables.get_id().is_some());
 
         info!("- testing count with limit for {table_name}");
-        let (searchables, count) = get_many(
-            searchable,
-            &db_connection,
-            &RequestFilter {
-                offset: Some(0),
-                limit: Some(5),
-                ..Default::default()
-            },
-        )
-        .unwrap();
+        let request_filter = RequestFilter {
+            ..Default::default()
+        };
+        let (searchables, count) = get_many(searchable, &db_connection, &request_filter).unwrap();
         assert_eq!(count, total_count);
         assert_eq!(searchables.len(), 5);
 

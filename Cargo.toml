@@ -1,24 +1,37 @@
 [package]
 name = "chimitheque_db"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+authors = ["Thomas Bellembois <thomas.bellembois@proton.me>"]
+description = "A database management library for Chimithèque"
+license = "GPL-3.0"
+repository = "https://github.com/tbellembois/chimitheque_db"
+homepage = "https://github.com/tbellembois/chimitheque_db"
+readme = "README.md"
+categories = ["database", "science"]
+keywords = ["chemistry", "biology", "database", "management"]
+rust-version = "1.94.0"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+chrono = { version = "0.4.41", features = ["serde"] }
+csv = "1.4.0"
 env_logger = "0.11.1"
+image = { version = "0.25.8", default-features = false, features = ["png"] }
 log = "0.4.20"
+qrcode-png = "0.4.1"
+regex = "1.10.4"
 rusqlite = { version = "0.31.0", features = ["load_extension", "bundled"] }
 sea-query = "0.31.0"
 sea-query-rusqlite = "0.6.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.145"
-regex = "1.10.4"
 tempfile = "3.13.0"
-chrono = { version = "0.4.41", features = ["serde"] }
-qrcode-png = "0.4.1"
-image = { version = "0.25.8", default-features = false, features = ["png"] }
-csv = "1.4.0"
 
 chimitheque_types = { path = "../chimitheque_types" }
 chimitheque_utils = { path = "../chimitheque_utils" }

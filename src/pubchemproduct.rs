@@ -81,13 +81,8 @@ pub fn create_update_product_from_pubchem(
     let name_id: Option<u64>;
 
     if let Some(name_text) = pubchem_product.name {
-        let maybe_name = parse(
-            &Name {
-                ..Default::default()
-            },
-            db_connection,
-            &name_text,
-        )?;
+        let name = Name::default();
+        let maybe_name = parse(&name, db_connection, &name_text)?;
 
         name_id = match maybe_name {
             Some(name) => name.get_id(),
@@ -187,7 +182,7 @@ pub fn create_update_product_from_pubchem(
                     ImportPubchemProductError::UnknownMolecularWeightUnit(
                         molecularweight_unit_text,
                     ),
-                ))
+                ));
             }
         };
 
@@ -208,13 +203,8 @@ pub fn create_update_product_from_pubchem(
             )));
         }
 
-        let maybe_casnumber = parse(
-            &CasNumber {
-                ..Default::default()
-            },
-            db_connection,
-            &casnumber_text,
-        )?;
+        let casnumber = CasNumber::default();
+        let maybe_casnumber = parse(&casnumber, db_connection, &casnumber_text)?;
 
         let casnumber_id = match maybe_casnumber {
             Some(casnumber) => casnumber.get_id(),
@@ -243,16 +233,11 @@ pub fn create_update_product_from_pubchem(
             )));
         }
 
-        let maybe_ecnumber = parse(
-            &CeNumber {
-                ..Default::default()
-            },
-            db_connection,
-            &cenumber_text,
-        )?;
+        let cenumber = CeNumber::default();
+        let maybe_cenumber = parse(&cenumber, db_connection, &cenumber_text)?;
 
-        let ecnumber_id = match maybe_ecnumber {
-            Some(ecnumber) => ecnumber.get_id(),
+        let cenumber_id = match maybe_cenumber {
+            Some(cenumber) => cenumber.get_id(),
             None => Some(create_update(
                 &CeNumber {
                     ..Default::default()
@@ -265,22 +250,22 @@ pub fn create_update_product_from_pubchem(
         };
 
         columns.push(Product::CeNumber);
-        values.push(SimpleExpr::Value(ecnumber_id.into()));
+        values.push(SimpleExpr::Value(cenumber_id.into()));
 
-        columns_values.push((Product::CeNumber, SimpleExpr::Value(ecnumber_id.into())));
+        columns_values.push((Product::CeNumber, SimpleExpr::Value(cenumber_id.into())));
     }
 
     // Empirical formula.
     if let Some(empiricalformula_text) = pubchem_product.molecular_formula {
         let sorted_empiricalformula = sort_empirical_formula(&empiricalformula_text)?;
 
-        let maybe_empiricalformula = parse(
-            &EmpiricalFormula {
-                ..Default::default()
-            },
-            db_connection,
-            &sorted_empiricalformula,
-        )?;
+        let empiricalformula = EmpiricalFormula {
+            match_exact_search: true,
+            empirical_formula_id: None,
+            empirical_formula_label: sorted_empiricalformula.clone(),
+        };
+        let maybe_empiricalformula =
+            parse(&empiricalformula, db_connection, &sorted_empiricalformula)?;
 
         let empiricalformula_id = match maybe_empiricalformula {
             Some(empiricalformula) => empiricalformula.get_id(),
@@ -306,21 +291,16 @@ pub fn create_update_product_from_pubchem(
 
     // Signal word.
     if let Some(signals_text) = pubchem_product.signal {
-        if let Some(signalword) = signals_text.first() {
-            let maybe_signalword = parse(
-                &SignalWord {
-                    ..Default::default()
-                },
-                db_connection,
-                signalword,
-            )?;
+        if let Some(signalword_text) = signals_text.first() {
+            let signalword = SignalWord::default();
+            let maybe_signalword = parse(&signalword, db_connection, signalword_text)?;
 
             let signalword_id = match maybe_signalword {
                 Some(signalword) => signalword.get_id(),
                 None => {
                     return Err(Box::new(ImportPubchemProductError::UnknownSignalword(
-                        signalword.clone(),
-                    )))
+                        signalword_text.to_string(),
+                    )));
                 }
             };
 
@@ -334,19 +314,18 @@ pub fn create_update_product_from_pubchem(
     // Symbols.
     let mut symbol_ids: Vec<u64> = Vec::new();
 
-    if let Some(symbols_text) = pubchem_product.symbols {
-        for symbol in symbols_text {
-            let maybe_symbol = parse(
-                &Symbol {
-                    ..Default::default()
-                },
-                db_connection,
-                &symbol,
-            )?;
+    if let Some(symbols_texts) = pubchem_product.symbols {
+        for symbol_text in symbols_texts {
+            let symbol = Symbol::default();
+            let maybe_symbol = parse(&symbol, db_connection, &symbol_text)?;
 
             let symbol_id = match maybe_symbol {
                 Some(symbol) => symbol.get_id().unwrap(),
-                None => return Err(Box::new(ImportPubchemProductError::UnknownSymbol(symbol))),
+                None => {
+                    return Err(Box::new(ImportPubchemProductError::UnknownSymbol(
+                        symbol_text.to_string(),
+                    )));
+                }
             };
 
             symbol_ids.push(symbol_id);
@@ -365,7 +344,7 @@ pub fn create_update_product_from_pubchem(
                 None => {
                     return Err(Box::new(ImportPubchemProductError::UnknownHazardstatement(
                         hazardstatement,
-                    )))
+                    )));
                 }
             };
 
@@ -390,7 +369,7 @@ pub fn create_update_product_from_pubchem(
                         ImportPubchemProductError::UnknownPrecautionarystatement(
                             precautionarystatement,
                         ),
-                    ))
+                    ));
                 }
             };
 
@@ -517,99 +496,113 @@ mod tests {
         let mut db_connection = crate::test_utils::init_test();
 
         info!("testing create product from pubchem");
-        assert!(create_update_product_from_pubchem(
-            &mut db_connection,
-            PubchemProduct {
-                name: Some("aspirin".to_string()),
-                ..Default::default()
-            },
-            1,
-            None,
-        )
-        .is_ok_and(|id| id > 0));
+        assert!(
+            create_update_product_from_pubchem(
+                &mut db_connection,
+                PubchemProduct {
+                    name: Some("aspirin".to_string()),
+                    ..Default::default()
+                },
+                1,
+                None,
+            )
+            .is_ok_and(|id| id > 0)
+        );
 
-        assert!(create_update_product_from_pubchem(
-            &mut db_connection,
-            PubchemProduct {
-                ..Default::default()
-            },
-            1,
-            None,
-        )
-        .is_err_and(|e| e.to_string().eq("empty name")));
+        assert!(
+            create_update_product_from_pubchem(
+                &mut db_connection,
+                PubchemProduct {
+                    ..Default::default()
+                },
+                1,
+                None,
+            )
+            .is_err_and(|e| e.to_string().eq("empty name"))
+        );
 
-        assert!(create_update_product_from_pubchem(
-            &mut db_connection,
-            PubchemProduct {
-                name: Some("aspirin".to_string()),
-                hs: Some(vec!["foo".to_string()]),
-                ..Default::default()
-            },
-            1,
-            None,
-        )
-        .is_err_and(|e| e.to_string().eq("unknown hazard statement foo")));
+        assert!(
+            create_update_product_from_pubchem(
+                &mut db_connection,
+                PubchemProduct {
+                    name: Some("aspirin".to_string()),
+                    hs: Some(vec!["foo".to_string()]),
+                    ..Default::default()
+                },
+                1,
+                None,
+            )
+            .is_err_and(|e| e.to_string().eq("unknown hazard statement foo"))
+        );
 
-        assert!(create_update_product_from_pubchem(
-            &mut db_connection,
-            PubchemProduct {
-                name: Some("aspirin".to_string()),
-                ps: Some(vec!["foo".to_string()]),
-                ..Default::default()
-            },
-            1,
-            None,
-        )
-        .is_err_and(|e| e.to_string().eq("unknown precautionary statement foo")));
+        assert!(
+            create_update_product_from_pubchem(
+                &mut db_connection,
+                PubchemProduct {
+                    name: Some("aspirin".to_string()),
+                    ps: Some(vec!["foo".to_string()]),
+                    ..Default::default()
+                },
+                1,
+                None,
+            )
+            .is_err_and(|e| e.to_string().eq("unknown precautionary statement foo"))
+        );
 
-        assert!(create_update_product_from_pubchem(
-            &mut db_connection,
-            PubchemProduct {
-                name: Some("aspirin".to_string()),
-                signal: Some(vec!["foo".to_string()]),
-                ..Default::default()
-            },
-            1,
-            None,
-        )
-        .is_err_and(|e| e.to_string().eq("unknown signal word foo")));
+        assert!(
+            create_update_product_from_pubchem(
+                &mut db_connection,
+                PubchemProduct {
+                    name: Some("aspirin".to_string()),
+                    signal: Some(vec!["foo".to_string()]),
+                    ..Default::default()
+                },
+                1,
+                None,
+            )
+            .is_err_and(|e| e.to_string().eq("unknown signal word foo"))
+        );
 
-        assert!(create_update_product_from_pubchem(
-            &mut db_connection,
-            PubchemProduct {
-                name: Some("aspirin".to_string()),
-                molecular_weight_unit: Some("foo".to_string()),
-                ..Default::default()
-            },
-            1,
-            None,
-        )
-        .is_err_and(|e| e.to_string().eq("unknown molecular weight unit foo")));
+        assert!(
+            create_update_product_from_pubchem(
+                &mut db_connection,
+                PubchemProduct {
+                    name: Some("aspirin".to_string()),
+                    molecular_weight_unit: Some("foo".to_string()),
+                    ..Default::default()
+                },
+                1,
+                None,
+            )
+            .is_err_and(|e| e.to_string().eq("unknown molecular weight unit foo"))
+        );
 
-        assert!(create_update_product_from_pubchem(
-            &mut db_connection,
-            PubchemProduct {
-                name: Some("aspirin".to_string()),
-                iupac_name: Some("iupac_name".to_string()),
-                inchi: Some("inchi".to_string()),
-                inchi_key: Some("inchi_key".to_string()),
-                canonical_smiles: Some("canonical_smiles".to_string()),
-                molecular_formula: Some("molecular_formula".to_string()),
-                cas: Some("100-00-5".to_string()),
-                ec: Some("214-480-6".to_string()),
-                molecular_weight: Some("1.5".to_string()),
-                molecular_weight_unit: Some("g/mol".to_string()),
-                boiling_point: Some("boiling_point".to_string()),
-                synonyms: Some(vec!["foo".to_string(), "bar".to_string()]),
-                symbols: Some(vec!["GHS01".to_string(), "GHS02".to_string()]),
-                signal: Some(vec!["danger".to_string()]),
-                hs: Some(vec!["H371".to_string(), "H372".to_string()]),
-                ps: Some(vec!["P390".to_string(), "P261".to_string()]),
-                twodpicture: Some("twodpicture".to_string()),
-            },
-            1,
-            None,
-        )
-        .is_ok());
+        assert!(
+            create_update_product_from_pubchem(
+                &mut db_connection,
+                PubchemProduct {
+                    name: Some("aspirin".to_string()),
+                    iupac_name: Some("iupac_name".to_string()),
+                    inchi: Some("inchi".to_string()),
+                    inchi_key: Some("inchi_key".to_string()),
+                    canonical_smiles: Some("canonical_smiles".to_string()),
+                    molecular_formula: Some("molecular_formula".to_string()),
+                    cas: Some("100-00-5".to_string()),
+                    ec: Some("214-480-6".to_string()),
+                    molecular_weight: Some("1.5".to_string()),
+                    molecular_weight_unit: Some("g/mol".to_string()),
+                    boiling_point: Some("boiling_point".to_string()),
+                    synonyms: Some(vec!["foo".to_string(), "bar".to_string()]),
+                    symbols: Some(vec!["GHS01".to_string(), "GHS02".to_string()]),
+                    signal: Some(vec!["danger".to_string()]),
+                    hs: Some(vec!["H371".to_string(), "H372".to_string()]),
+                    ps: Some(vec!["P390".to_string(), "P261".to_string()]),
+                    twodpicture: Some("twodpicture".to_string()),
+                },
+                1,
+                None,
+            )
+            .is_ok()
+        );
     }
 }
