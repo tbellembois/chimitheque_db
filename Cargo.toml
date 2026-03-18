@@ -33,6 +33,15 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.145"
 tempfile = "3.13.0"
 
+chimitheque_types = { git = "https://github.com/tbellembois/chimitheque_types.git", branch = "main" }
+chimitheque_traits = { git = "https://github.com/tbellembois/chimitheque_traits.git", branch = "main" }
+chimitheque_utils = { git = "https://github.com/tbellembois/chimitheque_utils.git", branch = "main" }
+
+[patch."https://github.com/tbellembois/chimitheque_types.git"]
 chimitheque_types = { path = "../chimitheque_types" }
-chimitheque_utils = { path = "../chimitheque_utils" }
+
+[patch."https://github.com/tbellembois/chimitheque_traits.git"]
 chimitheque_traits = { path = "../chimitheque_traits" }
+
+[patch."https://github.com/tbellembois/chimitheque_utils.git"]
+chimitheque_utils = { path = "../chimitheque_utils" }
