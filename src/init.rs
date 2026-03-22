@@ -279,10 +279,7 @@ mod tests {
     fn init_test() {
         let _ = env_logger::builder().is_test(true).try_init();
         unsafe {
-            std::env::set_var(
-                "SQLITE_EXTENSION_DIR",
-                "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions",
-            );
+            std::env::set_var("SQLITE_EXTENSION_DIR", "src/extensions");
         };
     }
 
