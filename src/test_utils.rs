@@ -11,10 +11,7 @@ pub fn init_test() -> Connection {
     });
 
     unsafe {
-        std::env::set_var(
-            "SQLITE_EXTENSION_DIR",
-            "/home/thbellem/workspace/workspace_rust/chimitheque_db/src/extensions",
-        );
+        std::env::set_var("SQLITE_EXTENSION_DIR", "src/extensions");
     };
 
     let mut db_connection = connect_test();
