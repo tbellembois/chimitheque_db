@@ -1,10 +1,15 @@
 #[cfg(test)]
 mod tests {
-
-    use std::vec;
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::too_many_lines
+    )]
 
     use crate::{init::populate_db_with_base_data, pubchemproduct::*};
     use log::info;
+    use std::vec;
 
     fn init_test_pubchemproduct() -> Connection {
         let mut db = crate::test_utils::init_test();

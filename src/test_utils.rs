@@ -1,3 +1,10 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::too_many_lines
+)]
+
 use crate::init::{connect_test, create_tables};
 use rusqlite::Connection;
 use std::sync::Once;

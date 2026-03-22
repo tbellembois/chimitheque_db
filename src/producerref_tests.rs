@@ -1,5 +1,12 @@
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::too_many_lines
+    )]
+
     use crate::producerref::*;
     use chimitheque_types::requestfilter::RequestFilter;
     use log::info;
@@ -142,9 +149,11 @@ mod tests {
         // expected number of results.
         assert_eq!(count, 6);
         assert_eq!(producer_refs.len(), 6);
-        assert!(producer_refs
-            .iter()
-            .all(|s| s.producer.producer_id == Some(1)));
+        assert!(
+            producer_refs
+                .iter()
+                .all(|s| s.producer.producer_id == Some(1))
+        );
     }
 
     #[test]

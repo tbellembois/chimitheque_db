@@ -1,10 +1,15 @@
 #[cfg(test)]
 mod tests {
-
-    use std::collections::HashMap;
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::too_many_lines
+    )]
 
     use crate::entity::*;
     use rusqlite::Connection;
+    use std::collections::HashMap;
 
     fn init_test_entity() -> Connection {
         let db = crate::test_utils::init_test();

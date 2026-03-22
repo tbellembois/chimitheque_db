@@ -1,5 +1,11 @@
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::too_many_lines
+    )]
 
     use crate::{init::populate_db_with_base_data, precautionarystatement::*};
     use chimitheque_types::requestfilter::RequestFilter;

@@ -1,5 +1,11 @@
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::too_many_lines
+    )]
 
     use crate::unit::*;
     use chimitheque_types::unittype::UnitType;
