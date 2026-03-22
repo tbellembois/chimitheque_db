@@ -19,8 +19,8 @@ use qrcode_png::{Color, QrCode, QrCodeEcc};
 use regex::Regex;
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
-    any, Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
-    SqliteQueryBuilder,
+    Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
+    SqliteQueryBuilder, any,
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
@@ -48,7 +48,7 @@ use crate::{
     producttags::Producttags,
     searchable,
     signalword::SignalWord,
-    storelocation::{get_store_locations, StoreLocation},
+    storelocation::{StoreLocation, get_store_locations},
     supplier::Supplier,
     symbol::Symbol,
     tag::Tag,
@@ -1264,11 +1264,11 @@ fn compute_storage_barecode_parts(
             |row| {
                 let barecode_major = row
                     .get::<_, Option<i64>>("barecode_major")?
-                    .map(|v| v as u64);
+                    .map(i64::cast_unsigned);
 
                 let barecode_minor = row
                     .get::<_, Option<i64>>("barecode_minor")?
-                    .map(|v| v as u64);
+                    .map(i64::cast_unsigned);
 
                 Ok((barecode_major, barecode_minor))
             },
@@ -1298,22 +1298,23 @@ pub fn create_update_storage(
     // supplier
     //
     if let Some(supplier) = storage.supplier.clone()
-        && supplier.supplier_id.is_none() {
-            let supplier_id = searchable::create_update(
-                &SupplierStruct {
-                    ..Default::default()
-                },
-                None,
-                &db_transaction,
-                supplier.supplier_label.as_str(),
-                Transform::None,
-            )?;
-            storage.supplier = Some(SupplierStruct {
-                supplier_id: Some(supplier_id),
-                supplier_label: supplier.supplier_label,
+        && supplier.supplier_id.is_none()
+    {
+        let supplier_id = searchable::create_update(
+            &SupplierStruct {
                 ..Default::default()
-            });
-        }
+            },
+            None,
+            &db_transaction,
+            supplier.supplier_label.as_str(),
+            Transform::None,
+        )?;
+        storage.supplier = Some(SupplierStruct {
+            supplier_id: Some(supplier_id),
+            supplier_label: supplier.supplier_label,
+            ..Default::default()
+        });
+    }
 
     // Created storage ids
     let mut storage_ids = vec![];
