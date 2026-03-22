@@ -177,39 +177,5 @@ pub fn get_hazard_statements(
 }
 
 #[cfg(test)]
-mod tests {
-
-    use super::*;
-    use chimitheque_types::requestfilter::RequestFilter;
-    use log::info;
-
-    #[test]
-    fn test_parse_hazard_statement() {
-        let db_connection = crate::test_utils::init_test();
-
-        info!("testing parse");
-        assert!(parse(&db_connection, "H301").is_ok_and(|u| u.is_some()));
-        assert!(parse(&db_connection, "not exist").is_ok_and(|u| u.is_none()));
-    }
-
-    #[test]
-    fn test_get_hazard_statements() {
-        let db_connection = crate::test_utils::init_test();
-
-        info!("testing ok result");
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        assert!(get_hazard_statements(&db_connection, &filter,).is_ok());
-
-        info!("testing filter search");
-        let filter = RequestFilter {
-            search: Some(String::from("H20")),
-            ..Default::default()
-        };
-        let (_, count) = get_hazard_statements(&db_connection, &filter).unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 10);
-    }
-}
+#[path = "hazardstatement_tests.rs"]
+mod hazardstatement_tests;

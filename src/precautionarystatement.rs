@@ -180,39 +180,5 @@ pub fn get_precautionary_statements(
 }
 
 #[cfg(test)]
-mod tests {
-
-    use super::*;
-    use chimitheque_types::requestfilter::RequestFilter;
-    use log::info;
-
-    #[test]
-    fn test_parse_precautionary_statement() {
-        let db_connection = crate::test_utils::init_test();
-
-        info!("testing parse");
-        assert!(parse(&db_connection, "P322").is_ok_and(|u| u.is_some()));
-        assert!(parse(&db_connection, "not exist").is_ok_and(|u| u.is_none()));
-    }
-
-    #[test]
-    fn test_get_precautionary_statements() {
-        let db_connection = crate::test_utils::init_test();
-
-        info!("testing ok result");
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        assert!(get_precautionary_statements(&db_connection, &filter,).is_ok());
-
-        info!("testing filter search");
-        let filter = RequestFilter {
-            search: Some(String::from("P263")),
-            ..Default::default()
-        };
-        let (_, count) = get_precautionary_statements(&db_connection, &filter).unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 1);
-    }
-}
+#[path = "precautionarystatement_tests.rs"]
+mod precautionarystatement_tests;

@@ -77,19 +77,6 @@ pub fn create_tables(
     Ok(())
 }
 
-pub fn insert_fake_values(db_connection: &mut Connection) -> Result<(), rusqlite::Error> {
-    let sql = include_str!("resources/sample.sql");
-
-    info!("adding fake database values");
-
-    let mut batch = Batch::new(db_connection, sql);
-    while let Some(mut stmt) = batch.next()? {
-        stmt.execute([])?;
-    }
-
-    Ok(())
-}
-
 pub fn populate_db_with_base_data(
     db_connection: &mut Connection,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -309,6 +296,7 @@ mod tests {
     fn init_db_success() {
         init_test();
         let mut db_connection = connect_test();
+        create_tables(&mut db_connection).unwrap();
         assert!(populate_db_with_base_data(&mut db_connection).is_ok());
     }
 
@@ -316,16 +304,9 @@ mod tests {
     fn update_ghs_statements_success() {
         init_test();
         let mut db_connection = connect_test();
+        create_tables(&mut db_connection).unwrap();
         populate_db_with_base_data(&mut db_connection).unwrap();
         let tx = db_connection.transaction().unwrap();
         assert!(update_ghs_statements(&tx).is_ok());
-    }
-
-    #[test]
-    fn insert_fake_values_success() {
-        init_test();
-        let mut db_connection = connect_test();
-        populate_db_with_base_data(&mut db_connection).unwrap();
-        assert!(insert_fake_values(&mut db_connection).is_ok());
     }
 }

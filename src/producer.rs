@@ -171,32 +171,5 @@ pub fn get_producers(
 // }
 
 #[cfg(test)]
-mod tests {
-
-    use super::*;
-    use log::info;
-
-    #[test]
-    fn test_get_producers() {
-        let db_connection = crate::test_utils::init_test();
-
-        info!("testing ok result");
-        assert!(get_producers(
-            &db_connection,
-            &RequestFilter {
-                ..Default::default()
-            },
-        )
-        .is_ok());
-
-        info!("testing filter search");
-        let filter = RequestFilter {
-            search: Some(String::from("Abcam")),
-            ..Default::default()
-        };
-        let (_, count) = get_producers(&db_connection, &filter).unwrap();
-
-        // expected number of results.
-        assert_eq!(count, 1);
-    }
-}
+#[path = "producer_tests.rs"]
+mod producer_tests;

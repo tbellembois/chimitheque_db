@@ -562,52 +562,5 @@ pub fn match_store_location_is_in_entity(
 }
 
 #[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[test]
-    fn test_casbin() {
-        let db_connection = crate::test_utils::init_test();
-
-        assert!(match_person_is_in_entity(&db_connection, 5, 1).unwrap());
-        assert!(!match_person_is_in_entity(&db_connection, 5, 2).unwrap());
-
-        assert!(match_person_is_in_person_entity(&db_connection, 2, 5).unwrap());
-        assert!(!match_person_is_in_person_entity(&db_connection, 2, 6).unwrap());
-
-        assert!(match_person_is_in_store_location_entity(&db_connection, 2, 1).unwrap());
-        assert!(!match_person_is_in_store_location_entity(&db_connection, 2, 4).unwrap());
-
-        assert!(match_person_is_in_storage_entity(&db_connection, 2, 1).unwrap());
-        assert!(!match_person_is_in_storage_entity(&db_connection, 2, 18).unwrap());
-
-        assert!(match_product_has_storages(&db_connection, 1).unwrap());
-        assert!(match_product_has_storages(&db_connection, 2).unwrap());
-        assert!(!match_product_has_storages(&db_connection, 21).unwrap());
-
-        assert!(match_store_location_has_children(&db_connection, 1).unwrap());
-        assert!(!match_store_location_has_children(&db_connection, 10).unwrap());
-
-        assert!(match_store_location_has_storages(&db_connection, 2).unwrap());
-        assert!(!match_store_location_has_storages(&db_connection, 4).unwrap());
-
-        assert!(match_person_is_admin(&db_connection, 1).unwrap());
-        assert!(!match_person_is_admin(&db_connection, 2).unwrap());
-
-        assert!(match_person_is_manager(&db_connection, 2).unwrap());
-        assert!(!match_person_is_manager(&db_connection, 5).unwrap());
-
-        assert!(match_entity_has_members(&db_connection, 2).unwrap());
-        assert!(!match_entity_has_members(&db_connection, 4).unwrap());
-
-        assert!(match_entity_has_store_locations(&db_connection, 2).unwrap());
-        assert!(!match_entity_has_store_locations(&db_connection, 4).unwrap());
-
-        assert!(match_store_location_is_in_entity(&db_connection, 1, 1).unwrap());
-        assert!(!match_store_location_is_in_entity(&db_connection, 1, 3).unwrap());
-
-        assert!(match_storage_is_in_entity(&db_connection, 1, 1).unwrap());
-        assert!(!match_storage_is_in_entity(&db_connection, 1, 3).unwrap());
-    }
-}
+#[path = "casbin_tests.rs"]
+mod casbin_tests;

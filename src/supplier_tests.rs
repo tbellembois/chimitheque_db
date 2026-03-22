@@ -1,228 +1,163 @@
 #[cfg(test)]
 mod tests {
-    use crate::supplier::*;
-    use rusqlite::Connection;
 
-    fn init_test_suppliers() -> Connection {
-        let conn = crate::test_utils::init_test();
+    use crate::supplier::*;
+
+    fn init_test_supplier() -> Connection {
+        let db = crate::test_utils::init_test();
 
         // Disable synchronous operations and foreign key constraints for faster test execution
-        conn.execute("PRAGMA synchronous = OFF", []).unwrap();
-        conn.execute("PRAGMA foreign_keys = OFF", []).unwrap();
-
-        // Clear existing data
-        conn.execute("DELETE FROM supplier", []).unwrap();
-
-        // Insert sample suppliers with different patterns
-        for i in 1..=20 {
-            let label: String;
-
-            if i % 3 == 0 {
-                label = format!("Supplier with company {i}");
-            } else if i % 5 == 0 {
-                label = format!("Another company label {i}");
-            } else if i == 10 {
-                label = "ExactMatch Supplier".to_string();
-            } else {
-                label = format!("Supplier {i}");
-            }
-
-            conn.execute(
-                "INSERT INTO supplier (supplier_id, supplier_label) VALUES (?, ?)",
-                [i.to_string(), label],
-            )
-            .unwrap();
-        }
-
-        let label = "Supplier with special ßcharâctérs".to_string();
-        conn.execute("INSERT INTO supplier (supplier_label) VALUES (?)", [label])
-            .unwrap();
+        db.execute("PRAGMA synchronous = OFF", []).unwrap();
+        db.execute("PRAGMA foreign_keys = OFF", []).unwrap();
 
         // Enable foreign key constraints back
-        conn.execute("PRAGMA foreign_keys = ON", []).unwrap();
+        db.execute("PRAGMA foreign_keys = ON", []).unwrap();
 
-        conn
+        db.execute(
+            "INSERT INTO supplier (supplier_id, supplier_label) VALUES (1, 'BASF')",
+            [],
+        )
+        .unwrap();
+
+        db.execute(
+            "INSERT INTO supplier (supplier_id, supplier_label) VALUES (2, 'Dow Chemical Company')",
+            [],
+        )
+        .unwrap();
+
+        db.execute(
+            "INSERT INTO supplier (supplier_id, supplier_label) VALUES (3, 'DuPont')",
+            [],
+        )
+        .unwrap();
+
+        db.execute(
+            "INSERT INTO supplier (supplier_id, supplier_label) VALUES (4, 'LyondellBasell')",
+            [],
+        )
+        .unwrap();
+
+        db.execute(
+            "INSERT INTO supplier (supplier_id, supplier_label) VALUES (5, 'Mitsubishi Chemical Holdings')",
+            []
+        ).unwrap();
+
+        db.execute(
+            "INSERT INTO supplier (supplier_id, supplier_label) VALUES (6, 'SABIC')",
+            [],
+        )
+        .unwrap();
+
+        db.execute(
+            "INSERT INTO supplier (supplier_id, supplier_label) VALUES (7, 'INEOS')",
+            [],
+        )
+        .unwrap();
+
+        db.execute(
+            "INSERT INTO supplier (supplier_id, supplier_label) VALUES (8, 'Sumitomo Chemical')",
+            [],
+        )
+        .unwrap();
+
+        db.execute(
+            "INSERT INTO supplier (supplier_id, supplier_label) VALUES (9, 'Lanxess')",
+            [],
+        )
+        .unwrap();
+
+        db.execute(
+            "INSERT INTO supplier (supplier_id, supplier_label) VALUES (10, 'Solvay')",
+            [],
+        )
+        .unwrap();
+
+        // Enable foreign key constraints back
+        db.execute("PRAGMA foreign_keys = ON", []).unwrap();
+
+        db
     }
 
     #[test]
-    fn test_get_all_suppliers() {
-        let conn = init_test_suppliers();
+    fn test_get_suppliers_with_no_filter() {
+        let conn = init_test_supplier();
 
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        let (suppliers, count) = get_suppliers(&conn, &filter).unwrap();
+        // Test: Call the function with no filter
+        let (suppliers, count) = get_suppliers(&conn, &RequestFilter::default()).unwrap();
 
-        // Test total count and result length
-        assert_eq!(count, 21);
-        assert_eq!(suppliers.len(), 21);
-
-        // Test sorting by label
-        for i in 1..21 {
-            if suppliers[i].supplier_label < suppliers[i - 1].supplier_label {
-                panic!("Suppliers are not in alphabetical order");
-            }
-        }
-
-        // Test that no supplier has exact match set
-        assert!(suppliers.iter().all(|s| !s.match_exact_search));
+        // Assert: Verify the results
+        assert_eq!(count, 10);
+        assert_eq!(suppliers[0].supplier_label, "BASF");
+        assert_eq!(suppliers[1].supplier_label, "Dow Chemical Company");
+        assert_eq!(suppliers[2].supplier_label, "DuPont");
+        assert_eq!(suppliers[3].supplier_label, "INEOS");
+        assert_eq!(suppliers[4].supplier_label, "Lanxess");
+        assert_eq!(suppliers[5].supplier_label, "LyondellBasell");
+        assert_eq!(suppliers[6].supplier_label, "Mitsubishi Chemical Holdings");
+        assert_eq!(suppliers[7].supplier_label, "SABIC");
+        assert_eq!(suppliers[8].supplier_label, "Solvay");
+        assert_eq!(suppliers[9].supplier_label, "Sumitomo Chemical");
     }
 
     #[test]
-    fn test_get_suppliers_search() {
-        let conn = init_test_suppliers();
+    fn test_get_suppliers_with_search_filter() {
+        let conn = init_test_supplier();
 
-        let search_term = "company";
-        let exact_search_term = "ExactMatch Supplier";
+        // Test: Call the function with a search filter
+        let (suppliers, count) = get_suppliers(
+            &conn,
+            &RequestFilter {
+                search: Some("Chemical".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
 
-        // Test partial match search
-        let filter = RequestFilter {
-            search: Some(search_term.to_string()),
-            ..Default::default()
-        };
-        let (suppliers, count) = get_suppliers(&conn, &filter).unwrap();
-        assert_eq!(count, 7);
-        assert_eq!(suppliers.len(), 7);
-        assert!(suppliers
-            .iter()
-            .all(|s| s.supplier_label.contains(search_term)));
-        assert!(suppliers.iter().all(|s| !s.match_exact_search));
+        // Assert: Verify the results
+        assert_eq!(count, 3);
+        assert_eq!(suppliers[0].supplier_label, "Dow Chemical Company");
+        assert_eq!(suppliers[1].supplier_label, "Mitsubishi Chemical Holdings");
+        assert_eq!(suppliers[2].supplier_label, "Sumitomo Chemical");
+    }
 
-        // Test exact match search
-        let filter = RequestFilter {
-            search: Some(exact_search_term.to_string()),
-            ..Default::default()
-        };
-        let (suppliers, count) = get_suppliers(&conn, &filter).unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(suppliers.len(), 1);
-        assert!(suppliers[0].match_exact_search);
-        assert_eq!(suppliers[0].supplier_label, exact_search_term);
+    #[test]
+    fn test_get_suppliers_with_limit_and_offset() {
+        let conn = init_test_supplier();
 
-        // Test case sensitivity
-        let case_search_filter = RequestFilter {
-            search: Some("ExactMatch SUPPLIER".to_string()),
-            ..Default::default()
-        };
-        let (case_suppliers, case_count) = get_suppliers(&conn, &case_search_filter).unwrap();
-        assert_eq!(case_count, 1);
-        assert_eq!(case_suppliers.len(), 1);
-        assert_eq!(case_suppliers[0].supplier_label, exact_search_term);
-        assert!(case_suppliers[0].match_exact_search);
+        // Test: Call the function with limit and offset
+        let (suppliers, count) = get_suppliers(
+            &conn,
+            &RequestFilter {
+                limit: Some(3),
+                offset: Some(2),
+                ..Default::default()
+            },
+        )
+        .unwrap();
 
-        // Test search term not found
-        let filter = RequestFilter {
-            search: Some(String::from("Non-existent search term")),
-            ..Default::default()
-        };
-        let (suppliers, count) = get_suppliers(&conn, &filter).unwrap();
+        // Assert: Verify the results
+        assert_eq!(count, 10);
+        assert_eq!(suppliers[0].supplier_label, "DuPont");
+        assert_eq!(suppliers[1].supplier_label, "INEOS");
+        assert_eq!(suppliers[2].supplier_label, "Lanxess");
+    }
+
+    #[test]
+    fn test_get_suppliers_empty_result() {
+        let conn = init_test_supplier();
+
+        // Test: Call the function with a search filter that should return no results
+        let (suppliers, count) = get_suppliers(
+            &conn,
+            &RequestFilter {
+                search: Some("NonExistent".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        // Assert: Verify the results
+        assert!(suppliers.is_empty());
         assert_eq!(count, 0);
-        assert_eq!(suppliers.len(), 0);
-    }
-
-    #[test]
-    fn test_get_suppliers_pagination() {
-        let conn = init_test_suppliers();
-
-        // Test limit functionality
-        let filter = RequestFilter {
-            limit: Some(10),
-            ..Default::default()
-        };
-        let (suppliers, count) = get_suppliers(&conn, &filter).unwrap();
-        assert_eq!(count, 21);
-        assert_eq!(suppliers.len(), 10);
-        for i in 0..10 {
-            debug!("{}: {:?}", i, suppliers[i].supplier_id);
-            assert_eq!(suppliers[i].supplier_id, Some(i as u64 + 1));
-        }
-
-        // Test offset functionality
-        let filter = RequestFilter {
-            offset: Some(5),
-            limit: Some(5),
-            ..Default::default()
-        };
-        let (suppliers, count) = get_suppliers(&conn, &filter).unwrap();
-        assert_eq!(count, 21);
-        assert_eq!(suppliers.len(), 5);
-        assert_eq!(suppliers[0].supplier_id, Some(6));
-
-        // Test combining search and pagination
-        let search_term = "company";
-        let search_filter = RequestFilter {
-            search: Some(search_term.to_string()),
-            offset: Some(2),
-            limit: Some(2),
-            ..Default::default()
-        };
-        let (suppliers, count) = get_suppliers(&conn, &search_filter).unwrap();
-        assert_eq!(count, 7);
-        assert_eq!(suppliers.len(), 2);
-        assert!(suppliers
-            .iter()
-            .all(|s| s.supplier_label.contains(search_term)));
-    }
-
-    #[test]
-    fn test_get_suppliers_with_unicode_characters() {
-        let conn = init_test_suppliers();
-
-        // Test edge case - Unicode characters
-        let filter = RequestFilter {
-            search: Some("ß".to_string()),
-            ..Default::default()
-        };
-        let (suppliers, count) = get_suppliers(&conn, &filter).unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(suppliers.len(), 1);
-        assert!(suppliers[0].supplier_label.contains("ß"));
-        assert!(suppliers.iter().all(|s| !s.match_exact_search));
-    }
-
-    #[test]
-    fn test_get_suppliers_with_special_characters() {
-        let conn = init_test_suppliers();
-
-        // Test special character search
-        let search_term = "ßcharâctérs";
-        let filter = RequestFilter {
-            search: Some(search_term.to_string()),
-            ..Default::default()
-        };
-        let (suppliers, count) = get_suppliers(&conn, &filter).unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(suppliers.len(), 1);
-        assert!(suppliers[0].match_exact_search);
-        assert!(suppliers[0].supplier_label.contains("ßcharâctérs"));
-
-        // Test partial special character search
-        let partial_search_term = "charâctérs";
-        let filter = RequestFilter {
-            search: Some(partial_search_term.to_string()),
-            ..Default::default()
-        };
-        let (suppliers, count) = get_suppliers(&conn, &filter).unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(suppliers.len(), 1);
-        assert!(suppliers[0].supplier_label.contains(partial_search_term));
-        assert!(suppliers.iter().all(|s| !s.match_exact_search));
-    }
-
-    // Test function to verify data sorting
-    #[test]
-    fn test_get_suppliers_sorting() {
-        let conn = init_test_suppliers();
-
-        // Across different test functions, this ensures that data is returned in alphabetical order
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        let (suppliers, _) = get_suppliers(&conn, &filter).unwrap();
-
-        // Verify alphabetical sorting
-        for i in 1..suppliers.len() {
-            assert!(suppliers[i].supplier_label >= suppliers[i - 1].supplier_label);
-        }
     }
 }

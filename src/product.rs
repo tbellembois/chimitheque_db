@@ -55,8 +55,8 @@ use log::debug;
 use regex::Regex;
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
-    any, Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, OnConflict, Order, Query,
-    SimpleExpr, SqliteQueryBuilder,
+    Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, OnConflict, Order, Query,
+    SimpleExpr, SqliteQueryBuilder, any,
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
@@ -1954,122 +1954,128 @@ pub fn create_update_product(
     // cas number
     //
     if let Some(cas_number) = product.cas_number.clone()
-        && cas_number.cas_number_id.is_none() {
-            let cas_number_id = searchable::create_update(
-                &CasNumberStruct {
-                    ..Default::default()
-                },
-                None,
-                &db_transaction,
-                cas_number.cas_number_label.as_str(),
-                Transform::None,
-            )?;
-            product.cas_number = Some(CasNumberStruct {
-                cas_number_id: Some(cas_number_id),
-                cas_number_label: cas_number.cas_number_label,
+        && cas_number.cas_number_id.is_none()
+    {
+        let cas_number_id = searchable::create_update(
+            &CasNumberStruct {
                 ..Default::default()
-            });
-        }
+            },
+            None,
+            &db_transaction,
+            cas_number.cas_number_label.as_str(),
+            Transform::None,
+        )?;
+        product.cas_number = Some(CasNumberStruct {
+            cas_number_id: Some(cas_number_id),
+            cas_number_label: cas_number.cas_number_label,
+            ..Default::default()
+        });
+    }
 
     //
     // ce number
     //
     if let Some(ce_number) = product.ce_number.clone()
-        && ce_number.ce_number_id.is_none() {
-            let ce_number_id = searchable::create_update(
-                &CeNumberStruct {
-                    ..Default::default()
-                },
-                None,
-                &db_transaction,
-                ce_number.ce_number_label.as_str(),
-                Transform::None,
-            )?;
-            product.ce_number = Some(CeNumberStruct {
-                ce_number_id: Some(ce_number_id),
-                ce_number_label: ce_number.ce_number_label,
+        && ce_number.ce_number_id.is_none()
+    {
+        let ce_number_id = searchable::create_update(
+            &CeNumberStruct {
                 ..Default::default()
-            });
-        }
+            },
+            None,
+            &db_transaction,
+            ce_number.ce_number_label.as_str(),
+            Transform::None,
+        )?;
+        product.ce_number = Some(CeNumberStruct {
+            ce_number_id: Some(ce_number_id),
+            ce_number_label: ce_number.ce_number_label,
+            ..Default::default()
+        });
+    }
 
     //
     // empirical formula
     //
     if let Some(empirical_formula) = product.empirical_formula.clone()
-        && empirical_formula.empirical_formula_id.is_none() {
-            let empirical_formula_id = searchable::create_update(
-                &EmpiricalFormulaStruct {
-                    ..Default::default()
-                },
-                None,
-                &db_transaction,
-                empirical_formula.empirical_formula_label.as_str(),
-                Transform::None,
-            )?;
-            product.empirical_formula = Some(EmpiricalFormulaStruct {
-                empirical_formula_id: Some(empirical_formula_id),
-                empirical_formula_label: empirical_formula.empirical_formula_label,
+        && empirical_formula.empirical_formula_id.is_none()
+    {
+        let empirical_formula_id = searchable::create_update(
+            &EmpiricalFormulaStruct {
                 ..Default::default()
-            });
-        }
+            },
+            None,
+            &db_transaction,
+            empirical_formula.empirical_formula_label.as_str(),
+            Transform::None,
+        )?;
+        product.empirical_formula = Some(EmpiricalFormulaStruct {
+            empirical_formula_id: Some(empirical_formula_id),
+            empirical_formula_label: empirical_formula.empirical_formula_label,
+            ..Default::default()
+        });
+    }
 
     //
     // linear formula
     //
     if let Some(linear_formula) = product.linear_formula.clone()
-        && linear_formula.linear_formula_id.is_none() {
-            let linear_formula_id = searchable::create_update(
-                &LinearFormulaStruct {
-                    ..Default::default()
-                },
-                None,
-                &db_transaction,
-                linear_formula.linear_formula_label.as_str(),
-                Transform::None,
-            )?;
-            product.linear_formula = Some(LinearFormulaStruct {
-                linear_formula_id: Some(linear_formula_id),
-                linear_formula_label: linear_formula.linear_formula_label,
+        && linear_formula.linear_formula_id.is_none()
+    {
+        let linear_formula_id = searchable::create_update(
+            &LinearFormulaStruct {
                 ..Default::default()
-            });
-        }
+            },
+            None,
+            &db_transaction,
+            linear_formula.linear_formula_label.as_str(),
+            Transform::None,
+        )?;
+        product.linear_formula = Some(LinearFormulaStruct {
+            linear_formula_id: Some(linear_formula_id),
+            linear_formula_label: linear_formula.linear_formula_label,
+            ..Default::default()
+        });
+    }
 
     //
     // category
     //
     if let Some(category) = product.category.clone()
-        && category.category_id.is_none() {
-            let category_id = searchable::create_update(
-                &CategoryStruct {
-                    ..Default::default()
-                },
-                None,
-                &db_transaction,
-                category.category_label.as_str(),
-                Transform::None,
-            )?;
-            product.category = Some(CategoryStruct {
-                category_id: Some(category_id),
-                category_label: category.category_label,
+        && category.category_id.is_none()
+    {
+        let category_id = searchable::create_update(
+            &CategoryStruct {
                 ..Default::default()
-            });
-        }
+            },
+            None,
+            &db_transaction,
+            category.category_label.as_str(),
+            Transform::None,
+        )?;
+        product.category = Some(CategoryStruct {
+            category_id: Some(category_id),
+            category_label: category.category_label,
+            ..Default::default()
+        });
+    }
 
     //
     // producer reference
     //
     if let Some(producer_ref) = product.producer_ref.clone()
-        && producer_ref.producer_ref_id.is_none() {
-            let producer_ref_id = Some(producerref::create_update_producer_ref(
-                &db_transaction,
-                &producer_ref,
-            )?);
-            product.producer_ref = Some(ProducerRefStruct {
-                producer_ref_id,
-                producer_ref_label: producer_ref.producer_ref_label,
-                ..Default::default()
-            });
-        }
+        && producer_ref.producer_ref_id.is_none()
+    {
+        let producer_ref_id = Some(producerref::create_update_producer_ref(
+            &db_transaction,
+            &producer_ref,
+        )?);
+        product.producer_ref = Some(ProducerRefStruct {
+            producer_ref_id,
+            producer_ref_label: producer_ref.producer_ref_label,
+            ..Default::default()
+        });
+    }
 
     //
     // synonyms
@@ -3032,60 +3038,4 @@ pub fn delete_product(
     _ = db_connection.execute(delete_sql.as_str(), &*delete_values.as_params())?;
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use crate::init::{connect_test, insert_fake_values, populate_db_with_base_data};
-    use log::info;
-
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    fn init_test_db() -> Connection {
-        let mut db_connection = connect_test();
-        populate_db_with_base_data(&mut db_connection).unwrap();
-        insert_fake_values(&mut db_connection).unwrap();
-        db_connection
-    }
-
-    #[test]
-    fn test_get_products() {
-        init_logger();
-
-        let db_connection = init_test_db();
-
-        info!("testing total result");
-        let filter = RequestFilter {
-            order_by: Some("name".to_string()),
-            ..Default::default()
-        };
-        let count: usize;
-        (_, count) = get_products(&db_connection, filter, 1).unwrap();
-
-        info!("count: {count}");
-        assert!(count > 0);
-    }
-
-    #[test]
-    fn test_export_products() {
-        init_logger();
-
-        let db_connection = init_test_db();
-
-        info!("testing products export");
-
-        let export = export_products(
-            &db_connection,
-            RequestFilter {
-                ..Default::default()
-            },
-            1,
-        );
-
-        info!("export: {export:?}");
-    }
 }

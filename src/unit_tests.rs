@@ -8,6 +8,10 @@ mod tests {
     fn init_test_units() -> Connection {
         let db = crate::test_utils::init_test();
 
+        // Disable synchronous operations and foreign key constraints for faster test execution
+        db.execute("PRAGMA synchronous = OFF", []).unwrap();
+        db.execute("PRAGMA foreign_keys = OFF", []).unwrap();
+
         // Delete existing records if any
         db.execute("DELETE FROM unit", []).unwrap();
 
@@ -68,6 +72,9 @@ mod tests {
             "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type) VALUES (14, 'Unit with special ßcharâctérs', 1, 'quantity')",
             [],
         ).unwrap();
+
+        // Enable foreign key constraints back
+        db.execute("PRAGMA foreign_keys = ON", []).unwrap();
 
         db
     }
@@ -136,9 +143,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_nonexistent_unit() {
+    fn test_parse_nonexisting_unit() {
         let db_connection = init_test_units();
-        assert!(parse(&db_connection, "nonexistent_unit").is_ok_and(|u| u.is_none()));
+        assert!(parse(&db_connection, "nonexisting_unit").is_ok_and(|u| u.is_none()));
     }
 
     #[test]
