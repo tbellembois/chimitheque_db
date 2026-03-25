@@ -16,7 +16,7 @@ use chimitheque_types::signalword::SignalWord;
 use chimitheque_types::symbol::Symbol;
 use chimitheque_utils::casnumber::is_cas_number;
 use chimitheque_utils::cenumber::is_ce_number;
-use chimitheque_utils::formula::sort_empirical_formula;
+use chimitheque_utils::formula::to_empirical_formula;
 use chimitheque_utils::string::Transform;
 use log::debug;
 use rusqlite::Connection;
@@ -257,7 +257,7 @@ pub fn create_update_product_from_pubchem(
 
     // Empirical formula.
     if let Some(empiricalformula_text) = pubchem_product.molecular_formula {
-        let sorted_empiricalformula = sort_empirical_formula(&empiricalformula_text)?;
+        let sorted_empiricalformula = to_empirical_formula(&empiricalformula_text)?;
 
         let empiricalformula = EmpiricalFormula {
             match_exact_search: true,
