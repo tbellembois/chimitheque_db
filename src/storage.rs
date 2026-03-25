@@ -11,7 +11,6 @@ use chimitheque_types::{
     storelocation::StoreLocation as StoreLocationStruct, supplier::Supplier as SupplierStruct,
     unit::Unit as UnitStruct,
 };
-use chimitheque_utils::string::Transform;
 use chrono::{DateTime, Utc};
 use csv::WriterBuilder;
 use log::debug;
@@ -1307,7 +1306,6 @@ pub fn create_update_storage(
             None,
             &db_transaction,
             supplier.supplier_label.as_str(),
-            Transform::None,
         )?;
         storage.supplier = Some(SupplierStruct {
             supplier_id: Some(supplier_id),

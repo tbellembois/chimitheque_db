@@ -1,6 +1,5 @@
 use chimitheque_traits::searchable::Searchable;
 use chimitheque_types::requestfilter::RequestFilter;
-use chimitheque_utils::string::{Transform, clean};
 use log::debug;
 use rusqlite::{Connection, ToSql, params_from_iter};
 use serde::Serialize;
@@ -129,9 +128,10 @@ pub fn get_many<Var: Searchable + Debug + Default + Serialize>(
         new_item.set_text_field(&row_text);
 
         if let Some(search) = maybe_search
-            && row_text.eq(search) {
-                new_item.set_exact_search(true);
-            }
+            && row_text.eq(search)
+        {
+            new_item.set_exact_search(true);
+        }
 
         Ok(new_item)
     })?;
@@ -197,10 +197,8 @@ pub fn create_update(
     item_id: Option<u64>,
     db_connection: &Connection,
     text: &str,
-    transform: Transform,
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     let last_insert_id: u64;
-    let new_text = clean(text, transform);
 
     if let Some(item_id) = item_id {
         db_connection.execute(
@@ -210,7 +208,7 @@ pub fn create_update(
                 item.get_text_field_name(),
                 item.get_id_field_name()
             ),
-            [new_text, item_id.to_string()],
+            [text.to_string(), item_id.to_string()],
         )?;
 
         last_insert_id = item_id;
@@ -221,7 +219,7 @@ pub fn create_update(
                 item.get_table_name(),
                 item.get_text_field_name()
             ),
-            [new_text],
+            [text],
         )?;
 
         last_insert_id = u64::try_from(db_connection.last_insert_rowid())?;
@@ -329,21 +327,10 @@ pub mod tests {
 
         info!("- testing create for {table_name}");
 
-        let last_insert_id = create_update(
-            searchable,
-            None,
-            &db_connection,
-            "a non existing item",
-            Transform::None,
-        )
-        .unwrap();
-        let mayerr_last_insert_id = create_update(
-            searchable,
-            None,
-            &db_connection,
-            fake_searchables[0],
-            Transform::None,
-        );
+        let last_insert_id =
+            create_update(searchable, None, &db_connection, "a non existing item").unwrap();
+        let mayerr_last_insert_id =
+            create_update(searchable, None, &db_connection, fake_searchables[0]);
 
         assert!(last_insert_id > 0);
         assert!(mayerr_last_insert_id.is_err());

@@ -17,7 +17,6 @@ use chimitheque_types::symbol::Symbol;
 use chimitheque_utils::casnumber::is_cas_number;
 use chimitheque_utils::cenumber::is_ce_number;
 use chimitheque_utils::formula::to_empirical_formula;
-use chimitheque_utils::string::Transform;
 use log::debug;
 use rusqlite::Connection;
 use sea_query::OnConflict;
@@ -93,7 +92,6 @@ pub fn create_update_product_from_pubchem(
                 None,
                 db_connection,
                 &name_text.to_uppercase(),
-                Transform::None,
             )?),
         }
     } else {
@@ -215,7 +213,6 @@ pub fn create_update_product_from_pubchem(
                 None,
                 db_connection,
                 &casnumber_text,
-                Transform::None,
             )?),
         };
 
@@ -245,7 +242,6 @@ pub fn create_update_product_from_pubchem(
                 None,
                 db_connection,
                 &cenumber_text,
-                Transform::None,
             )?),
         };
 
@@ -276,7 +272,6 @@ pub fn create_update_product_from_pubchem(
                 None,
                 db_connection,
                 &empiricalformula_text,
-                Transform::None,
             )?),
         };
 

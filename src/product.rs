@@ -49,7 +49,6 @@ use chimitheque_types::{
     signalword::SignalWord as SignalWordStruct, supplierref::SupplierRef as SupplierRefStruct,
     tag::Tag as TagStruct, unit::Unit as UnitStruct, unittype::UnitType,
 };
-use chimitheque_utils::string::Transform;
 use csv::WriterBuilder;
 use log::debug;
 use regex::Regex;
@@ -1941,7 +1940,6 @@ pub fn create_update_product(
             None,
             &db_transaction,
             name.name_label.as_str(),
-            Transform::None,
         )?;
         product.name = NameStruct {
             name_id: Some(name_id),
@@ -1963,7 +1961,6 @@ pub fn create_update_product(
             None,
             &db_transaction,
             cas_number.cas_number_label.as_str(),
-            Transform::None,
         )?;
         product.cas_number = Some(CasNumberStruct {
             cas_number_id: Some(cas_number_id),
@@ -1985,7 +1982,6 @@ pub fn create_update_product(
             None,
             &db_transaction,
             ce_number.ce_number_label.as_str(),
-            Transform::None,
         )?;
         product.ce_number = Some(CeNumberStruct {
             ce_number_id: Some(ce_number_id),
@@ -2007,7 +2003,6 @@ pub fn create_update_product(
             None,
             &db_transaction,
             empirical_formula.empirical_formula_label.as_str(),
-            Transform::None,
         )?;
         product.empirical_formula = Some(EmpiricalFormulaStruct {
             empirical_formula_id: Some(empirical_formula_id),
@@ -2029,7 +2024,6 @@ pub fn create_update_product(
             None,
             &db_transaction,
             linear_formula.linear_formula_label.as_str(),
-            Transform::None,
         )?;
         product.linear_formula = Some(LinearFormulaStruct {
             linear_formula_id: Some(linear_formula_id),
@@ -2051,7 +2045,6 @@ pub fn create_update_product(
             None,
             &db_transaction,
             category.category_label.as_str(),
-            Transform::None,
         )?;
         product.category = Some(CategoryStruct {
             category_id: Some(category_id),
@@ -2093,7 +2086,6 @@ pub fn create_update_product(
                     None,
                     &db_transaction,
                     name.name_label.as_str(),
-                    Transform::None,
                 )?);
             }
             product_synonyms.push(NameStruct {
@@ -2122,7 +2114,6 @@ pub fn create_update_product(
                     None,
                     &db_transaction,
                     class_of_compound.class_of_compound_label.as_str(),
-                    Transform::None,
                 )?);
             }
             product_classes_of_compound.push(ClassOfCompoundStruct {
@@ -2175,7 +2166,6 @@ pub fn create_update_product(
                     None,
                     &db_transaction,
                     tag.tag_label.as_str(),
-                    Transform::None,
                 )?);
             }
             product_tags.push(TagStruct {
