@@ -1296,9 +1296,11 @@ pub fn create_update_storage(
     //
     // supplier
     //
-    if let Some(supplier) = storage.supplier.clone()
+    if let Some(mut supplier) = storage.supplier.clone()
         && supplier.supplier_id.is_none()
     {
+        supplier.sanitize_and_validate()?;
+
         let supplier_id = searchable::create_update(
             &SupplierStruct {
                 ..Default::default()
