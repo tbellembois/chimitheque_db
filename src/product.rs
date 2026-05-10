@@ -150,6 +150,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             cas_number: maybe_cas_number.map(|_| CasNumberStruct {
                 cas_number_id: row.get_unwrap("cas_number_id"),
                 cas_number_label: row.get_unwrap("cas_number_label"),
+                cas_number_cmr: row.get_unwrap("cas_number_cmr"),
                 ..Default::default()
             }),
             ce_number: maybe_ce_number.map(|_| CeNumberStruct {
@@ -1744,6 +1745,7 @@ pub fn get_products(
         .expr(Expr::col((Person::Table, Person::PersonEmail)))
         .expr(Expr::col((CasNumber::Table, CasNumber::CasNumberId)))
         .expr(Expr::col((CasNumber::Table, CasNumber::CasNumberLabel)))
+        .expr(Expr::col((CasNumber::Table, CasNumber::CasNumberCmr)))
         .expr(Expr::col((CeNumber::Table, CeNumber::CeNumberId)))
         .expr(Expr::col((CeNumber::Table, CeNumber::CeNumberLabel)))
         .expr(Expr::col((

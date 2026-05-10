@@ -38,7 +38,7 @@ impl TryFrom<&Row<'_>> for UnitWrapper {
                 unit_id: row.get_unwrap("unit_id"),
                 unit_label: row.get_unwrap("unit_label"),
                 unit_multiplier: row.get_unwrap("unit_multiplier"),
-                unit_type: unit_type.clone(),
+                unit_type,
                 unit: maybe_parent_unit.map(|_| {
                     Box::new(UnitStruct {
                         unit_id: row.get_unwrap("parent_unit_id"),
