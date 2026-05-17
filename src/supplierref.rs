@@ -2,7 +2,7 @@ use chimitheque_types::{
     requestfilter::RequestFilter, supplier::Supplier as SupplierStruct,
     supplierref::SupplierRef as SupplierRefStruct,
 };
-use chimitheque_utils::string::{clean, Transform};
+use chimitheque_utils::string::{Transform, clean};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{Alias, Expr, Iden, Order, Query, SimpleExpr, SqliteQueryBuilder};
@@ -97,14 +97,14 @@ pub fn get_supplier_refs(
         .conditions(
             filter.limit.is_some(),
             |q| {
-                q.limit(filter.limit.unwrap());
+                q.limit(filter.limit.unwrap() as u64);
             },
             |_| {},
         )
         .conditions(
             filter.offset.is_some(),
             |q| {
-                q.offset(filter.offset.unwrap());
+                q.offset(filter.offset.unwrap() as u64);
             },
             |_| {},
         )

@@ -118,14 +118,14 @@ pub fn get_hazard_statements(
         .conditions(
             filter.limit.is_some(),
             |q| {
-                q.limit(filter.limit.unwrap());
+                q.limit(filter.limit.unwrap() as u64);
             },
             |_| {},
         )
         .conditions(
             filter.offset.is_some(),
             |q| {
-                q.offset(filter.offset.unwrap());
+                q.offset(filter.offset.unwrap() as u64);
             },
             |_| {},
         )
