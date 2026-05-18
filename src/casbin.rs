@@ -79,10 +79,10 @@ fn get_person_by_id(
     let (people, nb_results) = get_people(
         db_connection,
         &RequestFilter {
-            id: Some(person_id),
+            id: Some(request_person_id),
             ..Default::default()
         },
-        request_person_id,
+        person_id,
     )?;
 
     if nb_results == 0 {
