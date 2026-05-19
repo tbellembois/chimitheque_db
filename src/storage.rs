@@ -297,10 +297,24 @@ pub fn export_storages(
 
     let mut wtr = WriterBuilder::new().has_headers(false).from_writer(buffer);
 
-    wtr.write_record(["BARECODE", "QUANTITY", "UNIT", "SUPPLIER", "STORE_LOCATION"])?;
+    wtr.write_record([
+        "PRODUCT_NAME",
+        "PRODUCT_CAS",
+        "BARECODE",
+        "QUANTITY",
+        "UNIT",
+        "SUPPLIER",
+        "STORE_LOCATION",
+    ])?;
 
     for storage in storages {
         wtr.serialize((
+            storage.product.name.name_label,
+            storage
+                .product
+                .cas_number
+                .unwrap_or_default()
+                .cas_number_label,
             storage.storage_barecode,
             storage.storage_quantity,
             storage.unit_quantity.unwrap_or_default().unit_label,
@@ -1048,8 +1062,11 @@ pub fn get_storages(
         )
         .expr(Expr::col((Borrowing::Table, Borrowing::BorrowingId)))
         .expr(Expr::col((Borrowing::Table, Borrowing::BorrowingComment)))
-        .order_by(order_by, order)
         .group_by_col((Storage::Table, Storage::StorageId))
+        .order_by_expr(
+            Expr::cust_with_expr("? COLLATE NOCASE", Expr::col(order_by)),
+            order,
+        )
         .conditions(
             filter.limit.is_some(),
             |q| {

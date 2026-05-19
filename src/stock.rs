@@ -150,7 +150,13 @@ pub fn compute_stock(
         .and_where(Expr::col((Storage::Table, Storage::StorageArchive)).eq(false))
         .group_by_col(StoreLocation::StoreLocationId)
         .group_by_col((Alias::new("self_unit"), Unit::Unit))
-        .order_by(StoreLocation::StoreLocationFullPath, Order::Asc)
+        .order_by_expr(
+            Expr::cust_with_expr(
+                "? COLLATE NOCASE",
+                Expr::col(StoreLocation::StoreLocationFullPath),
+            ),
+            Order::Asc,
+        )
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());

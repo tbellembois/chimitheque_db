@@ -94,6 +94,9 @@ pub fn get_store_locations(
             "store_location.store_location_name" => {
                 Alias::new("parent_store_location_name").into_column_ref()
             }
+            "store_location_name" => {
+                (StoreLocation::Table, StoreLocation::StoreLocationName).into_column_ref()
+            }
             "store_location_full_path" => {
                 (StoreLocation::Table, StoreLocation::StoreLocationFullPath).into_column_ref()
             }
@@ -286,8 +289,11 @@ pub fn get_store_locations(
             Expr::col((Alias::new("children"), Alias::new("store_location_id"))).count_distinct(),
             Alias::new("store_location_nb_children"),
         )
-        .order_by(order_by, order)
         .group_by_col((StoreLocation::Table, StoreLocation::StoreLocationId))
+        .order_by_expr(
+            Expr::cust_with_expr("? COLLATE NOCASE", Expr::col(order_by)),
+            order,
+        )
         .conditions(
             filter.limit.is_some(),
             |q| {

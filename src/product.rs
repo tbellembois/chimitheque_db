@@ -304,8 +304,11 @@ fn populate_product_availability(
                 Entity::EntityName,
                 Entity::EntityDescription,
             ])
-            .order_by(Entity::EntityName, Order::Asc)
             .group_by_col(Entity::EntityId)
+            .order_by_expr(
+                Expr::cust_with_expr("? COLLATE NOCASE", Expr::col(Entity::EntityName)),
+                Order::Asc,
+            )
             .from(Storage::Table)
             //
             // store location
@@ -1864,8 +1867,11 @@ pub fn get_products(
             Expr::cust("GROUP_CONCAT(DISTINCT hazard_statement.hazard_statement_cmr)"),
             Alias::new("product_hs_cmr"),
         )
-        .order_by(order_by, order)
         .group_by_col((Product::Table, Product::ProductId))
+        .order_by_expr(
+            Expr::cust_with_expr("? COLLATE NOCASE", Expr::col(order_by)),
+            order,
+        )
         .conditions(
             filter.limit.is_some(),
             |q| {

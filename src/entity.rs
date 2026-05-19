@@ -251,8 +251,11 @@ pub fn get_entities(
             Expr::col(Personentities::PersonentitiesPersonId).count_distinct(),
             Alias::new("entity_nb_people"),
         )
-        .order_by(order_by, order)
         .group_by_col((Entity::Table, Entity::EntityId))
+        .order_by_expr(
+            Expr::cust_with_expr("? COLLATE NOCASE", Expr::col(order_by)),
+            order,
+        )
         .conditions(
             filter.limit.is_some(),
             |q| {

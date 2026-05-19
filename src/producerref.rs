@@ -93,7 +93,10 @@ pub fn get_producer_refs(
             Expr::col((Producer::Table, Producer::ProducerLabel)),
             Alias::new("producer.producer_label"),
         )
-        .order_by(ProducerRef::ProducerRefLabel, Order::Asc)
+        .order_by_expr(
+            Expr::cust_with_expr("? COLLATE NOCASE", Expr::col(ProducerRef::ProducerRefLabel)),
+            Order::Asc,
+        )
         .conditions(
             filter.limit.is_some(),
             |q| {

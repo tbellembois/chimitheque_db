@@ -57,7 +57,10 @@ pub fn get_producers(
     // Create select query.
     let (select_sql, select_values) = expression
         .columns([Producer::ProducerId, Producer::ProducerLabel])
-        .order_by(Producer::ProducerLabel, Order::Asc)
+        .order_by_expr(
+            Expr::cust_with_expr("? COLLATE NOCASE", Expr::col(Producer::ProducerLabel)),
+            Order::Asc,
+        )
         .conditions(
             filter.limit.is_some(),
             |q| {

@@ -58,7 +58,10 @@ pub fn get_suppliers(
     // Create select query.
     let (select_sql, select_values) = expression
         .columns([Supplier::SupplierId, Supplier::SupplierLabel])
-        .order_by(Supplier::SupplierLabel, Order::Asc)
+        .order_by_expr(
+            Expr::cust_with_expr("? COLLATE NOCASE", Expr::col(Supplier::SupplierLabel)),
+            Order::Asc,
+        )
         .conditions(
             filter.limit.is_some(),
             |q| {

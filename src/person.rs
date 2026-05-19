@@ -379,8 +379,8 @@ pub fn get_people(
             },
             |_| {},
         )
-        .order_by(Person::PersonEmail, order)
         .group_by_col((Person::Table, Person::PersonId))
+        .order_by(Person::PersonEmail, order)
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.clone().as_str());

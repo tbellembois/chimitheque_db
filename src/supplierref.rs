@@ -93,7 +93,10 @@ pub fn get_supplier_refs(
             Expr::col((Supplier::Table, Supplier::SupplierLabel)),
             Alias::new("supplier.supplier_label"),
         )
-        .order_by(SupplierRef::SupplierRefLabel, Order::Asc)
+        .order_by_expr(
+            Expr::cust_with_expr("? COLLATE NOCASE", Expr::col(SupplierRef::SupplierRefLabel)),
+            Order::Asc,
+        )
         .conditions(
             filter.limit.is_some(),
             |q| {
