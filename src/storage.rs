@@ -299,7 +299,6 @@ pub fn export_storages(
 
     wtr.write_record([
         "PRODUCT_NAME",
-        "PRODUCT_CAS",
         "BARECODE",
         "QUANTITY",
         "UNIT",
@@ -310,11 +309,6 @@ pub fn export_storages(
     for storage in storages {
         wtr.serialize((
             storage.product.name.name_label,
-            storage
-                .product
-                .cas_number
-                .unwrap_or_default()
-                .cas_number_label,
             storage.storage_barecode,
             storage.storage_quantity,
             storage.unit_quantity.unwrap_or_default().unit_label,
