@@ -88,24 +88,6 @@ pub fn get_store_locations(
     debug!("filter:{filter:?}");
     debug!("person_id:{person_id:?}");
 
-    let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {
-        match order_by_string.as_str() {
-            "entity.entity_name" => Entity::EntityName.into_column_ref(),
-            "store_location.store_location_name" => {
-                Alias::new("parent_store_location_name").into_column_ref()
-            }
-            "store_location_name" => {
-                (StoreLocation::Table, StoreLocation::StoreLocationName).into_column_ref()
-            }
-            "store_location_full_path" => {
-                (StoreLocation::Table, StoreLocation::StoreLocationFullPath).into_column_ref()
-            }
-            _ => (StoreLocation::Table, StoreLocation::StoreLocationFullPath).into_column_ref(),
-        }
-    } else {
-        (StoreLocation::Table, StoreLocation::StoreLocationFullPath).into_column_ref()
-    };
-
     let order = if filter.order.eq_ignore_ascii_case("desc") {
         Order::Desc
     } else {
@@ -290,9 +272,43 @@ pub fn get_store_locations(
             Alias::new("store_location_nb_children"),
         )
         .group_by_col((StoreLocation::Table, StoreLocation::StoreLocationId))
-        .order_by_expr(
-            Expr::cust_with_expr("? COLLATE NOCASE", Expr::col(order_by)),
-            order,
+        .conditions(
+            filter.order_by == Some("store_location.store_location_name".to_string()),
+            |q| {
+                q.order_by_expr(
+                    Expr::cust_with_expr(
+                        "? COLLATE NOCASE",
+                        Expr::col(Alias::new("parent_store_location_name").into_column_ref()),
+                    ),
+                    order.clone(),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.order_by == Some("entity.entity_name".to_string()),
+            |q| {
+                q.order_by_expr(
+                    Expr::cust_with_expr("? COLLATE NOCASE", Entity::EntityName.into_column_ref()),
+                    order.clone(),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
+            (filter.order_by == Some("store_location.store_location_name".to_string()))
+                || (filter.order_by == Some("entity.entity_name".to_string()))
+                || (filter.order_by == Some("store_location_name".to_string())),
+            |q| {
+                q.order_by_expr(
+                    Expr::cust_with_expr(
+                        "? COLLATE NOCASE",
+                        (StoreLocation::Table, StoreLocation::StoreLocationName).into_column_ref(),
+                    ),
+                    order,
+                );
+            },
+            |_| {},
         )
         .conditions(
             filter.limit.is_some(),
