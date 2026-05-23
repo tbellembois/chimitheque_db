@@ -164,7 +164,9 @@ pub fn get_store_locations(
             |q| {
                 q.and_where(
                     Expr::col((StoreLocation::Table, StoreLocation::StoreLocationName))
-                        .like(format!("%{}%", filter.search.clone().unwrap())),
+                        .like(format!("%{}%", filter.search.clone().unwrap()))
+                        .or(Expr::col((Entity::Table, Entity::EntityName))
+                            .like(format!("%{}%", filter.search.clone().unwrap()))),
                 );
             },
             |_| {},
