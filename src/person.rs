@@ -445,7 +445,7 @@ fn create_update_person_permissions(
         },
         permission_name: PermissionName::Read,
         permission_item: PermissionItem::Products,
-        permission_entity: -1,
+        permission_entity: None,
     });
 
     // Appending permissions for the managed entities.
@@ -458,7 +458,7 @@ fn create_update_person_permissions(
                 },
                 permission_name: PermissionName::All,
                 permission_item: PermissionItem::All,
-                permission_entity: i64::try_from(entity.entity_id.unwrap())?,
+                permission_entity: entity.entity_id,
             });
         }
     }

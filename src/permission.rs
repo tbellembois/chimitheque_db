@@ -31,7 +31,10 @@ impl TryFrom<&Row<'_>> for PermissionWrapper {
         let permission_name_string: String = row.get_unwrap("permission_name");
         let permission_name: PermissionName = PermissionName::from_str(&permission_name_string)?;
 
-        let permission_entity: i64 = row.get_unwrap("permission_entity");
+        let permission_entity: Option<u64> = match row.get("permission_entity") {
+            Ok(Some(permission_entity)) => Some(permission_entity),
+            _ => None,
+        };
 
         Ok(Self(PermissionStruct {
             permission_item,

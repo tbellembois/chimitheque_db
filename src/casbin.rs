@@ -188,12 +188,19 @@ pub fn to_string_adapter(
     let mut rows = stmt.query(&*sql_values.as_params())?;
 
     while let Some(row) = rows.next()? {
+        let mut permission_entity_string = String::new();
+        if let Ok(maybe_permission_entity) = row.get::<_, Option<u64>>("permission_entity")
+            && let Some(permission_entity) = maybe_permission_entity
+        {
+            permission_entity_string = permission_entity.to_string();
+        }
+
         result += format!(
             "p, {}, {}, {}, {}\n",
             row.get_unwrap::<_, u64>("person"),
             row.get_unwrap::<_, String>("permission_name"),
             row.get_unwrap::<_, String>("permission_item"),
-            row.get_unwrap::<_, i64>("permission_entity")
+            permission_entity_string // row.get_unwrap::<_, u64>("permission_entity")
         )
         .as_str();
     }

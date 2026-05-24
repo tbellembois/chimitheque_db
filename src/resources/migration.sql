@@ -126,6 +126,9 @@ SELECT person,
 FROM Y.permission;
 
 DELETE FROM permission WHERE permission_item = 'people';
+UPDATE permission
+SET permission_entity = NULL
+WHERE permission_entity == -1;
 
 -- Step 1: Try to insert normally
 INSERT OR IGNORE INTO person (person_id, person_email)
