@@ -387,27 +387,27 @@ mod tests {
     fn test_casbin() {
         let db_connection = init_test_casbin();
 
-        assert!(get_person_by_id(&db_connection, 1, 1).is_ok());
-        assert!(get_person_by_id(&db_connection, 2, 2).is_ok());
-        assert!(get_person_by_id(&db_connection, 6, 6).is_ok());
-        // Newly created person is not yet enrolled in an entity, so get_person_by_id returns no person.
-        assert!(get_person_by_id(&db_connection, 8, 8).is_err());
+        assert!(get_person_by_id(&db_connection, 1).is_ok());
+        assert!(get_person_by_id(&db_connection, 2).is_ok());
+        assert!(get_person_by_id(&db_connection, 6).is_ok());
+        // Newly created person is not yet enrolled in an entity.
+        assert!(get_person_by_id(&db_connection, 8).is_ok());
 
-        assert!(match_person_is_in_entity(&db_connection, 5, 1, 1).unwrap());
-        assert!(!match_person_is_in_entity(&db_connection, 5, 2, 1).unwrap());
+        assert!(match_person_is_in_entity(&db_connection, 5, 1).unwrap());
+        assert!(!match_person_is_in_entity(&db_connection, 5, 2).unwrap());
 
-        assert!(match_person_is_in_store_location_entity(&db_connection, 2, 1, 1).unwrap());
-        assert!(!match_person_is_in_store_location_entity(&db_connection, 6, 4, 1).unwrap());
+        assert!(match_person_is_in_store_location_entity(&db_connection, 2, 1).unwrap());
+        assert!(!match_person_is_in_store_location_entity(&db_connection, 6, 4).unwrap());
 
-        assert!(match_product_has_storages(&db_connection, 1, 1).unwrap());
-        assert!(match_product_has_storages(&db_connection, 2, 1).unwrap());
-        assert!(!match_product_has_storages(&db_connection, 6, 1).unwrap());
+        assert!(match_product_has_storages(&db_connection, 1).unwrap());
+        assert!(match_product_has_storages(&db_connection, 2).unwrap());
+        assert!(!match_product_has_storages(&db_connection, 6).unwrap());
 
-        assert!(match_store_location_has_children(&db_connection, 1, 1).unwrap());
-        assert!(!match_store_location_has_children(&db_connection, 10, 1).unwrap());
+        assert!(match_store_location_has_children(&db_connection, 1).unwrap());
+        assert!(!match_store_location_has_children(&db_connection, 10).unwrap());
 
-        assert!(match_store_location_has_storages(&db_connection, 2, 1).unwrap());
-        assert!(!match_store_location_has_storages(&db_connection, 4, 1).unwrap());
+        assert!(match_store_location_has_storages(&db_connection, 2).unwrap());
+        assert!(!match_store_location_has_storages(&db_connection, 4).unwrap());
 
         assert!(match_person_is_admin(&db_connection, 1).unwrap());
         assert!(!match_person_is_admin(&db_connection, 2).unwrap());
@@ -415,16 +415,16 @@ mod tests {
         assert!(match_person_is_manager(&db_connection, 2).unwrap());
         assert!(!match_person_is_manager(&db_connection, 5).unwrap());
 
-        assert!(match_entity_has_members(&db_connection, 2, 1).unwrap());
-        assert!(!match_entity_has_members(&db_connection, 4, 1).unwrap());
+        assert!(match_entity_has_members(&db_connection, 2).unwrap());
+        assert!(!match_entity_has_members(&db_connection, 4).unwrap());
 
-        assert!(match_entity_has_store_locations(&db_connection, 2, 1).unwrap());
-        assert!(!match_entity_has_store_locations(&db_connection, 4, 1).unwrap());
+        assert!(match_entity_has_store_locations(&db_connection, 2).unwrap());
+        assert!(!match_entity_has_store_locations(&db_connection, 4).unwrap());
 
-        assert!(match_store_location_is_in_entity(&db_connection, 1, 1, 1).unwrap());
-        assert!(!match_store_location_is_in_entity(&db_connection, 1, 3, 1).unwrap());
+        assert!(match_store_location_is_in_entity(&db_connection, 1, 1).unwrap());
+        assert!(!match_store_location_is_in_entity(&db_connection, 1, 3).unwrap());
 
-        assert!(match_storage_is_in_entity(&db_connection, 1, 1, 1).unwrap());
-        assert!(!match_storage_is_in_entity(&db_connection, 1, 3, 1).unwrap());
+        assert!(match_storage_is_in_entity(&db_connection, 1, 1).unwrap());
+        assert!(!match_storage_is_in_entity(&db_connection, 1, 3).unwrap());
     }
 }

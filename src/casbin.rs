@@ -47,10 +47,9 @@ impl std::error::Error for CasbinError {}
 fn get_person_entities_ids(
     db_connection: &Connection,
     person_id: u64,
-    request_person_id: u64,
 ) -> Result<Vec<u64>, Box<dyn std::error::Error + Send + Sync>> {
     // Get the person from the database.
-    let person = get_person_by_id(db_connection, person_id, request_person_id)?;
+    let person = get_person_by_id(db_connection, person_id)?;
 
     // Get the person entities.
     let person_entities: Vec<Entity> = person.entities.clone().unwrap_or_default();
@@ -74,7 +73,6 @@ fn get_person_entities_ids(
 fn get_person_by_id(
     db_connection: &Connection,
     person_id: u64,
-    request_person_id: u64,
 ) -> Result<Person, Box<dyn std::error::Error + Send + Sync>> {
     let (people, nb_results) = get_people(
         db_connection,
@@ -82,7 +80,7 @@ fn get_person_by_id(
             id: Some(person_id),
             ..Default::default()
         },
-        request_person_id,
+        1,
     )?;
 
     if nb_results == 0 {
@@ -97,7 +95,6 @@ fn get_person_by_id(
 fn get_store_location_by_id(
     db_connection: &Connection,
     store_location_id: u64,
-    request_person_id: u64,
 ) -> Result<StoreLocation, Box<dyn std::error::Error + Send + Sync>> {
     let (store_locations, nb_results) = get_store_locations(
         db_connection,
@@ -105,7 +102,7 @@ fn get_store_location_by_id(
             id: Some(store_location_id),
             ..Default::default()
         },
-        request_person_id,
+        1,
     )?;
 
     if nb_results == 0 {
@@ -122,7 +119,6 @@ fn get_store_location_by_id(
 fn get_storage_by_id(
     db_connection: &Connection,
     storage_id: u64,
-    request_person_id: u64,
 ) -> Result<Storage, Box<dyn std::error::Error + Send + Sync>> {
     let (storages, nb_results) = get_storages(
         db_connection,
@@ -130,7 +126,7 @@ fn get_storage_by_id(
             id: Some(storage_id),
             ..Default::default()
         },
-        request_person_id,
+        1,
     )?;
 
     if nb_results == 0 {
@@ -145,7 +141,6 @@ fn get_storage_by_id(
 fn get_entity_by_id(
     db_connection: &Connection,
     entity_id: u64,
-    request_person_id: u64,
 ) -> Result<Entity, Box<dyn std::error::Error + Send + Sync>> {
     let (entities, nb_results) = get_entities(
         db_connection,
@@ -153,7 +148,7 @@ fn get_entity_by_id(
             id: Some(entity_id),
             ..Default::default()
         },
-        request_person_id,
+        1,
     )?;
 
     if nb_results == 0 {
@@ -215,12 +210,11 @@ pub fn match_person_is_in_entity(
     db_connection: &Connection,
     person_id: u64,
     entity_id: u64,
-    request_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_person_is_in_entity: {person_id} {entity_id}");
 
     // Get person.
-    let person = get_person_by_id(db_connection, person_id, request_person_id)?;
+    let person = get_person_by_id(db_connection, person_id)?;
 
     // Return true on orphans.
     if person.entities.is_none() {
@@ -233,7 +227,7 @@ pub fn match_person_is_in_entity(
     }
 
     // Get the person entities ids.
-    let person_entities_ids = get_person_entities_ids(db_connection, person_id, request_person_id)?;
+    let person_entities_ids = get_person_entities_ids(db_connection, person_id)?;
 
     // Check if the entity_id is in the person entities ids.
     let result = person_entities_ids.contains(&entity_id);
@@ -248,23 +242,21 @@ pub fn match_person_is_in_store_location_entity(
     db_connection: &Connection,
     person_id: u64,
     store_location_id: u64,
-    request_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_person_is_in_store_location_entity: {person_id} {store_location_id}");
 
     // Get person.
-    let person = get_person_by_id(db_connection, person_id, request_person_id)?;
+    let person = get_person_by_id(db_connection, person_id)?;
 
     if person.is_admin {
         return Ok(true);
     }
 
     // Get the person entities ids.
-    let person_entities_ids = get_person_entities_ids(db_connection, person_id, request_person_id)?;
+    let person_entities_ids = get_person_entities_ids(db_connection, person_id)?;
 
     // Get the store location from the database.
-    let store_location =
-        get_store_location_by_id(db_connection, store_location_id, request_person_id)?;
+    let store_location = get_store_location_by_id(db_connection, store_location_id)?;
 
     // Then its entity.
     let Some(entity) = store_location.entity else {
@@ -288,7 +280,6 @@ pub fn match_person_is_in_store_location_entity(
 pub fn match_product_has_storages(
     db_connection: &Connection,
     product_id: u64,
-    request_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_product_has_storages: {product_id}");
 
@@ -299,7 +290,7 @@ pub fn match_product_has_storages(
             id: Some(product_id),
             ..Default::default()
         },
-        request_person_id,
+        1,
     )?;
 
     if nb_results == 0 {
@@ -320,7 +311,6 @@ pub fn match_product_has_storages(
 pub fn match_store_location_has_children(
     db_connection: &Connection,
     store_location_id: u64,
-    request_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_store_location_has_children: {store_location_id}");
 
@@ -331,7 +321,7 @@ pub fn match_store_location_has_children(
             store_location: Some(store_location_id),
             ..Default::default()
         },
-        request_person_id,
+        1,
     )?;
 
     let result = nb_results > 0;
@@ -345,13 +335,11 @@ pub fn match_store_location_has_children(
 pub fn match_store_location_has_storages(
     db_connection: &Connection,
     store_location_id: u64,
-    request_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_store_location_has_storages: {store_location_id}");
 
     // Get the store location from the database.
-    let store_location =
-        get_store_location_by_id(db_connection, store_location_id, request_person_id)?;
+    let store_location = get_store_location_by_id(db_connection, store_location_id)?;
 
     let nb_storages = store_location
         .store_location_nb_storages
@@ -372,9 +360,7 @@ pub fn match_person_is_admin(
     debug!("match_person_is_admin: {person_id}");
 
     // Get the person from the database.
-    // We use 1 as the request_person_id because if the person with person_id is not yet enrolled in an entity,
-    // get_person_by_id returns no person which leads to an http 500 error.
-    let person = get_person_by_id(db_connection, person_id, 1)?;
+    let person = get_person_by_id(db_connection, person_id)?;
 
     let result = person.is_admin;
 
@@ -391,9 +377,7 @@ pub fn match_person_is_manager(
     debug!("match_person_is_manager: {person_id}");
 
     // Get the person from the database.
-    // We use 1 as the request_person_id because if the person with person_id is not yet enrolled in an entity,
-    // get_person_by_id returns no person which leads to an http 500 error.
-    let person = get_person_by_id(db_connection, person_id, 1)?;
+    let person = get_person_by_id(db_connection, person_id)?;
 
     let managed_entities = person.managed_entities.unwrap_or_default();
 
@@ -408,12 +392,11 @@ pub fn match_person_is_manager(
 pub fn match_entity_has_members(
     db_connection: &Connection,
     entity_id: u64,
-    request_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_entity_has_members: {entity_id}");
 
     // Get the entity from the database.
-    let entity = get_entity_by_id(db_connection, entity_id, request_person_id)?;
+    let entity = get_entity_by_id(db_connection, entity_id)?;
 
     let nb_members = entity.entity_nb_people.unwrap_or_default();
 
@@ -428,12 +411,11 @@ pub fn match_entity_has_members(
 pub fn match_entity_has_store_locations(
     db_connection: &Connection,
     entity_id: u64,
-    request_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_entity_has_store_locations: {entity_id}");
 
     // Get the entity from the database.
-    let entity = get_entity_by_id(db_connection, entity_id, request_person_id)?;
+    let entity = get_entity_by_id(db_connection, entity_id)?;
 
     let nb_store_locations = entity.entity_nb_store_locations.unwrap_or_default();
 
@@ -449,17 +431,15 @@ pub fn match_storage_is_in_entity(
     db_connection: &Connection,
     storage_id: u64,
     entity_id: u64,
-    request_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_storage_is_in_entity: {storage_id} {entity_id}");
 
     // Get the storage from the database.
-    let storage = get_storage_by_id(db_connection, storage_id, request_person_id)?;
+    let storage = get_storage_by_id(db_connection, storage_id)?;
     debug!("storage: {storage:?}");
 
     if let Some(store_location_id) = storage.store_location.store_location_id {
-        let store_location =
-            get_store_location_by_id(db_connection, store_location_id, request_person_id)?;
+        let store_location = get_store_location_by_id(db_connection, store_location_id)?;
         debug!("store_location: {store_location:?}");
 
         if let Some(store_location_entity) = store_location.entity {
@@ -485,13 +465,11 @@ pub fn match_store_location_is_in_entity(
     db_connection: &Connection,
     store_location_id: u64,
     entity_id: u64,
-    request_person_id: u64,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     debug!("match_store_location_is_in_entity: {store_location_id} {entity_id}");
 
     // Get store location from the database.
-    let store_location =
-        get_store_location_by_id(db_connection, store_location_id, request_person_id)?;
+    let store_location = get_store_location_by_id(db_connection, store_location_id)?;
 
     if let Some(entity) = store_location.entity {
         if let Some(this_entity_id) = entity.entity_id {
