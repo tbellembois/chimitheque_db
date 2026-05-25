@@ -372,7 +372,9 @@ pub fn match_person_is_admin(
     debug!("match_person_is_admin: {person_id}");
 
     // Get the person from the database.
-    let person = get_person_by_id(db_connection, person_id, person_id)?;
+    // We use 1 as the request_person_id because if the person with person_id is not yet enrolled in an entity,
+    // get_person_by_id returns no person which leads to an http 500 error.
+    let person = get_person_by_id(db_connection, person_id, 1)?;
 
     let result = person.is_admin;
 
@@ -389,7 +391,9 @@ pub fn match_person_is_manager(
     debug!("match_person_is_manager: {person_id}");
 
     // Get the person from the database.
-    let person = get_person_by_id(db_connection, person_id, person_id)?;
+    // We use 1 as the request_person_id because if the person with person_id is not yet enrolled in an entity,
+    // get_person_by_id returns no person which leads to an http 500 error.
+    let person = get_person_by_id(db_connection, person_id, 1)?;
 
     let managed_entities = person.managed_entities.unwrap_or_default();
 

@@ -51,6 +51,16 @@ mod tests {
             [],
         )
         .unwrap();
+        db.execute(
+            "INSERT INTO person (person_id, person_email) VALUES (7, 'person7@example.com')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO person (person_id, person_email) VALUES (8, 'person8@example.com')",
+            [],
+        )
+        .unwrap();
 
         // Insert example data into the cas_number table
         db.execute(
@@ -376,6 +386,12 @@ mod tests {
     #[test]
     fn test_casbin() {
         let db_connection = init_test_casbin();
+
+        assert!(get_person_by_id(&db_connection, 1, 1).is_ok());
+        assert!(get_person_by_id(&db_connection, 2, 2).is_ok());
+        assert!(get_person_by_id(&db_connection, 6, 6).is_ok());
+        // Newly created person is not yet enrolled in an entity, so get_person_by_id returns no person.
+        assert!(get_person_by_id(&db_connection, 8, 8).is_err());
 
         assert!(match_person_is_in_entity(&db_connection, 5, 1, 1).unwrap());
         assert!(!match_person_is_in_entity(&db_connection, 5, 2, 1).unwrap());
