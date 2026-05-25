@@ -5,7 +5,9 @@ use chimitheque_types::{
 };
 use log::debug;
 use rusqlite::{Connection, Row, Transaction};
-use sea_query::{Alias, Expr, Func, Iden, JoinType, Order, Query, SimpleExpr, SqliteQueryBuilder};
+use sea_query::{
+    Alias, Expr, Func, Iden, JoinType, Order, Query, SimpleExpr, SqliteQueryBuilder, Value,
+};
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
 
@@ -282,7 +284,8 @@ pub fn get_people(
                     Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                         .equals(Personentities::PersonentitiesEntityId)
                         .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1),
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
+                                .is_null(),
                         ),
                 ),
         )
@@ -352,7 +355,7 @@ pub fn get_people(
                             Expr::col((Permission::Table, Permission::PermissionName)).eq("all"),
                         )
                         .and_where(
-                            Expr::col((Permission::Table, Permission::PermissionEntity)).eq(-1),
+                            Expr::col((Permission::Table, Permission::PermissionEntity)).is_null(),
                         )
                         .and_where(
                             Expr::col((Permission::Table, Permission::Person))
@@ -768,7 +771,7 @@ pub fn get_admins(
                     Expr::col((Alias::new("perm"), Alias::new("person")))
                         .equals((Person::Table, Person::PersonId)),
                 )
-                .and(Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1)),
+                .and(Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).is_null()),
         )
         .order_by(Person::PersonEmail, Order::Asc)
         .group_by_col((Person::Table, Person::PersonId))
@@ -809,7 +812,7 @@ pub fn set_person_admin(
     let values = vec![
         SimpleExpr::Value("all".into()),
         SimpleExpr::Value("all".into()),
-        SimpleExpr::Value((-1_i64).into()),
+        SimpleExpr::Value(Value::String(None)),
         SimpleExpr::Value(person_id.into()),
     ];
 
@@ -840,7 +843,7 @@ pub fn unset_person_admin(
         .and_where(Expr::col(Permission::Person).eq(person_id))
         .and_where(Expr::col(Permission::PermissionItem).eq("all"))
         .and_where(Expr::col(Permission::PermissionName).eq("all"))
-        .and_where(Expr::col(Permission::PermissionEntity).eq(-1))
+        .and_where(Expr::col(Permission::PermissionEntity).is_null())
         .build_rusqlite(SqliteQueryBuilder);
 
     _ = db_connection.execute(delete_sql.as_str(), &*delete_values.as_params())?;

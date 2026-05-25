@@ -670,7 +670,7 @@ pub fn get_storages(
                     Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                         .equals(Entity::EntityId)
                         .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1),
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).is_null(),
                         ),
                 ),
         )

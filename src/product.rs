@@ -456,7 +456,7 @@ fn populate_product_sl(
                             .equals(Entity::EntityId)
                             .or(
                                 Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-                                    .eq(-1),
+                                    .is_null(),
                             ),
                     ),
             )
@@ -556,7 +556,7 @@ fn populate_product_sc(
                                         Alias::new("perm"),
                                         Alias::new("permission_entity"),
                                     ))
-                                    .eq(-1)),
+                                    .is_null()),
                             ),
                     );
                 },

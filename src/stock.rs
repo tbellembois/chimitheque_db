@@ -142,7 +142,8 @@ pub fn compute_stock(
                         .equals(Entity::EntityId)
                         .or(Expr::col(Entity::EntityId).is_null()) // products with no storages for non admins
                         .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity"))).eq(-1),
+                            Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
+                                .is_null(),
                         ),
                 ),
         )

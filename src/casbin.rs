@@ -79,10 +79,10 @@ fn get_person_by_id(
     let (people, nb_results) = get_people(
         db_connection,
         &RequestFilter {
-            id: Some(request_person_id),
+            id: Some(person_id),
             ..Default::default()
         },
-        person_id,
+        request_person_id,
     )?;
 
     if nb_results == 0 {
@@ -200,10 +200,12 @@ pub fn to_string_adapter(
             row.get_unwrap::<_, u64>("person"),
             row.get_unwrap::<_, String>("permission_name"),
             row.get_unwrap::<_, String>("permission_item"),
-            permission_entity_string // row.get_unwrap::<_, u64>("permission_entity")
+            permission_entity_string
         )
         .as_str();
     }
+
+    debug!("result: {result}");
 
     Ok(result)
 }

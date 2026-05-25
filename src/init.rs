@@ -216,7 +216,7 @@ pub fn populate_db_with_base_data(
         (),
     )?;
     tx.execute(
-        "INSERT OR IGNORE INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'all', 'all', -1)",
+        "INSERT OR IGNORE INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'all', 'all', NULL)",
         (),
     )?;
 
