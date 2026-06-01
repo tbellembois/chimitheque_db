@@ -375,14 +375,16 @@ pub fn get_storages(
 
     let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {
         match order_by_string.as_str() {
-            "product.name.name_label" => (Name::Table, Name::NameLabel).into_column_ref(),
-            "storage_batch_number" => {
+            "product" | "product.name.name_label" => {
+                (Name::Table, Name::NameLabel).into_column_ref()
+            }
+            "batch_number" | "storage_batch_number" => {
                 (Storage::Table, Storage::StorageBatchNumber).into_column_ref()
             }
-            "store_location.store_location_full_path" => {
+            "store_location" | "store_location.store_location_full_path" => {
                 (StoreLocation::Table, StoreLocation::StoreLocationFullPath).into_column_ref()
             }
-            "storage_modification_date" => {
+            "modification_date" | "storage_modification_date" => {
                 (Storage::Table, Storage::StorageModificationDate).into_column_ref()
             }
             _ => (Storage::Table, Storage::StorageId).into_column_ref(),
