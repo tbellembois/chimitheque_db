@@ -333,7 +333,7 @@ pub fn get_people(
     // Create count query.
     let (count_sql, count_values) = expression
         .clone()
-        .expr(Func::count(Expr::col((Person::Table, Person::PersonId))))
+        .expr(Expr::col((Person::Table, Person::PersonId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("count_sql: {}", count_sql.clone().as_str());
