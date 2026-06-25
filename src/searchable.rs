@@ -201,26 +201,28 @@ pub fn create_update(
     let last_insert_id: u64;
 
     if let Some(item_id) = item_id {
-        db_connection.execute(
-            &format!(
-                "UPDATE {} SET ({}=(?1)) WHERE {}=(?2)",
-                item.get_table_name(),
-                item.get_text_field_name(),
-                item.get_id_field_name()
-            ),
-            [text.to_string(), item_id.to_string()],
-        )?;
+        let query = format!(
+            "UPDATE {} SET {}=?1 WHERE {}=?2",
+            item.get_table_name(),
+            item.get_text_field_name(),
+            item.get_id_field_name()
+        );
+
+        debug!("query:{query:?} 1:{text:?} 2:{item_id:?}");
+
+        db_connection.execute(&query, [text.to_string(), item_id.to_string()])?;
 
         last_insert_id = item_id;
     } else {
-        db_connection.execute(
-            &format!(
-                "INSERT INTO {} ({}) VALUES (?1)",
-                item.get_table_name(),
-                item.get_text_field_name()
-            ),
-            [text],
-        )?;
+        let query = format!(
+            "INSERT INTO {} ({}) VALUES (?1)",
+            item.get_table_name(),
+            item.get_text_field_name()
+        );
+
+        debug!("{query:?}");
+
+        db_connection.execute(&query, [text])?;
 
         last_insert_id = u64::try_from(db_connection.last_insert_rowid())?;
     }

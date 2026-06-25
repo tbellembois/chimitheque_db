@@ -377,7 +377,7 @@ mod tests {
         let db = init_test_storelocation();
 
         // Get all store locations
-        let (locations, count) = get_store_locations(&db, RequestFilter::default(), 1).unwrap();
+        let (locations, count) = get_store_locations(&db, &RequestFilter::default(), 1).unwrap();
 
         // Verify we got all 10 locations
         assert_eq!(count, 10);
@@ -391,7 +391,7 @@ mod tests {
         // Get locations for Chemistry Department (entity_id = 1)
         let (locations, count) = get_store_locations(
             &db,
-            RequestFilter {
+            &RequestFilter {
                 entity: Some(1),
                 ..Default::default()
             },
@@ -417,7 +417,7 @@ mod tests {
         // Get locations where parent is Chemical Storage (store_location_id = 2)
         let (locations, count) = get_store_locations(
             &db,
-            RequestFilter {
+            &RequestFilter {
                 store_location: Some(2),
                 ..Default::default()
             },
@@ -443,7 +443,7 @@ mod tests {
         // Search for locations containing "Storage" in their name
         let (locations, count) = get_store_locations(
             &db,
-            RequestFilter {
+            &RequestFilter {
                 search: Some("Storage".to_string()),
                 ..Default::default()
             },
@@ -458,7 +458,7 @@ mod tests {
         // Search for locations containing "Cold" in their name
         let (locations, count) = get_store_locations(
             &db,
-            RequestFilter {
+            &RequestFilter {
                 search: Some("Cold".to_string()),
                 ..Default::default()
             },
@@ -478,7 +478,7 @@ mod tests {
         // Get locations for Physics Department (entity_id = 2) that contain "Lab" in their name
         let (locations, count) = get_store_locations(
             &db,
-            RequestFilter {
+            &RequestFilter {
                 entity: Some(2),
                 search: Some("Lab".to_string()),
                 ..Default::default()

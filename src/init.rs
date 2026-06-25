@@ -1,12 +1,18 @@
-use log::{debug, info};
+use chimitheque_types::{
+    casnumber::CasNumber, cenumber::CeNumber, name::Name, requestfilter::RequestFilter,
+};
+use log::{debug, error, info};
 use regex::Regex;
 use rusqlite::{Batch, Connection, OpenFlags, Transaction};
 use std::env;
 use std::path::Path;
 
-use crate::define::{
-    CATEGORIES, CLASSES_OF_COMPOUNDS, CMR_CAS, PHYSICAL_STATES, PRODUCERS, SIGNAL_WORDS, SUPPLIERS,
-    SYMBOLS, TAGS,
+use crate::{
+    define::{
+        CATEGORIES, CLASSES_OF_COMPOUNDS, CMR_CAS, PHYSICAL_STATES, PRODUCERS, SIGNAL_WORDS,
+        SUPPLIERS, SYMBOLS, TAGS,
+    },
+    searchable::{create_update, get_many},
 };
 
 #[must_use]
@@ -43,6 +49,130 @@ pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
     };
 
     Ok(db_connection)
+}
+
+pub fn sanitize(
+    db_connection: &mut Connection,
+    skip_errors: bool,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // CAS numbers.
+    match get_many(
+        &CasNumber {
+            ..Default::default()
+        },
+        db_connection,
+        &RequestFilter::default(),
+    ) {
+        Ok((cas_numbers, _count)) => {
+            for mut cas_number in cas_numbers {
+                let mayerr = cas_number.sanitize_and_validate();
+
+                if let Err(err) = mayerr {
+                    if !skip_errors {
+                        return Err(err);
+                    }
+
+                    error!("skipping error: {err} for {cas_number:?}");
+                } else {
+                    debug!("create_update {cas_number:?}");
+
+                    create_update(
+                        &CasNumber::default(),
+                        cas_number.cas_number_id,
+                        db_connection,
+                        &cas_number.cas_number_label,
+                    )?;
+                }
+            }
+        }
+        Err(err) => {
+            if !skip_errors {
+                return Err(err);
+            }
+
+            error!("skipping error: {err}");
+        }
+    }
+
+    // CE numbers.
+    match get_many(
+        &CeNumber {
+            ..Default::default()
+        },
+        db_connection,
+        &RequestFilter::default(),
+    ) {
+        Ok((ce_numbers, _count)) => {
+            for mut ce_number in ce_numbers {
+                let mayerr = ce_number.sanitize_and_validate();
+
+                if let Err(err) = mayerr {
+                    if !skip_errors {
+                        return Err(err);
+                    }
+
+                    error!("skipping error: {err} for {ce_number:?}");
+                } else {
+                    debug!("create_update {ce_number:?}");
+
+                    create_update(
+                        &CeNumber::default(),
+                        ce_number.ce_number_id,
+                        db_connection,
+                        &ce_number.ce_number_label,
+                    )?;
+                }
+            }
+        }
+        Err(err) => {
+            if !skip_errors {
+                return Err(err);
+            }
+
+            error!("skipping error: {err}");
+        }
+    }
+
+    // Names.
+    match get_many(
+        &Name {
+            ..Default::default()
+        },
+        db_connection,
+        &RequestFilter::default(),
+    ) {
+        Ok((names, _count)) => {
+            for mut name in names {
+                let mayerr = name.sanitize_and_validate();
+
+                if let Err(err) = mayerr {
+                    if !skip_errors {
+                        return Err(err);
+                    }
+
+                    error!("skipping error: {err} for {name:?}");
+                } else {
+                    debug!("create_update {name:?}");
+
+                    create_update(
+                        &Name::default(),
+                        name.name_id,
+                        db_connection,
+                        &name.name_label,
+                    )?;
+                }
+            }
+        }
+        Err(err) => {
+            if !skip_errors {
+                return Err(err);
+            }
+
+            error!("skipping error: {err}");
+        }
+    }
+
+    Ok(())
 }
 
 pub fn create_tables(

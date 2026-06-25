@@ -82,7 +82,7 @@ impl From<&Row<'_>> for StoreLocationWrapper {
 
 pub fn get_store_locations(
     db_connection: &Connection,
-    filter: RequestFilter,
+    filter: &RequestFilter,
     person_id: u64,
 ) -> Result<(Vec<StoreLocationStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
     debug!("filter:{filter:?}");

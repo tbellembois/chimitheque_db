@@ -5,9 +5,7 @@ use chimitheque_types::{
 };
 use log::debug;
 use rusqlite::{Connection, Row, Transaction};
-use sea_query::{
-    Alias, Expr, Func, Iden, JoinType, Order, Query, SimpleExpr, SqliteQueryBuilder, Value,
-};
+use sea_query::{Alias, Expr, Iden, JoinType, Order, Query, SimpleExpr, SqliteQueryBuilder, Value};
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
 

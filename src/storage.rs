@@ -1204,7 +1204,7 @@ fn compute_storage_barecode_parts(
     // Getting the store location and its full path.
     let (store_locations, nb_results) = get_store_locations(
         db_transaction,
-        RequestFilter {
+        &RequestFilter {
             id: Some(store_location_id),
             ..Default::default()
         },

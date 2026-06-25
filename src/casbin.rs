@@ -98,7 +98,7 @@ fn get_store_location_by_id(
 ) -> Result<StoreLocation, Box<dyn std::error::Error + Send + Sync>> {
     let (store_locations, nb_results) = get_store_locations(
         db_connection,
-        RequestFilter {
+        &RequestFilter {
             id: Some(store_location_id),
             ..Default::default()
         },
@@ -317,7 +317,7 @@ pub fn match_store_location_has_children(
     // Get the number of store location children.
     let (_, nb_results) = get_store_locations(
         db_connection,
-        RequestFilter {
+        &RequestFilter {
             store_location: Some(store_location_id),
             ..Default::default()
         },
