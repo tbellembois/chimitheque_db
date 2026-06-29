@@ -1093,7 +1093,7 @@ pub fn get_storages(
 
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
-    let mut storages = Vec::new();
+    let mut storages = Vec::with_capacity(filter.limit.unwrap_or(100));
     let mut rows = stmt.query(&*select_values.as_params())?;
     while let Some(row) = rows.next()? {
         let storage = StorageWrapper::try_from(row)?;

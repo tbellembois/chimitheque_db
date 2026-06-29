@@ -348,7 +348,7 @@ pub fn get_store_locations(
     })?;
 
     // Build select result.
-    let mut store_locations = Vec::new();
+    let mut store_locations = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_store_location in rows {
         let store_location = maybe_store_location?;
 

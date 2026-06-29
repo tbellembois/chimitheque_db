@@ -96,7 +96,7 @@ pub fn get_producers(
     })?;
 
     // Build result.
-    let mut producers = Vec::new();
+    let mut producers = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_producer in rows {
         let mut producer = maybe_producer?;
 

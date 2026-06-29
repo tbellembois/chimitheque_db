@@ -137,7 +137,7 @@ pub fn get_many<Var: Searchable + Debug + Default + Serialize>(
     })?;
 
     // Build select result.
-    let mut items = Vec::new();
+    let mut items = Vec::with_capacity(filter.limit.unwrap_or(100));
 
     for mayerr_item in rows {
         let item = mayerr_item?;

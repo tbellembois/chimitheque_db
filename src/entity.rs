@@ -292,7 +292,7 @@ pub fn get_entities(
     })?;
 
     // Build select result.
-    let mut entities = Vec::new();
+    let mut entities = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_entity in rows {
         let entiity = maybe_entity?;
 

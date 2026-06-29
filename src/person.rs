@@ -403,7 +403,7 @@ pub fn get_people(
     })?;
 
     // Build select result.
-    let mut people = Vec::new();
+    let mut people = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_person in rows {
         let person = maybe_person?;
 

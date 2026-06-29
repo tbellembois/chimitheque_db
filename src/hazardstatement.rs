@@ -150,7 +150,7 @@ pub fn get_hazard_statements(
     })?;
 
     // Build result.
-    let mut hazard_statements = Vec::new();
+    let mut hazard_statements = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_hazard_statement in rows {
         let mut hazard_statement = maybe_hazard_statement?;
 

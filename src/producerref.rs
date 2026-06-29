@@ -132,7 +132,7 @@ pub fn get_producer_refs(
     })?;
 
     // Build result.
-    let mut producer_refs = Vec::new();
+    let mut producer_refs = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_producer_ref in rows {
         let mut producer_ref = maybe_producer_ref?;
 

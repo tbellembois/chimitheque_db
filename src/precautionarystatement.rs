@@ -153,7 +153,7 @@ pub fn get_precautionary_statements(
     })?;
 
     // Build result.
-    let mut precautionary_statements = Vec::new();
+    let mut precautionary_statements = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_precautionary_statement in rows {
         let mut precautionary_statement = maybe_precautionary_statement?;
 

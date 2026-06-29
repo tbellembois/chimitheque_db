@@ -97,7 +97,7 @@ pub fn get_suppliers(
     })?;
 
     // Build result.
-    let mut suppliers = Vec::new();
+    let mut suppliers = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_supplier in rows {
         let mut supplier = maybe_supplier?;
 
