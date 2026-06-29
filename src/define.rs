@@ -1,3 +1,15 @@
+use regex::Regex;
+
+pub static PRECAUTIONARY_STATEMENT_RE: std::sync::LazyLock<Regex> =
+    std::sync::LazyLock::new(|| {
+        Regex::new(r"(?P<reference>P[0-9+]+)(\t)(?P<label>[^\t]+)").unwrap()
+    });
+pub static HAZARD_STATEMENT_RE: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+    Regex::new(r"(?P<reference>(EU){0,1}H[0-9]+)(\t)(?P<label>[^\t]+)(\t)").unwrap()
+});
+pub static STORAGE_BARECODE_RE: std::sync::LazyLock<Regex> =
+    std::sync::LazyLock::new(|| Regex::new(r"([_a-zA-Z]+[0-9]+)\.[0-9]+").unwrap());
+
 pub const TAGS: [&str; 54] = [
     "3D Cell Culture",
     "Acid",

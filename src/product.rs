@@ -5,6 +5,7 @@ use crate::{
     category::Category,
     cenumber::CeNumber,
     classofcompound::ClassOfCompound,
+    define::STORAGE_BARECODE_RE,
     empiricalformula::EmpiricalFormula,
     entity::{Entity, EntityWrapper},
     entitypeople::Entitypeople,
@@ -51,7 +52,6 @@ use chimitheque_types::{
 };
 use csv::WriterBuilder;
 use log::debug;
-use regex::Regex;
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
     Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, OnConflict, Order, Query,
@@ -407,8 +407,6 @@ fn populate_product_sl(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("person_id:{person_id:?}");
 
-    let storage_barecode_regex = Regex::new(r"([_a-zA-Z]+[0-9]+)\.[0-9]+").unwrap();
-
     for product in products.iter_mut() {
         let product_id = product.product_id;
 
@@ -481,7 +479,7 @@ fn populate_product_sl(
             },
         };
 
-        let sl: HashSet<String> = storage_barecode_regex
+        let sl: HashSet<String> = STORAGE_BARECODE_RE
             .captures_iter(group_concat_barecode.as_str())
             .map(|c| c[1].to_string() + " ")
             .collect();

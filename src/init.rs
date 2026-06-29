@@ -3,15 +3,14 @@ use chimitheque_types::{
     linearformula::LinearFormula, name::Name, requestfilter::RequestFilter,
 };
 use log::{debug, error, info};
-use regex::Regex;
 use rusqlite::{Batch, Connection, OpenFlags, Transaction};
 use std::env;
 use std::path::Path;
 
 use crate::{
     define::{
-        CATEGORIES, CLASSES_OF_COMPOUNDS, CMR_CAS, PHYSICAL_STATES, PRODUCERS, SIGNAL_WORDS,
-        SUPPLIERS, SYMBOLS, TAGS,
+        CATEGORIES, CLASSES_OF_COMPOUNDS, CMR_CAS, HAZARD_STATEMENT_RE, PHYSICAL_STATES,
+        PRECAUTIONARY_STATEMENT_RE, PRODUCERS, SIGNAL_WORDS, SUPPLIERS, SYMBOLS, TAGS,
     },
     searchable::{create_update, get_many},
 };
@@ -74,9 +73,10 @@ pub fn sanitize(
                     }
 
                     error!("skipping error: {err} for {cas_number:?}");
-                } else {
+
                     debug!("create_update {cas_number:?}");
 
+                    // Even on error, we still want to update the database will sanitized entry.
                     create_update(
                         &CasNumber::default(),
                         cas_number.cas_number_id,
@@ -113,9 +113,10 @@ pub fn sanitize(
                     }
 
                     error!("skipping error: {err} for {ce_number:?}");
-                } else {
+
                     debug!("create_update {ce_number:?}");
 
+                    // Even on error, we still want to update the database will sanitized entry.
                     create_update(
                         &CeNumber::default(),
                         ce_number.ce_number_id,
@@ -152,9 +153,10 @@ pub fn sanitize(
                     }
 
                     error!("skipping error: {err} for {name:?}");
-                } else {
+
                     debug!("create_update {name:?}");
 
+                    // Even on error, we still want to update the database will sanitized entry.
                     create_update(
                         &Name::default(),
                         name.name_id,
@@ -191,9 +193,10 @@ pub fn sanitize(
                     }
 
                     error!("skipping error: {err} for {empirical_formula:?}");
-                } else {
+
                     debug!("create_update {empirical_formula:?}");
 
+                    // Even on error, we still want to update the database will sanitized entry.
                     create_update(
                         &EmpiricalFormula::default(),
                         empirical_formula.empirical_formula_id,
@@ -230,9 +233,10 @@ pub fn sanitize(
                     }
 
                     error!("skipping error: {err} for {linear_formula:?}");
-                } else {
+
                     debug!("create_update {linear_formula:?}");
 
+                    // Even on error, we still want to update the database will sanitized entry.
                     create_update(
                         &LinearFormula::default(),
                         linear_formula.linear_formula_id,
@@ -441,13 +445,9 @@ pub fn populate_db_with_base_data(
 fn update_ghs_statements(
     db_transaction: &Transaction,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let hazard_statement_re =
-        Regex::new(r"(?P<reference>(EU){0,1}H[0-9]+)(\t)(?P<label>[^\t]+)(\t)")?;
-    let precautionary_statement_re = Regex::new(r"(?P<reference>P[0-9+]+)(\t)(?P<label>[^\t]+)")?;
-
     let file = include_str!("resources/ghscode_11.txt");
     for line in file.lines() {
-        if let Some(captures) = hazard_statement_re.captures(line) {
+        if let Some(captures) = HAZARD_STATEMENT_RE.captures(line) {
             let reference = captures.name("reference").unwrap().as_str();
             let label = captures.name("label").unwrap().as_str();
 
@@ -461,7 +461,7 @@ fn update_ghs_statements(
             SET hazard_statement_reference = ?2;",
                 (&label, &reference),
             )?;
-        } else if let Some(captures) = precautionary_statement_re.captures(line) {
+        } else if let Some(captures) = PRECAUTIONARY_STATEMENT_RE.captures(line) {
             let reference = captures.name("reference").unwrap().as_str();
             let label = captures.name("label").unwrap().as_str();
 
