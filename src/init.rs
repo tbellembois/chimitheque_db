@@ -1,5 +1,6 @@
 use chimitheque_types::{
-    casnumber::CasNumber, cenumber::CeNumber, name::Name, requestfilter::RequestFilter,
+    casnumber::CasNumber, cenumber::CeNumber, empiricalformula::EmpiricalFormula,
+    linearformula::LinearFormula, name::Name, requestfilter::RequestFilter,
 };
 use log::{debug, error, info};
 use regex::Regex;
@@ -159,6 +160,84 @@ pub fn sanitize(
                         name.name_id,
                         db_connection,
                         &name.name_label,
+                    )?;
+                }
+            }
+        }
+        Err(err) => {
+            if !skip_errors {
+                return Err(err);
+            }
+
+            error!("skipping error: {err}");
+        }
+    }
+
+    // Empirical formulas.
+    match get_many(
+        &EmpiricalFormula {
+            ..Default::default()
+        },
+        db_connection,
+        &RequestFilter::default(),
+    ) {
+        Ok((empirical_formulas, _count)) => {
+            for mut empirical_formula in empirical_formulas {
+                let mayerr = empirical_formula.sanitize_and_validate();
+
+                if let Err(err) = mayerr {
+                    if !skip_errors {
+                        return Err(err);
+                    }
+
+                    error!("skipping error: {err} for {empirical_formula:?}");
+                } else {
+                    debug!("create_update {empirical_formula:?}");
+
+                    create_update(
+                        &EmpiricalFormula::default(),
+                        empirical_formula.empirical_formula_id,
+                        db_connection,
+                        &empirical_formula.empirical_formula_label,
+                    )?;
+                }
+            }
+        }
+        Err(err) => {
+            if !skip_errors {
+                return Err(err);
+            }
+
+            error!("skipping error: {err}");
+        }
+    }
+
+    // Linear formulas.
+    match get_many(
+        &LinearFormula {
+            ..Default::default()
+        },
+        db_connection,
+        &RequestFilter::default(),
+    ) {
+        Ok((linear_formulas, _count)) => {
+            for mut linear_formula in linear_formulas {
+                let mayerr = linear_formula.sanitize_and_validate();
+
+                if let Err(err) = mayerr {
+                    if !skip_errors {
+                        return Err(err);
+                    }
+
+                    error!("skipping error: {err} for {linear_formula:?}");
+                } else {
+                    debug!("create_update {linear_formula:?}");
+
+                    create_update(
+                        &LinearFormula::default(),
+                        linear_formula.linear_formula_id,
+                        db_connection,
+                        &linear_formula.linear_formula_label,
                     )?;
                 }
             }
