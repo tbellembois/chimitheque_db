@@ -48,6 +48,36 @@ pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
             .expect("Unable to load regexp extension.");
     };
 
+    // Set journal mode to WAL and verify the change.
+    db_connection
+        .pragma_update_and_check(None, "journal_mode", "WAL", |mode| {
+            if mode.get::<_, String>(0) == Ok("wal".to_string()) {
+                Ok(())
+            } else {
+                Err(rusqlite::Error::SqliteFailure(
+                    rusqlite::ffi::Error {
+                        code: rusqlite::ffi::ErrorCode::Unknown,
+                        extended_code: 0,
+                    },
+                    Some(format!("Failed to set WAL mode, got: {mode:?}")),
+                ))
+            }
+        })
+        .expect("Failed to set WAL mode");
+
+    // Enable foreign keys.
+    db_connection
+        .execute("PRAGMA foreign_keys = ON", [])
+        .expect("Failed to enable foreign keys");
+
+    // Vacuum and analyze.
+    db_connection
+        .execute("VACUUM", [])
+        .expect("Failed to vacuum database");
+    db_connection
+        .execute("ANALYZE", [])
+        .expect("Failed to analyze database");
+
     Ok(db_connection)
 }
 
@@ -73,7 +103,6 @@ pub fn sanitize(
                     }
 
                     error!("skipping error: {err} for {cas_number:?}");
-
                     debug!("create_update {cas_number:?}");
 
                     // Even on error, we still want to update the database will sanitized entry.
@@ -113,7 +142,6 @@ pub fn sanitize(
                     }
 
                     error!("skipping error: {err} for {ce_number:?}");
-
                     debug!("create_update {ce_number:?}");
 
                     // Even on error, we still want to update the database will sanitized entry.
@@ -153,7 +181,6 @@ pub fn sanitize(
                     }
 
                     error!("skipping error: {err} for {name:?}");
-
                     debug!("create_update {name:?}");
 
                     // Even on error, we still want to update the database will sanitized entry.
@@ -193,7 +220,6 @@ pub fn sanitize(
                     }
 
                     error!("skipping error: {err} for {empirical_formula:?}");
-
                     debug!("create_update {empirical_formula:?}");
 
                     // Even on error, we still want to update the database will sanitized entry.
@@ -233,7 +259,6 @@ pub fn sanitize(
                     }
 
                     error!("skipping error: {err} for {linear_formula:?}");
-
                     debug!("create_update {linear_formula:?}");
 
                     // Even on error, we still want to update the database will sanitized entry.
@@ -267,16 +292,6 @@ pub fn create_tables(
     // TEXT
     // BLOB
     // ANY
-
-    db_connection.execute_batch(
-        r"
-    PRAGMA foreign_keys = ON;
-    PRAGMA journal_mode = WAL;
-    PRAGMA synchronous = NORMAL;
-    PRAGMA temp_store = MEMORY;
-    PRAGMA cache_size = -20000;
-    ",
-    )?;
 
     let sql = include_str!("resources/shema.sql");
 

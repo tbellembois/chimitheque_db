@@ -1411,20 +1411,6 @@ pub fn get_products(
                 Producttags::ProducttagsTagId,
             )),
         )
-        //
-        // bookmarks
-        //
-        // .join(
-        //     JoinType::LeftJoin,
-        //     Bookmark::Table,
-        //     Expr::col((Bookmark::Table, Bookmark::Product)).equals((
-        //         Product::Table,
-        //         Product::ProductId,
-        //     )).and(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id)
-        // ))
-        //
-        // storage -> permissions
-        //
         .join(
             JoinType::LeftJoin,
             Storage::Table,
