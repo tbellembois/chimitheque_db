@@ -51,7 +51,7 @@ use chimitheque_types::{
     tag::Tag as TagStruct, unit::Unit as UnitStruct, unittype::UnitType,
 };
 use csv::WriterBuilder;
-use log::{debug, error, info};
+use log::{debug, info};
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
     Alias, ColumnRef, Cond, Expr, ExprTrait, Iden, IntoColumnRef, JoinType, OnConflict, Order,
@@ -1893,8 +1893,8 @@ pub fn get_products(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    error!("select_sql: {}", select_sql.clone().as_str());
-    error!("select_values: {select_values:?}");
+    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_values: {select_values:?}");
 
     info!("3 get_products took: {:?}", start.elapsed());
 
