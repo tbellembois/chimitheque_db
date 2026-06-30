@@ -449,8 +449,20 @@ CREATE INDEX IF NOT EXISTS idx_permission_fast ON permission(person, permission_
 -- store locations
 DROP INDEX IF EXISTS idx_store_location_name;
 DROP INDEX IF EXISTS idx_store_location_entity;
+DROP INDEX IF EXISTS idx_store_location_parent;
 CREATE INDEX IF NOT EXISTS idx_store_location_name ON store_location (store_location_name);
 CREATE INDEX IF NOT EXISTS idx_store_location_entity ON store_location (entity);
+CREATE INDEX IF NOT EXISTS idx_store_location_parent ON store_location (store_location);
+
+-- entities
+DROP INDEX IF EXISTS idx_entity_name;
+DROP INDEX IF EXISTS idx_entity_id;
+DROP INDEX IF EXISTS idx_personentities_entity;
+DROP INDEX IF EXISTS idx_personentities_person;
+CREATE INDEX IF NOT EXISTS idx_entity_name ON entity(entity_name);
+CREATE INDEX IF NOT EXISTS idx_entity_id ON entity(entity_id);
+CREATE INDEX IF NOT EXISTS idx_personentities_entity ON personentities(personentities_entity_id);
+CREATE INDEX IF NOT EXISTS idx_personentities_person ON personentities(personentities_person_id);
 
 -- storages
 DROP INDEX IF EXISTS idx_storage;

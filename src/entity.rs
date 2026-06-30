@@ -147,34 +147,10 @@ pub fn get_entities(
         Order::Asc
     };
 
-    // Create common query statement.
-    let mut expression = Query::select();
-    expression
+    // Subquery for permissions to reduce rows early.
+    let permission_subquery = Query::select()
+        .expr(Expr::col((Entity::Table, Entity::EntityId)))
         .from(Entity::Table)
-        //
-        // store locations for nb_store_locations
-        //
-        .join(
-            JoinType::LeftJoin,
-            StoreLocation::Table,
-            Expr::col((StoreLocation::Table, StoreLocation::Entity))
-                .equals((Entity::Table, Entity::EntityId)),
-        )
-        //
-        // person for nb_people
-        //
-        .join(
-            JoinType::LeftJoin,
-            Personentities::Table,
-            Expr::col((
-                Personentities::Table,
-                Personentities::PersonentitiesEntityId,
-            ))
-            .equals((Entity::Table, Entity::EntityId)),
-        )
-        //
-        // permissions
-        //
         .join_as(
             JoinType::InnerJoin,
             Permission::Table,
@@ -191,42 +167,51 @@ pub fn get_entities(
                 )
                 .and(
                     Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-                        .equals(Entity::EntityId)
+                        .equals((Entity::Table, Entity::EntityId))
                         .or(
                             Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                                 .is_null(),
                         ),
                 ),
         )
-        //
-        // filters
-        //
-        .conditions(
-            filter.search.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((Entity::Table, Entity::EntityName))
-                        .like(format!("%{}%", filter.search.clone().unwrap())),
-                );
-            },
-            |_| {},
+        .to_owned();
+
+    // Create common query statement.
+    let mut binding = Query::select();
+    let mut expression = binding
+        .from(Entity::Table)
+        // store locations for nb_store_locations
+        .join(
+            JoinType::LeftJoin,
+            StoreLocation::Table,
+            Expr::col((StoreLocation::Table, StoreLocation::Entity))
+                .equals((Entity::Table, Entity::EntityId)),
         )
-        .conditions(
-            filter.entity_name.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((Entity::Table, Entity::EntityName)).eq(filter.entity_name.unwrap()),
-                );
-            },
-            |_| {},
+        // person for nb_people
+        .join(
+            JoinType::LeftJoin,
+            Personentities::Table,
+            Expr::col((
+                Personentities::Table,
+                Personentities::PersonentitiesEntityId,
+            ))
+            .equals((Entity::Table, Entity::EntityId)),
         )
-        .conditions(
-            filter.id.is_some(),
-            |q| {
-                q.and_where(Expr::col(Entity::EntityId).eq(filter.id.unwrap()));
-            },
-            |_| {},
-        );
+        // Apply permission subquery as a filter.
+        .and_where(Expr::col((Entity::Table, Entity::EntityId)).in_subquery(permission_subquery));
+
+    // Apply filters.
+    if let Some(ref search) = filter.search {
+        expression = expression
+            .and_where(Expr::col((Entity::Table, Entity::EntityName)).like(format!("%{search}%")));
+    }
+    if let Some(entity_name) = filter.entity_name {
+        expression =
+            expression.and_where(Expr::col((Entity::Table, Entity::EntityName)).eq(entity_name));
+    }
+    if let Some(id) = filter.id {
+        expression = expression.and_where(Expr::col(Entity::EntityId).eq(id));
+    }
 
     // Create count query.
     let (count_sql, count_values) = expression
@@ -294,9 +279,8 @@ pub fn get_entities(
     // Build select result.
     let mut entities = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_entity in rows {
-        let entiity = maybe_entity?;
-
-        entities.push(entiity.0);
+        let entity = maybe_entity?;
+        entities.push(entity.0);
     }
 
     populate_managers(db_connection, &mut entities)?;

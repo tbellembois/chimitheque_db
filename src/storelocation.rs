@@ -7,8 +7,8 @@ use chimitheque_utils::string::{Transform, clean};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
-    Alias, ColumnRef, CommonTableExpression, Cycle, Expr, ExprTrait, Func, Iden, IntoColumnRef,
-    JoinType, Order, Query, SelectStatement, SimpleExpr, SqliteQueryBuilder, UnionType, WithClause,
+    Alias, ColumnRef, CommonTableExpression, Cycle, Expr, ExprTrait, Func, Iden, JoinType, Order,
+    Query, SelectStatement, SimpleExpr, SqliteQueryBuilder, UnionType, WithClause,
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
@@ -92,46 +92,13 @@ pub fn get_store_locations(
         Order::Asc
     };
 
-    // Create common query statement.
-    let mut expression = Query::select();
-    expression
+    // Subquery for permissions to reduce rows early.
+    let permission_subquery = Query::select()
+        .expr(Expr::col((
+            StoreLocation::Table,
+            StoreLocation::StoreLocationId,
+        )))
         .from(StoreLocation::Table)
-        .join(
-            JoinType::LeftJoin,
-            Entity::Table,
-            Expr::col((StoreLocation::Table, StoreLocation::Entity))
-                .equals((Entity::Table, Entity::EntityId)),
-        )
-        .join_as(
-            JoinType::LeftJoin,
-            StoreLocation::Table,
-            Alias::new("parent"),
-            Expr::col((StoreLocation::Table, StoreLocation::StoreLocation))
-                .equals((Alias::new("parent"), Alias::new("store_location_id"))),
-        )
-        //
-        // storages for nb_storage
-        //
-        .join(
-            JoinType::LeftJoin,
-            Storage::Table,
-            Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
-                .equals((Storage::Table, Storage::StoreLocation))
-                .and(Expr::col((Storage::Table, Storage::Storage)).is_null()),
-        )
-        //
-        // store locations for nb_children
-        //
-        .join_as(
-            JoinType::LeftJoin,
-            StoreLocation::Table,
-            Alias::new("children"),
-            Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
-                .equals((Alias::new("children"), Alias::new("store_location"))),
-        )
-        //
-        // permissions
-        //
         .join_as(
             JoinType::InnerJoin,
             Permission::Table,
@@ -148,65 +115,80 @@ pub fn get_store_locations(
                 )
                 .and(
                     Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-                        .equals(Entity::EntityId)
+                        .equals((StoreLocation::Table, StoreLocation::Entity))
                         .or(
                             Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
                                 .is_null(),
                         ),
                 ),
         )
-        //
-        // filters
-        //
-        .conditions(
-            filter.search.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((StoreLocation::Table, StoreLocation::StoreLocationName))
-                        .like(format!("%{}%", filter.search.clone().unwrap()))
-                        .or(Expr::col((Entity::Table, Entity::EntityName))
-                            .like(format!("%{}%", filter.search.clone().unwrap()))),
-                );
-            },
-            |_| {},
+        .to_owned();
+
+    // Create common query statement.
+    let mut binding = Query::select();
+    let mut expression = binding
+        .from(StoreLocation::Table)
+        .join(
+            JoinType::LeftJoin,
+            Entity::Table,
+            Expr::col((StoreLocation::Table, StoreLocation::Entity))
+                .equals((Entity::Table, Entity::EntityId)),
         )
-        .conditions(
-            filter.id.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
-                        .eq(filter.id.unwrap()),
-                );
-            },
-            |_| {},
+        .join_as(
+            JoinType::LeftJoin,
+            StoreLocation::Table,
+            Alias::new("parent"),
+            Expr::col((StoreLocation::Table, StoreLocation::StoreLocation))
+                .equals((Alias::new("parent"), Alias::new("store_location_id"))),
         )
-        .conditions(
-            filter.entity.is_some(),
-            |q| {
-                q.and_where(Expr::col(Entity::EntityId).eq(filter.entity.unwrap()));
-            },
-            |_| {},
+        // storages for nb_storage
+        .join(
+            JoinType::LeftJoin,
+            Storage::Table,
+            Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
+                .equals((Storage::Table, Storage::StoreLocation))
+                .and(Expr::col((Storage::Table, Storage::Storage)).is_null()),
         )
-        .conditions(
-            filter.store_location.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((StoreLocation::Table, StoreLocation::StoreLocation))
-                        .eq(filter.store_location.unwrap()),
-                );
-            },
-            |_| {},
+        // store locations for nb_children
+        .join_as(
+            JoinType::LeftJoin,
+            StoreLocation::Table,
+            Alias::new("children"),
+            Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
+                .equals((Alias::new("children"), Alias::new("store_location"))),
         )
-        .conditions(
-            filter.store_location_can_store,
-            |q| {
-                q.and_where(
-                    Expr::col((StoreLocation::Table, StoreLocation::StoreLocationCanStore))
-                        .eq(filter.store_location_can_store),
-                );
-            },
-            |_| {},
+        // Apply permission subquery as a filter.
+        .and_where(
+            Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId))
+                .in_subquery(permission_subquery),
         );
+
+    // Apply filters.
+    if let Some(ref search) = filter.search {
+        expression = expression.and_where(
+            Expr::col((StoreLocation::Table, StoreLocation::StoreLocationName))
+                .like(format!("%{search}%"))
+                .or(Expr::col((Entity::Table, Entity::EntityName)).like(format!("%{search}%"))),
+        );
+    }
+    if let Some(id) = filter.id {
+        expression = expression
+            .and_where(Expr::col((StoreLocation::Table, StoreLocation::StoreLocationId)).eq(id));
+    }
+    if let Some(entity) = filter.entity {
+        expression = expression.and_where(Expr::col((Entity::Table, Entity::EntityId)).eq(entity));
+    }
+    if let Some(store_location) = filter.store_location {
+        expression = expression.and_where(
+            Expr::col((StoreLocation::Table, StoreLocation::StoreLocation)).eq(store_location),
+        );
+    }
+    if filter.store_location_can_store {
+        expression = expression.and_where(
+            Expr::col((StoreLocation::Table, StoreLocation::StoreLocationCanStore))
+                .eq(filter.store_location_can_store),
+        );
+    }
 
     // Create count query.
     let (count_sql, count_values) = expression
@@ -273,44 +255,15 @@ pub fn get_store_locations(
             Alias::new("store_location_nb_children"),
         )
         .group_by_col((StoreLocation::Table, StoreLocation::StoreLocationId))
-        .conditions(
-            filter.order_by == Some("store_location.store_location_name".to_string()),
-            |q| {
-                q.order_by_expr(
-                    Expr::cust_with_expr(
-                        "? COLLATE NOCASE",
-                        Expr::col(Alias::new("parent_store_location_name").into_column_ref()),
-                    ),
-                    order.clone(),
-                );
-            },
-            |_| {},
+        // Apply sorting.
+        .order_by_expr(
+            Expr::cust_with_expr(
+                "? COLLATE NOCASE",
+                Expr::col((StoreLocation::Table, StoreLocation::StoreLocationName)),
+            ),
+            order,
         )
-        .conditions(
-            filter.order_by == Some("entity.entity_name".to_string()),
-            |q| {
-                q.order_by_expr(
-                    Expr::cust_with_expr("? COLLATE NOCASE", Entity::EntityName.into_column_ref()),
-                    order.clone(),
-                );
-            },
-            |_| {},
-        )
-        .conditions(
-            (filter.order_by == Some("store_location.store_location_name".to_string()))
-                || (filter.order_by == Some("entity.entity_name".to_string()))
-                || (filter.order_by == Some("store_location_name".to_string())),
-            |q| {
-                q.order_by_expr(
-                    Expr::cust_with_expr(
-                        "? COLLATE NOCASE",
-                        (StoreLocation::Table, StoreLocation::StoreLocationName).into_column_ref(),
-                    ),
-                    order,
-                );
-            },
-            |_| {},
-        )
+        // Apply pagination.
         .conditions(
             filter.limit.is_some(),
             |q| {
@@ -349,7 +302,6 @@ pub fn get_store_locations(
     let mut store_locations = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_store_location in rows {
         let store_location = maybe_store_location?;
-
         store_locations.push(store_location.0);
     }
 

@@ -70,6 +70,21 @@ pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
         .execute("PRAGMA foreign_keys = ON", [])
         .expect("Failed to enable foreign keys");
 
+    // Set synchronous mode to NORMAL.
+    db_connection
+        .execute("PRAGMA synchronous = NORMAL", [])
+        .expect("Failed to set synchronous mode");
+
+    // Set cache size to -65536 (64MB).
+    db_connection
+        .execute("PRAGMA cache_size = -65536", [])
+        .expect("Failed to set cache size");
+
+    // Set temp store to MEMORY to avoid disk I/O.
+    db_connection
+        .execute("PRAGMA temp_store = MEMORY", [])
+        .expect("Failed to set temp store to MEMORY");
+
     // Vacuum and analyze.
     db_connection
         .execute("VACUUM", [])
