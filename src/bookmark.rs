@@ -2,10 +2,7 @@ use chimitheque_types::bookmark::Bookmark as BookmarkStruct;
 use log::debug;
 use rusqlite::Connection;
 use rusqlite::Row;
-use sea_query::Expr;
-use sea_query::Iden;
-use sea_query::Query;
-use sea_query::SqliteQueryBuilder;
+use sea_query::{Expr, ExprTrait, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 

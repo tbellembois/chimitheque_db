@@ -5,7 +5,7 @@ use chimitheque_types::{
 use chimitheque_utils::string::{Transform, clean};
 use log::debug;
 use rusqlite::{Connection, Row};
-use sea_query::{Alias, Expr, Iden, Order, Query, SimpleExpr, SqliteQueryBuilder};
+use sea_query::{Alias, Expr, ExprTrait, Iden, Order, Query, SimpleExpr, SqliteQueryBuilder};
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
 
@@ -138,9 +138,7 @@ pub fn get_supplier_refs(
 
         // Set match_exact_search for supplier_ref matching filter.search.
         if filter.search.is_some()
-            && supplier_ref
-                .supplier_ref_label
-                .eq(&filter.search.clone().unwrap())
+            && supplier_ref.supplier_ref_label == filter.search.clone().unwrap()
         {
             supplier_ref.match_exact_search = true;
 

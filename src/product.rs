@@ -51,11 +51,11 @@ use chimitheque_types::{
     tag::Tag as TagStruct, unit::Unit as UnitStruct, unittype::UnitType,
 };
 use csv::WriterBuilder;
-use log::debug;
+use log::{debug, error, info};
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
-    Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, OnConflict, Order, Query,
-    SimpleExpr, SqliteQueryBuilder, any,
+    Alias, ColumnRef, Cond, Expr, ExprTrait, Iden, IntoColumnRef, JoinType, OnConflict, Order,
+    Query, SimpleExpr, SqliteQueryBuilder, any,
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
@@ -1147,6 +1147,9 @@ pub fn get_products(
     filter: RequestFilter,
     person_id: u64,
 ) -> Result<(Vec<ProductStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
+    use std::time::Instant;
+    let start = Instant::now();
+
     debug!("filter:{filter:?}");
     debug!("person_id:{person_id:?}");
 
@@ -1205,6 +1208,8 @@ pub fn get_products(
     } else {
         Order::Asc
     };
+
+    info!("5 get_products took: {:?}", start.elapsed());
 
     // Create common query statement.
     let mut expression = Query::select();
@@ -1717,6 +1722,8 @@ pub fn get_products(
     debug!("count_sql: {}", count_sql.clone().as_str());
     debug!("count_values: {count_values:?}");
 
+    info!("4 get_products took: {:?}", start.elapsed());
+
     // Create select query.
     let (select_sql, select_values) = expression
         .columns([
@@ -1886,8 +1893,10 @@ pub fn get_products(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {select_values:?}");
+    error!("select_sql: {}", select_sql.clone().as_str());
+    error!("select_values: {select_values:?}");
+
+    info!("3 get_products took: {:?}", start.elapsed());
 
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
@@ -1898,6 +1907,8 @@ pub fn get_products(
         0
     };
 
+    info!("2 get_products took: {:?}", start.elapsed());
+
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let mut products = Vec::with_capacity(filter.limit.unwrap_or(100));
@@ -1906,6 +1917,8 @@ pub fn get_products(
         let product = ProductWrapper::try_from(row)?;
         products.push(product.0);
     }
+
+    info!("1 get_products took: {:?}", start.elapsed());
 
     populate_synonyms(db_connection, &mut products)?;
     populate_classes_of_compound(db_connection, &mut products)?;
@@ -1922,6 +1935,8 @@ pub fn get_products(
     populate_product_sc(db_connection, &mut products, person_id, false, true)?;
 
     debug!("products: {products:#?}");
+
+    info!("get_products took: {:?}", start.elapsed());
 
     Ok((products, count))
 }
@@ -2242,7 +2257,7 @@ pub fn create_update_product(
         columns.push(Product::ProductInchi);
         values.push(SimpleExpr::Value(inchi.into()));
     } else {
-        columns_values.push((Product::ProductInchi, SimpleExpr::Custom("NULL".to_owned())));
+        columns_values.push((Product::ProductInchi, Expr::cust("NULL")));
     }
 
     if let Some(inchikey) = &product.product_inchikey {
@@ -2251,10 +2266,7 @@ pub fn create_update_product(
         columns.push(Product::ProductInchikey);
         values.push(SimpleExpr::Value(inchikey.into()));
     } else {
-        columns_values.push((
-            Product::ProductInchikey,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductInchikey, Expr::cust("NULL")));
     }
 
     if let Some(canonical_smiles) = &product.product_canonical_smiles {
@@ -2266,10 +2278,7 @@ pub fn create_update_product(
         columns.push(Product::ProductCanonicalSmiles);
         values.push(SimpleExpr::Value(canonical_smiles.into()));
     } else {
-        columns_values.push((
-            Product::ProductCanonicalSmiles,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductCanonicalSmiles, Expr::cust("NULL")));
     }
 
     if let Some(specificity) = &product.product_specificity {
@@ -2278,10 +2287,7 @@ pub fn create_update_product(
         columns.push(Product::ProductSpecificity);
         values.push(SimpleExpr::Value(specificity.into()));
     } else {
-        columns_values.push((
-            Product::ProductSpecificity,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductSpecificity, Expr::cust("NULL")));
     }
 
     if let Some(msds) = &product.product_msds {
@@ -2290,7 +2296,7 @@ pub fn create_update_product(
         columns.push(Product::ProductMsds);
         values.push(SimpleExpr::Value(msds.into()));
     } else {
-        columns_values.push((Product::ProductMsds, SimpleExpr::Custom("NULL".to_owned())));
+        columns_values.push((Product::ProductMsds, Expr::cust("NULL")));
     }
 
     if let Some(twod_formula) = &product.product_twod_formula {
@@ -2299,10 +2305,7 @@ pub fn create_update_product(
         columns.push(Product::ProductTwodFormula);
         values.push(SimpleExpr::Value(twod_formula.into()));
     } else {
-        columns_values.push((
-            Product::ProductTwodFormula,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductTwodFormula, Expr::cust("NULL")));
     }
 
     if let Some(threed_formula) = &product.product_threed_formula {
@@ -2311,10 +2314,7 @@ pub fn create_update_product(
         columns.push(Product::ProductThreedFormula);
         values.push(SimpleExpr::Value(threed_formula.into()));
     } else {
-        columns_values.push((
-            Product::ProductThreedFormula,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductThreedFormula, Expr::cust("NULL")));
     }
 
     if let Some(disposal_comment) = &product.product_disposal_comment {
@@ -2326,10 +2326,7 @@ pub fn create_update_product(
         columns.push(Product::ProductDisposalComment);
         values.push(SimpleExpr::Value(disposal_comment.into()));
     } else {
-        columns_values.push((
-            Product::ProductDisposalComment,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductDisposalComment, Expr::cust("NULL")));
     }
 
     if let Some(remark) = &product.product_remark {
@@ -2338,10 +2335,7 @@ pub fn create_update_product(
         columns.push(Product::ProductRemark);
         values.push(SimpleExpr::Value(remark.into()));
     } else {
-        columns_values.push((
-            Product::ProductRemark,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductRemark, Expr::cust("NULL")));
     }
 
     if let Some(molecular_weight) = &product.product_molecular_weight {
@@ -2353,10 +2347,7 @@ pub fn create_update_product(
         columns.push(Product::ProductMolecularWeight);
         values.push(SimpleExpr::Value(molecular_weight.to_owned().into()));
     } else {
-        columns_values.push((
-            Product::ProductMolecularWeight,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductMolecularWeight, Expr::cust("NULL")));
     }
 
     if let Some(temperature) = &product.product_temperature {
@@ -2365,10 +2356,7 @@ pub fn create_update_product(
         columns.push(Product::ProductTemperature);
         values.push(SimpleExpr::Value(temperature.to_owned().into()));
     } else {
-        columns_values.push((
-            Product::ProductTemperature,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductTemperature, Expr::cust("NULL")));
     }
 
     if let Some(sheet) = &product.product_sheet {
@@ -2377,7 +2365,7 @@ pub fn create_update_product(
         columns.push(Product::ProductSheet);
         values.push(SimpleExpr::Value(sheet.into()));
     } else {
-        columns_values.push((Product::ProductSheet, SimpleExpr::Custom("NULL".to_owned())));
+        columns_values.push((Product::ProductSheet, Expr::cust("NULL")));
     }
 
     if let Some(number_per_carton) = &product.product_number_per_carton {
@@ -2389,10 +2377,7 @@ pub fn create_update_product(
         columns.push(Product::ProductNumberPerCarton);
         values.push(SimpleExpr::Value(number_per_carton.to_owned().into()));
     } else {
-        columns_values.push((
-            Product::ProductNumberPerCarton,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductNumberPerCarton, Expr::cust("NULL")));
     }
 
     if let Some(number_per_bag) = &product.product_number_per_bag {
@@ -2404,10 +2389,7 @@ pub fn create_update_product(
         columns.push(Product::ProductNumberPerBag);
         values.push(SimpleExpr::Value(number_per_bag.to_owned().into()));
     } else {
-        columns_values.push((
-            Product::ProductNumberPerBag,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::ProductNumberPerBag, Expr::cust("NULL")));
     }
 
     // --
@@ -2423,10 +2405,7 @@ pub fn create_update_product(
             empirical_formula.empirical_formula_id.into(),
         ));
     } else {
-        columns_values.push((
-            Product::EmpiricalFormula,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::EmpiricalFormula, Expr::cust("NULL")));
     }
 
     if let Some(linear_formula) = &product.linear_formula {
@@ -2438,10 +2417,7 @@ pub fn create_update_product(
         columns.push(Product::LinearFormula);
         values.push(SimpleExpr::Value(linear_formula.linear_formula_id.into()));
     } else {
-        columns_values.push((
-            Product::LinearFormula,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::LinearFormula, Expr::cust("NULL")));
     }
 
     if let Some(physical_state) = &product.physical_state {
@@ -2453,10 +2429,7 @@ pub fn create_update_product(
         columns.push(Product::PhysicalState);
         values.push(SimpleExpr::Value(physical_state.physical_state_id.into()));
     } else {
-        columns_values.push((
-            Product::PhysicalState,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::PhysicalState, Expr::cust("NULL")));
     }
 
     if let Some(cas_number) = &product.cas_number {
@@ -2465,7 +2438,7 @@ pub fn create_update_product(
         columns.push(Product::CasNumber);
         values.push(SimpleExpr::Value(cas_number.cas_number_id.into()));
     } else {
-        columns_values.push((Product::CasNumber, SimpleExpr::Custom("NULL".to_owned())));
+        columns_values.push((Product::CasNumber, Expr::cust("NULL")));
     }
 
     if let Some(ce_number) = &product.ce_number {
@@ -2474,7 +2447,7 @@ pub fn create_update_product(
         columns.push(Product::CeNumber);
         values.push(SimpleExpr::Value(ce_number.ce_number_id.into()));
     } else {
-        columns_values.push((Product::CeNumber, SimpleExpr::Custom("NULL".to_owned())));
+        columns_values.push((Product::CeNumber, Expr::cust("NULL")));
     }
 
     if let Some(producer_ref) = &product.producer_ref {
@@ -2483,7 +2456,7 @@ pub fn create_update_product(
         columns.push(Product::ProducerRef);
         values.push(SimpleExpr::Value(producer_ref.producer_ref_id.into()));
     } else {
-        columns_values.push((Product::ProducerRef, SimpleExpr::Custom("NULL".to_owned())));
+        columns_values.push((Product::ProducerRef, Expr::cust("NULL")));
     }
 
     if let Some(category) = &product.category {
@@ -2492,7 +2465,7 @@ pub fn create_update_product(
         columns.push(Product::Category);
         values.push(SimpleExpr::Value(category.category_id.into()));
     } else {
-        columns_values.push((Product::Category, SimpleExpr::Custom("NULL".to_owned())));
+        columns_values.push((Product::Category, Expr::cust("NULL")));
     }
 
     if let Some(signal_word) = &product.signal_word {
@@ -2501,7 +2474,7 @@ pub fn create_update_product(
         columns.push(Product::SignalWord);
         values.push(SimpleExpr::Value(signal_word.signal_word_id.into()));
     } else {
-        columns_values.push((Product::SignalWord, SimpleExpr::Custom("NULL".to_owned())));
+        columns_values.push((Product::SignalWord, Expr::cust("NULL")));
     }
 
     if let Some(unit_temperature) = &product.unit_temperature {
@@ -2510,10 +2483,7 @@ pub fn create_update_product(
         columns.push(Product::UnitTemperature);
         values.push(SimpleExpr::Value(unit_temperature.unit_id.into()));
     } else {
-        columns_values.push((
-            Product::UnitTemperature,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::UnitTemperature, Expr::cust("NULL")));
     }
 
     if let Some(unit_molecular_weight) = &product.unit_molecular_weight {
@@ -2525,10 +2495,7 @@ pub fn create_update_product(
         columns.push(Product::UnitMolecularWeight);
         values.push(SimpleExpr::Value(unit_molecular_weight.unit_id.into()));
     } else {
-        columns_values.push((
-            Product::UnitMolecularWeight,
-            SimpleExpr::Custom("NULL".to_owned()),
-        ));
+        columns_values.push((Product::UnitMolecularWeight, Expr::cust("NULL")));
     }
 
     // --

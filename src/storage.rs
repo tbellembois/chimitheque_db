@@ -18,8 +18,8 @@ use qrcode_png::{Color, QrCode, QrCodeEcc};
 use regex::Regex;
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
-    Alias, ColumnRef, Cond, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
-    SqliteQueryBuilder, any,
+    Alias, ColumnRef, Cond, Expr, ExprTrait, Iden, IntoColumnRef, JoinType, Order, Query,
+    SimpleExpr, SqliteQueryBuilder, any,
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
@@ -1421,10 +1421,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageEntryDate);
             values.push(SimpleExpr::Value(storage_entry_date.timestamp().into()));
         } else {
-            columns_values.push((
-                Storage::StorageEntryDate,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageEntryDate, Expr::cust("NULL")));
         }
 
         if let Some(storage_exit_date) = &storage.storage_exit_date {
@@ -1436,10 +1433,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageExitDate);
             values.push(SimpleExpr::Value(storage_exit_date.timestamp().into()));
         } else {
-            columns_values.push((
-                Storage::StorageExitDate,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageExitDate, Expr::cust("NULL")));
         }
 
         if let Some(storage_opening_date) = &storage.storage_opening_date {
@@ -1451,10 +1445,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageOpeningDate);
             values.push(SimpleExpr::Value(storage_opening_date.timestamp().into()));
         } else {
-            columns_values.push((
-                Storage::StorageOpeningDate,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageOpeningDate, Expr::cust("NULL")));
         }
 
         if let Some(storage_expiration_date) = &storage.storage_expiration_date {
@@ -1468,10 +1459,7 @@ pub fn create_update_storage(
                 storage_expiration_date.timestamp().into(),
             ));
         } else {
-            columns_values.push((
-                Storage::StorageExpirationDate,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageExpirationDate, Expr::cust("NULL")));
         }
 
         if let Some(storage_comment) = &storage.storage_comment {
@@ -1483,10 +1471,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageComment);
             values.push(SimpleExpr::Value(storage_comment.into()));
         } else {
-            columns_values.push((
-                Storage::StorageComment,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageComment, Expr::cust("NULL")));
         }
 
         if let Some(storage_reference) = &storage.storage_reference {
@@ -1498,10 +1483,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageReference);
             values.push(SimpleExpr::Value(storage_reference.into()));
         } else {
-            columns_values.push((
-                Storage::StorageReference,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageReference, Expr::cust("NULL")));
         }
 
         if let Some(storage_batch_number) = &storage.storage_batch_number {
@@ -1513,10 +1495,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageBatchNumber);
             values.push(SimpleExpr::Value(storage_batch_number.into()));
         } else {
-            columns_values.push((
-                Storage::StorageBatchNumber,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageBatchNumber, Expr::cust("NULL")));
         }
 
         if let Some(storage_quantity) = storage.storage_quantity {
@@ -1528,10 +1507,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageQuantity);
             values.push(SimpleExpr::Value(storage_quantity.into()));
         } else {
-            columns_values.push((
-                Storage::StorageQuantity,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageQuantity, Expr::cust("NULL")));
         }
 
         if let Some(storage_barecode) = &storage.storage_barecode {
@@ -1543,10 +1519,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageBarecode);
             values.push(SimpleExpr::Value(storage_barecode.into()));
         } else {
-            columns_values.push((
-                Storage::StorageBarecode,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageBarecode, Expr::cust("NULL")));
         }
 
         if let Some(storage_concentration) = storage.storage_concentration {
@@ -1558,10 +1531,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageConcentration);
             values.push(SimpleExpr::Value(storage_concentration.into()));
         } else {
-            columns_values.push((
-                Storage::StorageConcentration,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageConcentration, Expr::cust("NULL")));
         }
 
         if let Some(storage_number_of_bag) = storage.storage_number_of_bag {
@@ -1573,10 +1543,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageNumberOfBag);
             values.push(SimpleExpr::Value(storage_number_of_bag.into()));
         } else {
-            columns_values.push((
-                Storage::StorageNumberOfBag,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageNumberOfBag, Expr::cust("NULL")));
         }
 
         if let Some(storage_number_of_carton) = storage.storage_number_of_carton {
@@ -1588,10 +1555,7 @@ pub fn create_update_storage(
             columns.push(Storage::StorageNumberOfCarton);
             values.push(SimpleExpr::Value(storage_number_of_carton.into()));
         } else {
-            columns_values.push((
-                Storage::StorageNumberOfCarton,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::StorageNumberOfCarton, Expr::cust("NULL")));
         }
 
         if let Some(supplier) = &storage.supplier {
@@ -1604,7 +1568,7 @@ pub fn create_update_storage(
             columns.push(Storage::Supplier);
             values.push(SimpleExpr::Value(supplier_id.into()));
         } else {
-            columns_values.push((Storage::Supplier, SimpleExpr::Custom("NULL".to_owned())));
+            columns_values.push((Storage::Supplier, Expr::cust("NULL")));
         }
 
         if let Some(unit_quantity) = storage.unit_quantity.clone() {
@@ -1617,7 +1581,7 @@ pub fn create_update_storage(
             columns.push(Storage::UnitQuantity);
             values.push(SimpleExpr::Value(unit_id.into()));
         } else {
-            columns_values.push((Storage::UnitQuantity, SimpleExpr::Custom("NULL".to_owned())));
+            columns_values.push((Storage::UnitQuantity, Expr::cust("NULL")));
         }
 
         if let Some(unit_concentration) = storage.unit_concentration.clone() {
@@ -1633,10 +1597,7 @@ pub fn create_update_storage(
             columns.push(Storage::UnitConcentration);
             values.push(SimpleExpr::Value(unit_id.into()));
         } else {
-            columns_values.push((
-                Storage::UnitConcentration,
-                SimpleExpr::Custom("NULL".to_owned()),
-            ));
+            columns_values.push((Storage::UnitConcentration, Expr::cust("NULL")));
         }
 
         if let Some(storage) = storage.storage.clone() {

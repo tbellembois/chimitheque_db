@@ -3,7 +3,7 @@ use chimitheque_types::{
     linearformula::LinearFormula, name::Name, requestfilter::RequestFilter,
 };
 use log::{debug, error, info};
-use rusqlite::{Batch, Connection, OpenFlags, Transaction};
+use rusqlite::{Batch, Connection, OpenFlags, Transaction, fallible_iterator::FallibleIterator};
 use std::env;
 use std::path::Path;
 
@@ -24,7 +24,7 @@ pub fn connect_test() -> Connection {
     let db_connection = Connection::open_in_memory().unwrap();
     unsafe {
         db_connection
-            .load_extension(sql_extension_regex, None)
+            .load_extension(sql_extension_regex, None::<&str>)
             .expect("Unable to load regexp extension.");
     };
 
@@ -44,7 +44,7 @@ pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
     )?;
     unsafe {
         db_connection
-            .load_extension(sql_extension_regex, None)
+            .load_extension(sql_extension_regex, None::<&str>)
             .expect("Unable to load regexp extension.");
     };
 

@@ -333,95 +333,52 @@ CREATE TABLE IF NOT EXISTS "personentities" (
 	FOREIGN KEY("personentities_person_id") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS "idx_bookmark" ON "bookmark" (
-	"person","product"
-);
-CREATE INDEX IF NOT EXISTS "idx_borrowing" ON "borrowing" (
-	"person","storage"
-);
-CREATE INDEX IF NOT EXISTS "idx_cas_number" ON "cas_number" (
-	"cas_number_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_ce_number" ON "ce_number" (
-	"ce_number_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_category" ON "category" (
-	"category_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_class_of_compound" ON "class_of_compound" (
-	"class_of_compound_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_empirical_formula" ON "empirical_formula" (
-	"empirical_formula_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_linear_formula" ON "linear_formula" (
-	"linear_formula_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_hazard_statement" ON "hazard_statement" (
-	"hazard_statement_reference"
-);
-CREATE INDEX IF NOT EXISTS "idx_precautionary_statement" ON "precautionary_statement" (
-	"precautionary_statement_reference"
-);
-CREATE INDEX IF NOT EXISTS "idx_physical_state" ON "physical_state" (
-	"physical_state_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_signal_word" ON "signal_word" (
-	"signal_word_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_symbol" ON "symbol" (
-	"symbol_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_tag" ON "tag" (
-	"tag_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_producer" ON "producer" (
-	"producer_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_producer_ref" ON "producer_ref" (
-	"producer","producer_ref_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_supplier" ON "supplier" (
-	"supplier_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_supplier_ref" ON "supplier_ref" (
-	"supplier","supplier_ref_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_name" ON "name" (
-	"name_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_unit" ON "unit" (
-	"unit_label"
-);
-CREATE INDEX IF NOT EXISTS "idx_permission" ON "permission" (
-	"person"
-);
-CREATE INDEX IF NOT EXISTS "idx_entity" ON "entity" (
-	"entity_name"
-);
-CREATE INDEX IF NOT EXISTS "idx_person" ON "person" (
-	"person_email"
-);
-CREATE INDEX IF NOT EXISTS "idx_product_cas_number" ON "product" (
-	"cas_number"
-);
-CREATE INDEX IF NOT EXISTS "idx_product_empirical_formula" ON "product" (
-	"empirical_formula"
-);
-CREATE INDEX IF NOT EXISTS "idx_product_name" ON "product" (
-	"name"
-);
-CREATE INDEX IF NOT EXISTS "idx_product_type" ON "product" (
-	"product_type"
-);
-CREATE INDEX IF NOT EXISTS "idx_store_location_name" ON "store_location" (
-	"store_location_name"
-);
-CREATE INDEX IF NOT EXISTS "idx_store_location_entity" ON "store_location" (
-	"entity"
-);
-CREATE INDEX IF NOT EXISTS "idx_storage" ON "storage" (
-	"product"
-);
+
+CREATE INDEX IF NOT EXISTS idx_bookmark ON bookmark (person,product)
+CREATE INDEX IF NOT EXISTS idx_borrowing ON borrowing (person,storage)
+CREATE INDEX IF NOT EXISTS idx_cas_number ON cas_number (cas_number_label)
+CREATE INDEX IF NOT EXISTS idx_ce_number ON ce_number (ce_number_label)
+CREATE INDEX IF NOT EXISTS idx_category ON category (category_label)
+CREATE INDEX IF NOT EXISTS idx_class_of_compound ON class_of_compound (class_of_compound_label)
+CREATE INDEX IF NOT EXISTS idx_empirical_formula ON empirical_formula (empirical_formula_label)
+CREATE INDEX IF NOT EXISTS idx_linear_formula ON linear_formula (linear_formula_label)
+CREATE INDEX IF NOT EXISTS idx_hazard_statement ON hazard_statement (hazard_statement_reference)
+CREATE INDEX IF NOT EXISTS idx_precautionary_statement ON precautionary_statement (precautionary_statement_reference)
+CREATE INDEX IF NOT EXISTS idx_physical_state ON physical_state (physical_state_label)
+CREATE INDEX IF NOT EXISTS idx_signal_word ON signal_word (signal_word_label)
+CREATE INDEX IF NOT EXISTS idx_symbol ON symbol (symbol_label)
+CREATE INDEX IF NOT EXISTS idx_tag ON tag (tag_label)
+CREATE INDEX IF NOT EXISTS idx_producer ON producer (producer_label)
+CREATE INDEX IF NOT EXISTS idx_producer_ref ON producer_ref (producer,producer_ref_label)
+CREATE INDEX IF NOT EXISTS idx_supplier ON supplier (supplier_label)
+CREATE INDEX IF NOT EXISTS idx_supplier_ref ON supplier_ref (supplier,supplier_ref_label)
+CREATE INDEX IF NOT EXISTS idx_name ON name (name_label)
+CREATE INDEX IF NOT EXISTS idx_unit ON unit (unit_label)
+CREATE INDEX IF NOT EXISTS idx_entity ON entity (entity_name)
+CREATE INDEX IF NOT EXISTS idx_person ON person (person_email)
+CREATE INDEX IF NOT EXISTS idx_product_cas_number ON product (cas_number)
+CREATE INDEX IF NOT EXISTS idx_product_empirical_formula ON product (empirical_formula)
+CREATE INDEX IF NOT EXISTS idx_product_name ON product (name)
+CREATE INDEX IF NOT EXISTS idx_product_type ON product (product_type)
+CREATE INDEX IF NOT EXISTS idx_store_location_name ON store_location (store_location_name)
+CREATE INDEX IF NOT EXISTS idx_store_location_entity ON store_location (entity)
+CREATE INDEX IF NOT EXISTS idx_storage ON storage (product)
+CREATE INDEX IF NOT EXISTS idx_storage_store_location ON storage(store_location)
+CREATE INDEX IF NOT EXISTS idx_storage_person ON storage(person)
+CREATE INDEX IF NOT EXISTS idx_storage_supplier ON storage(supplier)
+CREATE INDEX IF NOT EXISTS idx_storage_storage ON storage(storage)
+CREATE INDEX IF NOT EXISTS idx_product_person ON product(person)
+CREATE INDEX IF NOT EXISTS idx_product_category ON product(category)
+CREATE INDEX IF NOT EXISTS idx_product_producer_ref ON product(producer_ref)
+CREATE INDEX IF NOT EXISTS idx_product_signal_word ON product(signal_word)
+CREATE INDEX IF NOT EXISTS idx_product_physical_state ON product(physical_state)
+CREATE INDEX IF NOT EXISTS idx_producttags_tag ON producttags(producttags_tag_id)
+CREATE INDEX IF NOT EXISTS idx_productsynonyms_name ON productsynonyms(productsynonyms_name_id)
+CREATE INDEX IF NOT EXISTS idx_productsymbols_symbol ON productsymbols(productsymbols_symbol_id)
+CREATE INDEX IF NOT EXISTS idx_productsupplierrefs_supplier_ref ON productsupplierrefs(productsupplierrefs_supplier_ref_id)
+CREATE INDEX IF NOT EXISTS idx_producthazardstatements_hazard ON producthazardstatements(producthazardstatements_hazard_statement_id)
+CREATE INDEX IF NOT EXISTS idx_productprecautionarystatements_precautionary ON productprecautionarystatements(productprecautionarystatements_precautionary_statement_id)
+CREATE INDEX IF NOT EXISTS idx_permission_fast ON permission(person, permission_item, permission_name)
+
 
 COMMIT;

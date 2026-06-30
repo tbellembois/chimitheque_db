@@ -4,7 +4,7 @@ use chimitheque_types::{
 };
 use log::debug;
 use rusqlite::{Connection, Row};
-use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
+use sea_query::{Expr, ExprTrait, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
@@ -159,10 +159,8 @@ pub fn get_precautionary_statements(
 
         // Set match_exact_search for statement matching filter.search.
         if filter.search.is_some()
-            && precautionary_statement
-                .0
-                .precautionary_statement_reference
-                .eq(&filter.search.clone().unwrap())
+            && precautionary_statement.0.precautionary_statement_reference
+                == filter.search.clone().unwrap()
         {
             precautionary_statement.0.match_exact_search = true;
 

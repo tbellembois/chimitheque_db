@@ -4,7 +4,7 @@ use chimitheque_types::{entity::Entity as EntityStruct, requestfilter::RequestFi
 use log::debug;
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
-    Alias, ColumnRef, Expr, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
+    Alias, ColumnRef, Expr, ExprTrait, Iden, IntoColumnRef, JoinType, Order, Query, SimpleExpr,
     SqliteQueryBuilder,
 };
 

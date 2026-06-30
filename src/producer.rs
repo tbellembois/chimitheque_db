@@ -1,7 +1,7 @@
 use chimitheque_types::{producer::Producer as ProducerStruct, requestfilter::RequestFilter};
 use log::debug;
 use rusqlite::{Connection, Row};
-use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
+use sea_query::{Expr, ExprTrait, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
@@ -101,7 +101,7 @@ pub fn get_producers(
         let mut producer = maybe_producer?;
 
         // Set match_exact_search for producer matching filter.search.
-        if filter.search.is_some() && producer.producer_label.eq(&filter.search.clone().unwrap()) {
+        if filter.search.is_some() && producer.producer_label == filter.search.clone().unwrap() {
             producer.match_exact_search = true;
 
             // Inserting the producer at the beginning of the results.

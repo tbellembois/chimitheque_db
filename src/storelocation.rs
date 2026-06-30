@@ -1,5 +1,3 @@
-use std::fmt::Write;
-
 use crate::{entity::Entity, permission::Permission, storage::Storage};
 use chimitheque_types::{
     entity::Entity as EntityStruct, requestfilter::RequestFilter,
@@ -9,7 +7,7 @@ use chimitheque_utils::string::{Transform, clean};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
-    Alias, ColumnRef, CommonTableExpression, Cycle, Expr, Func, Iden, IntoColumnRef, IntoIden,
+    Alias, ColumnRef, CommonTableExpression, Cycle, Expr, ExprTrait, Func, Iden, IntoColumnRef,
     JoinType, Order, Query, SelectStatement, SimpleExpr, SqliteQueryBuilder, UnionType, WithClause,
 };
 use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
@@ -367,8 +365,8 @@ fn populate_store_location_full_path(
     struct MyGroupConcatFunction;
 
     impl Iden for MyGroupConcatFunction {
-        fn unquoted(&self, s: &mut dyn Write) {
-            write!(s, "group_concat").unwrap();
+        fn unquoted(&self) -> &str {
+            "group_concat"
         }
     }
 
@@ -426,7 +424,7 @@ fn populate_store_location_full_path(
 
     let select = SelectStatement::new()
         .expr_as(
-            Func::cust(MyGroupConcatFunction).arg(ColumnRef::Column(Alias::new("n").into_iden())),
+            Func::cust(MyGroupConcatFunction).arg(ColumnRef::Column(Alias::new("n").into())),
             Alias::new("store_location_parents"),
         )
         .from(Alias::new("ancestor"))
@@ -436,7 +434,7 @@ fn populate_store_location_full_path(
         .recursive(false)
         .cte(common_table_expression)
         .cycle(Cycle::new_from_expr_set_using(
-            SimpleExpr::Column(ColumnRef::Column(Alias::new("id").into_iden())),
+            SimpleExpr::Column(ColumnRef::Column(Alias::new("id").into())),
             Alias::new("looped"),
             Alias::new("traversal_path"),
         ))
@@ -518,7 +516,7 @@ pub fn create_update_store_location(
         values.push(SimpleExpr::Value(color.into()));
     } else {
         columns.push(StoreLocation::StoreLocationColor);
-        values.push(SimpleExpr::Custom("NULL".to_owned()));
+        values.push(Expr::cust("NULL"));
     }
 
     if let Some(full_path) = store_location.store_location_full_path {
@@ -548,7 +546,7 @@ pub fn create_update_store_location(
         values.push(SimpleExpr::Value(store_location.store_location_id.into()));
     } else {
         columns.push(StoreLocation::StoreLocation);
-        values.push(SimpleExpr::Custom("NULL".to_owned()));
+        values.push(Expr::cust("NULL"));
     }
 
     let sql_query: String;

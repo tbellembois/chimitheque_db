@@ -1,7 +1,7 @@
 use chimitheque_types::{requestfilter::RequestFilter, supplier::Supplier as SupplierStruct};
 use log::debug;
 use rusqlite::{Connection, Row};
-use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
+use sea_query::{Expr, ExprTrait, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
@@ -102,7 +102,7 @@ pub fn get_suppliers(
         let mut supplier = maybe_supplier?;
 
         // Set match_exact_search for supplier matching filter.search.
-        if filter.search.is_some() && supplier.supplier_label.eq(&filter.search.clone().unwrap()) {
+        if filter.search.is_some() && supplier.supplier_label == filter.search.clone().unwrap() {
             supplier.match_exact_search = true;
 
             // Inserting the supplier at the beginning of the results.
