@@ -51,7 +51,7 @@ use chimitheque_types::{
     tag::Tag as TagStruct, unit::Unit as UnitStruct, unittype::UnitType,
 };
 use csv::WriterBuilder;
-use log::{debug, info};
+use log::debug;
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
     Alias, ColumnRef, Cond, Expr, ExprTrait, Iden, IntoColumnRef, JoinType, OnConflict, Order,
@@ -1147,9 +1147,6 @@ pub fn get_products(
     filter: RequestFilter,
     person_id: u64,
 ) -> Result<(Vec<ProductStruct>, usize), Box<dyn std::error::Error + Send + Sync>> {
-    use std::time::Instant;
-    let start = Instant::now();
-
     debug!("filter:{filter:?}");
     debug!("person_id:{person_id:?}");
 
@@ -1208,8 +1205,6 @@ pub fn get_products(
     } else {
         Order::Asc
     };
-
-    info!("5 get_products took: {:?}", start.elapsed());
 
     // Create common query statement.
     let mut expression = Query::select();
@@ -1708,8 +1703,6 @@ pub fn get_products(
     debug!("count_sql: {}", count_sql.clone().as_str());
     debug!("count_values: {count_values:?}");
 
-    info!("4 get_products took: {:?}", start.elapsed());
-
     // Create select query.
     let (select_sql, select_values) = expression
         .columns([
@@ -1882,8 +1875,6 @@ pub fn get_products(
     debug!("select_sql: {}", select_sql.clone().as_str());
     debug!("select_values: {select_values:?}");
 
-    info!("3 get_products took: {:?}", start.elapsed());
-
     // Perform count query.
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
     let mut rows = stmt.query(&*count_values.as_params())?;
@@ -1893,8 +1884,6 @@ pub fn get_products(
         0
     };
 
-    info!("2 get_products took: {:?}", start.elapsed());
-
     // Perform select query.
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let mut products = Vec::with_capacity(filter.limit.unwrap_or(100));
@@ -1903,8 +1892,6 @@ pub fn get_products(
         let product = ProductWrapper::try_from(row)?;
         products.push(product.0);
     }
-
-    info!("1 get_products took: {:?}", start.elapsed());
 
     populate_synonyms(db_connection, &mut products)?;
     populate_classes_of_compound(db_connection, &mut products)?;
@@ -1921,8 +1908,6 @@ pub fn get_products(
     populate_product_sc(db_connection, &mut products, person_id, false, true)?;
 
     debug!("products: {products:#?}");
-
-    info!("get_products took: {:?}", start.elapsed());
 
     Ok((products, count))
 }

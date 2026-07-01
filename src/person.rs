@@ -250,13 +250,29 @@ pub fn get_people(
         Order::Asc
     };
 
-    // Create common query statement.
-    let mut expression = Query::select();
-    expression
+    // Subquery for permissions to reduce rows early.
+    // let permission_subquery = Query::select()
+    //     .from(Permission::Table)
+    //     .columns([Permission::Person])
+    //     .and_where(Expr::col((Permission::Table, Permission::Person)).eq(person_id))
+    //     .and_where(
+    //         Expr::col((Permission::Table, Permission::PermissionItem)).is_in(["all", "entities"]),
+    //     )
+    //     .and_where(
+    //         Expr::col((Permission::Table, Permission::PermissionName)).is_in(["r", "w", "all"]),
+    //     )
+    //     .and_where(
+    //         Expr::col((Permission::Table, Permission::PermissionEntity))
+    //             .equals((
+    //                 Personentities::Table,
+    //                 Personentities::PersonentitiesEntityId,
+    //             ))
+    //             .or(Expr::col((Permission::Table, Permission::PermissionEntity)).is_null()),
+    //     )
+    //     .to_owned();
+    let permission_subquery = Query::select()
+        .expr(Expr::col((Person::Table, Person::PersonId)))
         .from(Person::Table)
-        //
-        // entity -> permissions
-        //
         .join(
             JoinType::LeftJoin,
             Personentities::Table,
@@ -289,48 +305,47 @@ pub fn get_people(
                         ),
                 ),
         )
-        .conditions(
-            filter.entity.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((
-                        Personentities::Table,
-                        Personentities::PersonentitiesEntityId,
-                    ))
-                    .eq(filter.entity.unwrap()),
-                );
-            },
-            |_| {},
-        )
-        .conditions(
-            filter.id.is_some(),
-            |q| {
-                q.and_where(Expr::col((Person::Table, Person::PersonId)).eq(filter.id.unwrap()));
-            },
-            |_| {},
-        )
-        .conditions(
-            filter.person_email.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((Person::Table, Person::PersonEmail))
-                        .eq(filter.person_email.clone().unwrap()),
-                );
-            },
-            |_| {},
-        )
-        .conditions(
-            filter.search.is_some(),
-            |q| {
-                q.and_where(
-                    Expr::col((Person::Table, Person::PersonEmail))
-                        .like(format!("%{}%", filter.search.clone().unwrap())),
-                );
-            },
-            |_| {},
-        );
+        .to_owned();
 
-    // Create count query.
+    // Create common query statement.
+    let mut binding = Query::select();
+    let mut expression = binding
+        .from(Person::Table)
+        .join(
+            JoinType::LeftJoin,
+            Personentities::Table,
+            Expr::col((
+                Personentities::Table,
+                Personentities::PersonentitiesPersonId,
+            ))
+            .equals((Person::Table, Person::PersonId)),
+        )
+        // Apply permission subquery as a filter.
+        .and_where(Expr::col((Person::Table, Person::PersonId)).in_subquery(permission_subquery));
+
+    // Apply filters.
+    if let Some(entity) = filter.entity {
+        expression = expression.and_where(
+            Expr::col((
+                Personentities::Table,
+                Personentities::PersonentitiesEntityId,
+            ))
+            .eq(entity),
+        );
+    }
+    if let Some(id) = filter.id {
+        expression = expression.and_where(Expr::col((Person::Table, Person::PersonId)).eq(id));
+    }
+    if let Some(person_email) = &filter.person_email {
+        expression =
+            expression.and_where(Expr::col((Person::Table, Person::PersonEmail)).eq(person_email));
+    }
+    if let Some(search) = &filter.search {
+        expression = expression
+            .and_where(Expr::col((Person::Table, Person::PersonEmail)).like(format!("%{search}%")));
+    }
+
+    // Create count query
     let (count_sql, count_values) = expression
         .clone()
         .expr(Expr::col((Person::Table, Person::PersonId)).count_distinct())
@@ -339,7 +354,7 @@ pub fn get_people(
     debug!("count_sql: {}", count_sql.clone().as_str());
     debug!("count_values: {count_values:?}");
 
-    // Create select query.
+    // Create select query
     let (select_sql, select_values) = expression
         .columns([Person::PersonId, Person::PersonEmail])
         .expr_as(
@@ -389,7 +404,7 @@ pub fn get_people(
     debug!("select_sql: {}", select_sql.clone().as_str());
     debug!("select_values: {select_values:?}");
 
-    // Perform count query.
+    // Perform count query
     let mut stmt = db_connection.prepare(count_sql.as_str())?;
     let mut rows = stmt.query(&*count_values.as_params())?;
     let count: usize = if let Some(row) = rows.next()? {
@@ -398,17 +413,16 @@ pub fn get_people(
         0
     };
 
-    // Perform select query.
+    // Perform select query
     let mut stmt = db_connection.prepare(select_sql.as_str())?;
     let rows = stmt.query_map(&*select_values.as_params(), |row| {
         Ok(PersonWrapper::from(row))
     })?;
 
-    // Build select result.
+    // Build select result
     let mut people = Vec::with_capacity(filter.limit.unwrap_or(100));
     for maybe_person in rows {
         let person = maybe_person?;
-
         people.push(person.0);
     }
 

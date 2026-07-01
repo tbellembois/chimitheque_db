@@ -461,8 +461,9 @@ DROP INDEX IF EXISTS idx_personentities_entity;
 DROP INDEX IF EXISTS idx_personentities_person;
 CREATE INDEX IF NOT EXISTS idx_entity_name ON entity(entity_name);
 CREATE INDEX IF NOT EXISTS idx_entity_id ON entity(entity_id);
-CREATE INDEX IF NOT EXISTS idx_personentities_entity ON personentities(personentities_entity_id);
-CREATE INDEX IF NOT EXISTS idx_personentities_person ON personentities(personentities_person_id);
+
+-- people
+CREATE INDEX IF NOT EXISTS idx_person_email ON Person(person_email);
 
 -- storages
 DROP INDEX IF EXISTS idx_storage;
@@ -475,5 +476,8 @@ CREATE INDEX IF NOT EXISTS idx_storage_store_location ON storage(store_location)
 CREATE INDEX IF NOT EXISTS idx_storage_person ON storage(person);
 CREATE INDEX IF NOT EXISTS idx_storage_supplier ON storage(supplier);
 CREATE INDEX IF NOT EXISTS idx_storage_storage ON storage(storage);
+
+CREATE INDEX IF NOT EXISTS idx_personentities_entity ON personentities(personentities_entity_id);
+CREATE INDEX IF NOT EXISTS idx_personentities_person ON personentities(personentities_person_id);
 
 COMMIT;
