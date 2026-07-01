@@ -1206,6 +1206,48 @@ pub fn get_products(
         Order::Asc
     };
 
+    // Create a subquery for permission filtering
+    let permission_subquery = Query::select()
+        .expr(Expr::col((Product::Table, Product::ProductId)))
+        .from(Product::Table)
+        .join(
+            //storage
+            JoinType::LeftJoin,
+            Storage::Table,
+            Expr::col((Storage::Table, Storage::Product))
+                .equals((Product::Table, Product::ProductId)),
+        )
+        .join(
+            // storelocation
+            JoinType::LeftJoin,
+            StoreLocation::Table,
+            Expr::col((Storage::Table, Storage::StoreLocation))
+                .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
+        )
+        .join(
+            // entity
+            JoinType::LeftJoin,
+            Entity::Table,
+            Expr::col((StoreLocation::Table, StoreLocation::Entity))
+                .equals((Entity::Table, Entity::EntityId)),
+        )
+        .join_as(
+            JoinType::InnerJoin,
+            Permission::Table,
+            Alias::new("perm"),
+            Expr::col((Alias::new("perm"), Alias::new("person")))
+                .eq(person_id)
+                .and(
+                    Expr::col((Alias::new("perm"), Alias::new("permission_item")))
+                        .is_in(["all", "products"]),
+                )
+                .and(
+                    Expr::col((Alias::new("perm"), Alias::new("permission_name")))
+                        .is_in(["r", "w", "all"]),
+                ),
+        )
+        .to_owned();
+
     // Create common query statement.
     let mut expression = Query::select();
     expression
@@ -1406,41 +1448,8 @@ pub fn get_products(
                 Producttags::ProducttagsTagId,
             )),
         )
-        .join(
-            JoinType::LeftJoin,
-            Storage::Table,
-            Expr::col((Storage::Table, Storage::Product))
-                .equals((Product::Table, Product::ProductId)),
-        )
-        .join(
-            // storelocation
-            JoinType::LeftJoin,
-            StoreLocation::Table,
-            Expr::col((Storage::Table, Storage::StoreLocation))
-            .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
-        )
-        .join(
-            // entity
-            JoinType::LeftJoin,
-            Entity::Table,
-            Expr::col((StoreLocation::Table, StoreLocation::Entity))
-            .equals((Entity::Table, Entity::EntityId)),
-        )
-        .join_as(
-            JoinType::InnerJoin,
-            Permission::Table,
-            Alias::new("perm"),
-            Expr::col((Alias::new("perm"), Alias::new("person")))
-                .eq(person_id)
-                .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_item")))
-                        .is_in(["all", "products"]),
-                )
-                .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_name")))
-                        .is_in(["r", "w", "all"]),
-                )
-        )
+        // Apply permission subquery as a filter.
+        .and_where(Expr::col((Product::Table, Product::ProductId)).in_subquery(permission_subquery))
         //
         // restricted products?
         //

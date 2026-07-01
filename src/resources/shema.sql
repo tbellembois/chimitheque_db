@@ -444,7 +444,13 @@ CREATE INDEX IF NOT EXISTS idx_productclassesofcompounds_coc_reverse ON productc
 
 -- permissions
 DROP INDEX IF EXISTS idx_permission_fast;
+DROP INDEX IF EXISTS idx_permission_person;
+DROP INDEX IF EXISTS idx_permission_item;
+DROP INDEX IF EXISTS idx_permission_name;
 CREATE INDEX IF NOT EXISTS idx_permission_fast ON permission(person, permission_item, permission_name);
+CREATE INDEX idx_permission_person ON permission(person);
+CREATE INDEX idx_permission_item ON permission(permission_item);
+CREATE INDEX idx_permission_name ON permission(permission_name);
 
 -- store locations
 DROP INDEX IF EXISTS idx_store_location_name;
