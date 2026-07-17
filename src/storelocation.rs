@@ -317,7 +317,7 @@ fn populate_store_location_full_path(
     struct MyGroupConcatFunction;
 
     impl Iden for MyGroupConcatFunction {
-        fn unquoted(&self) -> &str {
+        fn unquoted(&self) -> &'static str {
             "group_concat"
         }
     }
