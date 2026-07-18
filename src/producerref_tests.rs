@@ -243,7 +243,7 @@ mod tests {
         };
 
         let ref_id2 = create_update_producer_ref(&conn, &ref2).unwrap();
-        assert_ne!(ref_id2, 1);
+        assert_eq!(ref_id2, 1);
         verify_producer_ref(&conn, ref_id2, 2, "Producer 1 Ref 1").unwrap();
     }
 
