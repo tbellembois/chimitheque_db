@@ -162,7 +162,7 @@ pub fn compute_stock(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_sql: {}", select_sql.as_str());
     debug!("select_values: {select_values:?}");
 
     // Perform select query.

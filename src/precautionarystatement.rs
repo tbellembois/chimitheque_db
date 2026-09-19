@@ -50,7 +50,7 @@ pub fn parse(
         .cond_where(Expr::col(PrecautionaryStatement::PrecautionaryStatementReference).eq(s))
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_sql: {}", select_sql.as_str());
     debug!("select_values: {select_values:?}");
 
     // Perform select query.
@@ -104,7 +104,7 @@ pub fn get_precautionary_statements(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_sql: {}", count_sql.as_str());
     debug!("count_values: {count_values:?}");
 
     // Create select query.
@@ -134,7 +134,7 @@ pub fn get_precautionary_statements(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_sql: {}", select_sql.as_str());
     debug!("select_values: {select_values:?}");
 
     // Perform count query.

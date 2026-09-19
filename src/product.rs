@@ -262,7 +262,7 @@ fn populate_entity_managers(
         .and_where(Expr::col((Entity::Table, Entity::EntityId)).eq(entity_id))
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql: {}", sql.clone().as_str());
+    debug!("sql: {}", sql.as_str());
     debug!("values: {values:?}");
 
     // Perform select query.
@@ -367,7 +367,7 @@ fn populate_product_availability(
             .and_where(Expr::col((Storage::Table, Storage::Product)).eq(product_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -461,7 +461,7 @@ fn populate_product_sl(
             .and_where(Expr::col(Storage::Product).eq(product_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -573,7 +573,7 @@ fn populate_product_sc(
             .and_where(Expr::col((Storage::Table, Storage::Storage)).is_null())
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", count_sql.clone().as_str());
+        debug!("sql: {}", count_sql.as_str());
         debug!("values: {count_values:?}");
 
         // Perform count query.
@@ -628,7 +628,7 @@ fn populate_synonyms(
             .and_where(Expr::col(Productsynonyms::ProductsynonymsProductId).eq(product_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -691,7 +691,7 @@ fn populate_classes_of_compound(
             )
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -758,7 +758,7 @@ fn populate_symbols(
             .and_where(Expr::col(Productsymbols::ProductsymbolsProductId).eq(product_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -822,7 +822,7 @@ fn populate_hazard_statements(
             )
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -898,7 +898,7 @@ fn populate_precautionary_statements(
             )
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -981,7 +981,7 @@ fn populate_supplier_refs(
             .and_where(Expr::col(Productsupplierrefs::ProductsupplierrefsProductId).eq(product_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -1055,7 +1055,7 @@ fn populate_tags(
             .and_where(Expr::col(Producttags::ProducttagsProductId).eq(product_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -1176,7 +1176,7 @@ pub fn get_products(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("exist_sql: {}", exist_sql.clone().as_str());
+    debug!("exist_sql: {}", exist_sql.as_str());
     debug!("exist_values: {exist_values:?}");
 
     // Perform exist query.
@@ -1709,7 +1709,7 @@ pub fn get_products(
         .expr(Expr::col((Product::Table, Product::ProductId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_sql: {}", count_sql.as_str());
     debug!("count_values: {count_values:?}");
 
     // Create select query.
@@ -1881,7 +1881,7 @@ pub fn get_products(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_sql: {}", select_sql.as_str());
     debug!("select_values: {select_values:?}");
 
     // Perform count query.
@@ -2509,7 +2509,7 @@ pub fn create_update_product(
             .to_string(SqliteQueryBuilder);
     }
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -2568,7 +2568,7 @@ fn create_update_product_symbols(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
@@ -2593,7 +2593,7 @@ fn create_update_product_symbols(
             .values([product.product_id.into(), name_id.into()])?
             .to_string(SqliteQueryBuilder);
 
-        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_query: {}", sql_query.as_str());
         debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -2627,7 +2627,7 @@ fn create_update_product_tags(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
@@ -2652,7 +2652,7 @@ fn create_update_product_tags(
             .values([product.product_id.into(), name_id.into()])?
             .to_string(SqliteQueryBuilder);
 
-        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_query: {}", sql_query.as_str());
         debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -2689,7 +2689,7 @@ fn create_update_product_synonyms(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
@@ -2714,7 +2714,7 @@ fn create_update_product_synonyms(
             .values([product.product_id.into(), name_id.into()])?
             .to_string(SqliteQueryBuilder);
 
-        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_query: {}", sql_query.as_str());
         debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -2754,7 +2754,7 @@ fn create_update_product_supplier_refs(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
@@ -2779,7 +2779,7 @@ fn create_update_product_supplier_refs(
             .values([product.product_id.into(), class_of_compound_id.into()])?
             .to_string(SqliteQueryBuilder);
 
-        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_query: {}", sql_query.as_str());
         debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -2819,7 +2819,7 @@ fn create_update_product_hazard_statements(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
@@ -2844,7 +2844,7 @@ fn create_update_product_hazard_statements(
             .values([product.product_id.into(), class_of_compound_id.into()])?
             .to_string(SqliteQueryBuilder);
 
-        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_query: {}", sql_query.as_str());
         debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -2884,7 +2884,7 @@ fn create_update_product_precautionary_statements(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
@@ -2909,7 +2909,7 @@ fn create_update_product_precautionary_statements(
             .values([product.product_id.into(), class_of_compound_id.into()])?
             .to_string(SqliteQueryBuilder);
 
-        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_query: {}", sql_query.as_str());
         debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -2951,7 +2951,7 @@ fn create_update_product_classes_of_compound(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
@@ -2976,7 +2976,7 @@ fn create_update_product_classes_of_compound(
             .values([product.product_id.into(), class_of_compound_id.into()])?
             .to_string(SqliteQueryBuilder);
 
-        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_query: {}", sql_query.as_str());
         debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;

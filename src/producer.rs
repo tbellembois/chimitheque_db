@@ -51,7 +51,7 @@ pub fn get_producers(
         .expr(Expr::col((Producer::Table, Producer::ProducerId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_sql: {}", count_sql.as_str());
     debug!("count_values: {count_values:?}");
 
     // Create select query.
@@ -77,7 +77,7 @@ pub fn get_producers(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_sql: {}", select_sql.as_str());
     debug!("select_values: {select_values:?}");
 
     // Perform count query.
@@ -153,7 +153,7 @@ pub fn get_producers(
 //             .to_string(SqliteQueryBuilder);
 //     }
 
-//     debug!("sql_query: {}", sql_query.clone().as_str());
+//     debug!("sql_query: {}", sql_query.as_str());
 //     debug!("sql_values: {:?}", sql_values);
 
 //     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;

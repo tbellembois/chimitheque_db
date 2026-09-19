@@ -84,7 +84,7 @@ fn populate_entities(
             .and_where(Expr::col(Personentities::PersonentitiesPersonId).eq(person_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -154,7 +154,7 @@ fn populate_managed_entities(
             .and_where(Expr::col(Entitypeople::EntitypeoplePersonId).eq(person_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -214,7 +214,7 @@ fn populate_permissions(
             .and_where(Expr::col(Permission::Person).eq(person_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("sql: {}", sql.clone().as_str());
+        debug!("sql: {}", sql.as_str());
         debug!("values: {values:?}");
 
         // Perform select query.
@@ -351,7 +351,7 @@ pub fn get_people(
         .expr(Expr::col((Person::Table, Person::PersonId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_sql: {}", count_sql.as_str());
     debug!("count_values: {count_values:?}");
 
     // Create select query
@@ -401,7 +401,7 @@ pub fn get_people(
         .order_by(Person::PersonEmail, order)
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_sql: {}", select_sql.as_str());
     debug!("select_values: {select_values:?}");
 
     // Perform count query
@@ -503,7 +503,7 @@ fn create_update_person_permissions(
             .values(values)?
             .to_string(SqliteQueryBuilder);
 
-        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_query: {}", sql_query.as_str());
         debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -543,7 +543,7 @@ fn create_update_person_membership(
                 .values(values)?
                 .to_string(SqliteQueryBuilder);
 
-            debug!("sql_query: {}", sql_query.clone().as_str());
+            debug!("sql_query: {}", sql_query.as_str());
             debug!("sql_values: {sql_values:?}");
 
             _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -571,7 +571,7 @@ fn create_update_person_membership(
                 .values(values)?
                 .to_string(SqliteQueryBuilder);
 
-            debug!("sql_query: {}", sql_query.clone().as_str());
+            debug!("sql_query: {}", sql_query.as_str());
             debug!("sql_values: {sql_values:?}");
 
             _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -627,7 +627,7 @@ pub fn create_update_person(
             .to_string(SqliteQueryBuilder);
     }
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -706,7 +706,7 @@ pub fn set_person_manager(
         .values(values)?
         .to_string(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -729,7 +729,7 @@ pub fn set_person_manager(
         .values(values)?
         .to_string(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -756,7 +756,7 @@ pub fn set_person_manager(
         .values(values)?
         .to_string(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -791,7 +791,7 @@ pub fn get_admins(
         .group_by_col((Person::Table, Person::PersonId))
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_sql: {}", select_sql.as_str());
     debug!("select_values: {select_values:?}");
 
     // Perform select query.
@@ -838,7 +838,7 @@ pub fn set_person_admin(
         .values(values)?
         .to_string(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;

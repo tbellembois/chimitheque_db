@@ -87,7 +87,7 @@ pub fn parse(
         .cond_where(Expr::col((Unit::Table, Unit::UnitLabel)).eq(s))
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_sql: {}", select_sql.as_str());
     debug!("select_values: {select_values:?}");
 
     // Perform select query.
@@ -151,7 +151,7 @@ pub fn get_units(
         .expr(Expr::col((Unit::Table, Unit::UnitId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_sql: {}", count_sql.as_str());
     debug!("count_values: {count_values:?}");
 
     // Create select query.
@@ -192,7 +192,7 @@ pub fn get_units(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_sql: {}", select_sql.as_str());
     debug!("select_values: {select_values:?}");
 
     // Perform count query.

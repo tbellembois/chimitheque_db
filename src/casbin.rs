@@ -176,7 +176,7 @@ pub fn to_string_adapter(
         ])
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", sql_query.clone().as_str());
+    debug!("select_sql: {}", sql_query.as_str());
     debug!("select_values: {sql_values:?}");
 
     let mut stmt = db_connection.prepare(sql_query.as_str())?;

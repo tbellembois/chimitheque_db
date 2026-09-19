@@ -264,7 +264,7 @@ fn populate_history_count(
             .and_where(Expr::col((Storage::Table, Storage::Storage)).eq(storage_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("count_sql: {}", count_sql.clone().as_str());
+        debug!("count_sql: {}", count_sql.as_str());
         debug!("count_values: {count_values:?}");
 
         // Perform count query.
@@ -361,7 +361,7 @@ pub fn get_storages(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("exist_sql: {}", exist_sql.clone().as_str());
+    debug!("exist_sql: {}", exist_sql.as_str());
     debug!("exist_values: {exist_values:?}");
 
     // Perform exist query.
@@ -1000,7 +1000,7 @@ pub fn get_storages(
         .expr(Expr::col((Storage::Table, Storage::StorageId)).count_distinct())
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("count_sql: {}", count_sql.clone().as_str());
+    debug!("count_sql: {}", count_sql.as_str());
     debug!("count_values: {count_values:?}");
 
     // Create select query.
@@ -1114,7 +1114,7 @@ pub fn get_storages(
         // )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
+    debug!("select_sql: {}", select_sql.as_str());
     debug!("select_values: {select_values:?}");
 
     // Perform count query.
@@ -1159,7 +1159,7 @@ fn create_storage_qrcode(
         .and_where(Expr::col(Storage::StorageId).eq(storage_id))
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("update_sql: {}", update_sql.clone().as_str());
+    debug!("update_sql: {}", update_sql.as_str());
     debug!("update_values: {update_values:?}");
 
     _ = db_transaction.execute(update_sql.as_str(), &*update_values.as_params())?;
@@ -1696,7 +1696,7 @@ pub fn create_update_storage(
                 .to_string(SqliteQueryBuilder);
         }
 
-        debug!("sql_query: {}", sql_query.clone().as_str());
+        debug!("sql_query: {}", sql_query.as_str());
         debug!("sql_values: {sql_values:?}");
 
         _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
@@ -1769,7 +1769,7 @@ pub fn archive_storage(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
@@ -1796,7 +1796,7 @@ pub fn unarchive_storage(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;

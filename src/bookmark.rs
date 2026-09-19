@@ -57,7 +57,7 @@ pub fn toggle_product_bookmark(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("exist_sql: {}", exist_sql.clone().as_str());
+    debug!("exist_sql: {}", exist_sql.as_str());
     debug!("exist_values: {exist_values:?}");
 
     // Perform exist query.
@@ -83,7 +83,7 @@ pub fn toggle_product_bookmark(
             .and_where(Expr::col((Bookmark::Table, Bookmark::Product)).eq(product_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("delete_sql: {}", delete_sql.clone().as_str());
+        debug!("delete_sql: {}", delete_sql.as_str());
         debug!("delete_values: {delete_values:?}");
 
         // Perform delete query.
@@ -97,7 +97,7 @@ pub fn toggle_product_bookmark(
             .values([person_id.into(), product_id.into()])?
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("insert_sql: {}", insert_sql.clone().as_str());
+        debug!("insert_sql: {}", insert_sql.as_str());
         debug!("insert_values: {insert_values:?}");
 
         // Perform insert query.

@@ -405,7 +405,7 @@ pub fn create_update_product_from_pubchem(
         last_insert_update_id = db_connection.last_insert_rowid().try_into()?;
     }
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
     debug!("last_insert_update_id: {last_insert_update_id}");
 

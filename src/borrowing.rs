@@ -69,7 +69,7 @@ pub fn toggle_storage_borrowing(
         )
         .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("exist_sql: {}", exist_sql.clone().as_str());
+    debug!("exist_sql: {}", exist_sql.as_str());
     debug!("exist_values: {exist_values:?}");
 
     // Perform exist query.
@@ -96,7 +96,7 @@ pub fn toggle_storage_borrowing(
             .and_where(Expr::col((Borrowing::Table, Borrowing::Borrower)).eq(borrower_id))
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("delete_sql: {}", delete_sql.clone().as_str());
+        debug!("delete_sql: {}", delete_sql.as_str());
         debug!("delete_values: {delete_values:?}");
 
         // Perform delete query.
@@ -120,7 +120,7 @@ pub fn toggle_storage_borrowing(
             ])?
             .build_rusqlite(SqliteQueryBuilder);
 
-        debug!("insert_sql: {}", insert_sql.clone().as_str());
+        debug!("insert_sql: {}", insert_sql.as_str());
         debug!("insert_values: {insert_values:?}");
 
         // Perform insert query.
