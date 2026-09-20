@@ -214,4 +214,185 @@ mod tests {
         assert_eq!(entities.len(), 1);
         assert_eq!(&entities[0].entity_name, "Physics Department");
     }
+
+    #[test]
+    fn test_get_entities_managers() {
+        let db_connection = init_test_entity();
+
+        // Person 1 has permission to see all entities
+        let filter = RequestFilter {
+            ..Default::default()
+        };
+        let (entities, _) = get_entities(&db_connection, filter, 1).unwrap();
+
+        // We check specific entities that we know have managers in init_test_entity
+        // Entity 1 -> Person 2 (person2@example.com)
+        // Entity 2 -> Person 3 (person3@example.com)
+        // Entity 3 -> Person 4 (person4@example.com)
+
+        let entity1 = entities
+            .iter()
+            .find(|e| e.entity_id == Some(1))
+            .expect("Entity 1 should exist");
+        let managers1 = entity1
+            .managers
+            .as_ref()
+            .expect("Entity 1 should have managers");
+        assert_eq!(managers1.len(), 1);
+        assert_eq!(managers1[0].person_id, Some(2));
+        assert_eq!(managers1[0].person_email, "person2@example.com");
+
+        let entity2 = entities
+            .iter()
+            .find(|e| e.entity_id == Some(2))
+            .expect("Entity 2 should exist");
+        let managers2 = entity2
+            .managers
+            .as_ref()
+            .expect("Entity 2 should have managers");
+        assert_eq!(managers2.len(), 1);
+        assert_eq!(managers2[0].person_id, Some(3));
+        assert_eq!(managers2[0].person_email, "person3@example.com");
+
+        // Check an entity that has NO manager assigned in init_test_entity (e.g., Entity 10)
+        let entity10 = entities
+            .iter()
+            .find(|e| e.entity_id == Some(10))
+            .expect("Entity 10 should exist");
+        assert!(
+            entity10.managers.is_none(),
+            "Entity 10 should not have any managers"
+        );
+    }
+
+    #[test]
+    fn test_create_entity() {
+        let mut db_connection = init_test_entity();
+
+        let new_entity = chimitheque_types::entity::Entity {
+            entity_id: None,
+            entity_name: "New Lab".to_string(),
+            entity_description: Some("Testing creation".to_string()),
+            managers: Some(vec![chimitheque_types::person::Person {
+                person_id: Some(1),
+                person_email: "person1@example.com".to_string(),
+                ..Default::default()
+            }]),
+            entity_nb_store_locations: Some(0),
+            entity_nb_people: Some(0),
+        };
+
+        let id = create_update_entity(&mut db_connection, new_entity).unwrap();
+        assert!(id > 10); // Should be greater than the 10 we inserted in init
+
+        // Verify it exists in DB
+        let mut stmt = db_connection
+            .prepare("SELECT entity_name FROM entity WHERE entity_id = ?")
+            .unwrap();
+        let name: String = stmt.query_row([id], |row| row.get(0)).unwrap();
+        assert_eq!(name, "New Lab");
+
+        // Verify manager was linked
+        let mut stmt = db_connection
+            .prepare(
+                "SELECT entitypeople_person_id FROM entitypeople WHERE entitypeople_entity_id = ?",
+            )
+            .unwrap();
+        let manager_id: u64 = stmt.query_row([id], |row| row.get(0)).unwrap();
+        assert_eq!(manager_id, 1);
+    }
+
+    #[test]
+    fn test_create_update_entity_managers() {
+        let mut db_connection = init_test_entity();
+
+        // We need a transaction because the function requires &Transaction
+        let tx = db_connection.transaction().unwrap();
+
+        let entity = chimitheque_types::entity::Entity {
+            entity_id: Some(1), // Use existing entity 1
+            entity_name: "Test".to_string(),
+            entity_description: Some("Test".to_string()),
+            managers: Some(vec![
+                chimitheque_types::person::Person {
+                    person_id: Some(6),
+                    person_email: "person6@example.com".to_string(),
+                    ..Default::default()
+                },
+                chimitheque_types::person::Person {
+                    person_id: Some(7),
+                    person_email: "person7@example.com".to_string(),
+                    ..Default::default()
+                },
+            ]),
+            entity_nb_store_locations: Some(0),
+            entity_nb_people: Some(0),
+        };
+
+        // Call the private function directly
+        create_update_entity_managers(&tx, &entity).unwrap();
+        tx.commit().unwrap();
+
+        // Verify that Entity 1 now has exactly 2 managers: 6 and 7
+        let mut stmt = db_connection.prepare("SELECT entitypeople_person_id FROM entitypeople WHERE entitypeople_entity_id = 1 ORDER BY entitypeople_person_id ASC").unwrap();
+        let ids: Vec<u64> = stmt
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        assert_eq!(ids, vec![6, 7]);
+    }
+
+    #[test]
+    fn test_update_entity() {
+        let mut db_connection = init_test_entity();
+
+        let update_entity = chimitheque_types::entity::Entity {
+            entity_id: Some(1),
+            entity_name: "Updated Chemistry Dept".to_string(),
+            entity_description: Some("Updated description".to_string()),
+            managers: Some(vec![chimitheque_types::person::Person {
+                person_id: Some(5), // Change manager from 2 to 5
+                person_email: "person5@example.com".to_string(),
+                ..Default::default()
+            }]),
+            entity_nb_store_locations: Some(0),
+            entity_nb_people: Some(0),
+        };
+
+        let id = create_update_entity(&mut db_connection, update_entity).unwrap();
+        assert_eq!(id, 1);
+
+        // Verify name updated
+        let mut stmt = db_connection
+            .prepare("SELECT entity_name FROM entity WHERE entity_id = 1")
+            .unwrap();
+        let name: String = stmt.query_row([], |row| row.get(0)).unwrap();
+        assert_eq!(name, "Updated Chemistry Dept");
+
+        // Verify manager updated (old one gone, new one present)
+        let mut stmt = db_connection
+            .prepare(
+                "SELECT entitypeople_person_id FROM entitypeople WHERE entitypeople_entity_id = 1",
+            )
+            .unwrap();
+        let manager_id: u64 = stmt.query_row([], |row| row.get(0)).unwrap();
+        assert_eq!(manager_id, 5);
+    }
+
+    #[test]
+    fn test_delete_entity() {
+        let mut db_connection = init_test_entity();
+        let target_id = 10;
+
+        delete_entity(&mut db_connection, target_id).unwrap();
+
+        // Verify it is gone
+        let mut stmt = db_connection
+            .prepare("SELECT count(*) FROM entity WHERE entity_id = ?")
+            .unwrap();
+        let count: i32 = stmt.query_row([target_id], |row| row.get(0)).unwrap();
+        assert_eq!(count, 0);
+    }
 }

@@ -1,4 +1,7 @@
-use std::fmt::{Display, Formatter};
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter},
+};
 
 use chimitheque_types::{entity::Entity as EntityStruct, requestfilter::RequestFilter};
 use log::debug;
@@ -66,65 +69,57 @@ impl From<&Row<'_>> for EntityWrapper {
 
 fn populate_managers(
     db_connection: &Connection,
-    entity: &mut [EntityStruct],
+    entities: &mut [EntityStruct],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    for entity in entity.iter_mut() {
-        let entity_id = entity.entity_id;
+    if entities.is_empty() {
+        return Ok(());
+    }
 
-        // Create select query.
-        let (sql, values) = Query::select()
-            .columns([
-                Entitypeople::EntitypeopleEntityId,
-                Entitypeople::EntitypeoplePersonId,
-            ])
-            .column(Person::PersonEmail)
-            .column(Entity::EntityName)
-            .from(Entitypeople::Table)
-            //
-            // entity
-            //
-            .join(
-                JoinType::LeftJoin,
-                Entity::Table,
-                Expr::col((Entitypeople::Table, Entitypeople::EntitypeopleEntityId))
-                    .equals((Entity::Table, Entity::EntityId)),
-            )
-            //
-            // person
-            //
-            .join(
-                JoinType::LeftJoin,
-                Person::Table,
-                Expr::col((Entitypeople::Table, Entitypeople::EntitypeoplePersonId))
-                    .equals((Person::Table, Person::PersonId)),
-            )
-            .and_where(Expr::col(Entitypeople::EntitypeopleEntityId).eq(entity_id))
-            .build_rusqlite(SqliteQueryBuilder);
+    let entity_ids: Vec<u64> = entities.iter().filter_map(|e| e.entity_id).collect();
+    if entity_ids.is_empty() {
+        return Ok(());
+    }
 
-        debug!("sql: {}", sql.as_str());
-        debug!("values: {values:?}");
+    // Fetch all managers for all entities in one go to avoid N+1 query problem
+    let (sql, values) = Query::select()
+        .columns([
+            Entitypeople::EntitypeopleEntityId,
+            Entitypeople::EntitypeoplePersonId,
+        ])
+        .column(Person::PersonEmail)
+        .from(Entitypeople::Table)
+        .join(
+            JoinType::LeftJoin,
+            Person::Table,
+            Expr::col((Entitypeople::Table, Entitypeople::EntitypeoplePersonId))
+                .equals((Person::Table, Person::PersonId)),
+        )
+        .and_where(Expr::col(Entitypeople::EntitypeopleEntityId).is_in(entity_ids))
+        .build_rusqlite(SqliteQueryBuilder);
 
-        // Perform select query.
-        let mut stmt = db_connection.prepare(sql.as_str())?;
-        let rows = stmt.query_map(&*values.as_params(), |row| {
-            Ok(EntitypeopleWrapper::from(row))
-        })?;
-
-        // Populate entity managers.
-        let mut managers: Vec<chimitheque_types::person::Person> = vec![];
-        for row in rows {
-            let entity_person_wrapper = row?;
-            managers.push(chimitheque_types::person::Person {
-                person_id: Some(entity_person_wrapper.0.entitypeople_person_id),
-                person_email: entity_person_wrapper.0.entitypeople_person_email,
+    let mut stmt = db_connection.prepare(sql.as_str())?;
+    let rows = stmt.query_map(&*values.as_params(), |row| {
+        Ok((
+            row.get::<_, u64>("entitypeople_entity_id")?,
+            chimitheque_types::person::Person {
+                person_id: Some(row.get("entitypeople_person_id")?),
+                person_email: row.get("person_email")?,
                 ..Default::default()
-            });
-        }
+            },
+        ))
+    })?;
 
-        if managers.is_empty() {
-            entity.managers = None;
-        } else {
-            entity.managers = Some(managers);
+    // Group managers by entity_id
+    let mut managers_map: HashMap<u64, Vec<chimitheque_types::person::Person>> = HashMap::new();
+    for row in rows {
+        let (e_id, person) = row?;
+        managers_map.entry(e_id).or_default().push(person);
+    }
+
+    // Assign back to entities
+    for entity in entities {
+        if let Some(id) = entity.entity_id {
+            entity.managers = managers_map.remove(&id).filter(|v| !v.is_empty());
         }
     }
 
@@ -296,17 +291,33 @@ fn create_update_entity_managers(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_entity_managers: {entity:#?}");
 
+    debug!("entity: {entity:#?}");
+
     let Some(entity_id) = entity.entity_id else {
         return Err(Box::new(EntityError::MissingEntityId));
     };
 
-    // Lazily remove all entity managers.
+    // Lazily remove all entity managers permissions.
     let (delete_sql, delete_values) = Query::delete()
         .from_table(Permission::Table)
         .and_where(Expr::col(Permission::PermissionItem).eq("all"))
         .and_where(Expr::col(Permission::PermissionName).eq("all"))
         .and_where(Expr::col(Permission::PermissionEntity).eq(entity_id))
         .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("delete_sql: {}", delete_sql.as_str());
+    debug!("delete_values: {delete_values:?}");
+
+    _ = db_transaction.execute(delete_sql.as_str(), &*delete_values.as_params())?;
+
+    // Lazily remove all entity managers.
+    let (delete_sql, delete_values) = Query::delete()
+        .from_table(Entitypeople::Table)
+        .and_where(Expr::col(Entitypeople::EntitypeopleEntityId).eq(entity_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("delete_sql: {}", delete_sql.as_str());
+    debug!("delete_values: {delete_values:?}");
 
     _ = db_transaction.execute(delete_sql.as_str(), &*delete_values.as_params())?;
 
@@ -332,52 +343,32 @@ pub fn create_update_entity(
 
     let db_transaction = db_connection.transaction()?;
 
-    // Create request: list of columns and values to insert.
-    let columns = vec![Entity::EntityName, Entity::EntityDescription];
-    let values = vec![
-        SimpleExpr::Value(entity.entity_name.clone().into()),
-        SimpleExpr::Value(entity.entity_description.clone().into()),
-    ];
-
-    // Update request: list of (columns, values) pairs to insert.
-    let columns_values = vec![
-        (Entity::EntityName, entity.entity_name.clone().into()),
-        (
-            Entity::EntityDescription,
-            entity.entity_description.clone().into(),
-        ),
-    ];
-
-    let sql_query: String;
-    let sql_values: RusqliteValues = RusqliteValues(vec![]);
-
-    if let Some(entity_id) = entity.entity_id {
-        // Update query.
-        sql_query = Query::update()
+    let (sql_query, sql_values) = if let Some(entity_id) = entity.entity_id {
+        // Update query: logic moved inside to avoid unnecessary clones
+        Query::update()
             .table(Entity::Table)
-            .values(columns_values)
+            .values([
+                (Entity::EntityName, entity.entity_name.clone().into()),
+                (
+                    Entity::EntityDescription,
+                    entity.entity_description.clone().into(),
+                ),
+            ])
             .and_where(Expr::col(Entity::EntityId).eq(entity_id))
-            .to_string(SqliteQueryBuilder);
-
-        // columns.push(Entity::EntityId);
-        // values.push(SimpleExpr::Value(entity_id.into()));
-
-        // sql_query = Query::insert()
-        //     .replace()
-        //     .into_table(Entity::Table)
-        //     .columns(columns)
-        //     .values(values)?
-        //     .to_string(SqliteQueryBuilder);
+            .build_rusqlite(SqliteQueryBuilder)
     } else {
-        // Insert query.
-        sql_query = Query::insert()
+        // Insert query: logic moved inside to avoid unnecessary clones
+        Query::insert()
             .into_table(Entity::Table)
-            .columns(columns)
-            .values(values)?
-            .to_string(SqliteQueryBuilder);
-    }
+            .columns([Entity::EntityName, Entity::EntityDescription])
+            .values([
+                SimpleExpr::Value(entity.entity_name.clone().into()),
+                SimpleExpr::Value(entity.entity_description.clone().into()),
+            ])?
+            .build_rusqlite(SqliteQueryBuilder)
+    };
 
-    debug!("sql_query: {}", sql_query.clone().as_str());
+    debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;

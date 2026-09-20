@@ -880,3 +880,7 @@ pub fn delete_person(
 
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "person_tests.rs"]
+mod person_tests;
