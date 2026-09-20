@@ -10,7 +10,7 @@ use sea_query::{
     Alias, ColumnRef, CommonTableExpression, Cycle, Expr, ExprTrait, Func, Iden, JoinType, Order,
     Query, SelectStatement, SimpleExpr, SqliteQueryBuilder, UnionType, WithClause,
 };
-use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
+use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
 #[allow(clippy::enum_variant_names)]
@@ -501,34 +501,19 @@ pub fn create_update_store_location(
         values.push(Expr::cust("NULL"));
     }
 
-    let sql_query: String;
-    let sql_values: RusqliteValues = RusqliteValues(vec![]);
-
-    if let Some(store_location_id) = store_location.store_location_id {
-        // Update query.
-        sql_query = Query::update()
+    let (sql_query, sql_values) = if let Some(id) = store_location.store_location_id {
+        Query::update()
             .table(StoreLocation::Table)
             .values(columns_values)
-            .and_where(Expr::col(StoreLocation::StoreLocationId).eq(store_location_id))
-            .to_string(SqliteQueryBuilder);
-
-        // columns.push(StoreLocation::StoreLocationId);
-        // values.push(SimpleExpr::Value(store_location_id.into()));
-
-        // sql_query = Query::insert()
-        //     .replace()
-        //     .into_table(StoreLocation::Table)
-        //     .columns(columns)
-        //     .values(values)?
-        //     .to_string(SqliteQueryBuilder);
+            .and_where(Expr::col(StoreLocation::StoreLocationId).eq(id))
+            .build_rusqlite(SqliteQueryBuilder)
     } else {
-        // Insert query.
-        sql_query = Query::insert()
+        Query::insert()
             .into_table(StoreLocation::Table)
             .columns(columns)
             .values(values)?
-            .to_string(SqliteQueryBuilder);
-    }
+            .build_rusqlite(SqliteQueryBuilder)
+    };
 
     debug!("sql_query: {}", sql_query.clone().as_str());
     debug!("sql_values: {sql_values:?}");

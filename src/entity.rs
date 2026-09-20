@@ -11,11 +11,11 @@ use sea_query::{
     SqliteQueryBuilder,
 };
 
-use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
+use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
 use crate::{
-    entitypeople::{Entitypeople, EntitypeopleWrapper},
+    entitypeople::Entitypeople,
     permission::Permission,
     person::{Person, set_person_manager},
     personentities::Personentities,

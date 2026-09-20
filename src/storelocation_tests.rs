@@ -497,4 +497,115 @@ mod tests {
             assert!(location.store_location_name.contains("Lab"));
         }
     }
+
+    #[test]
+    fn test_create_store_location() {
+        let mut db = init_test_storelocation();
+
+        let new_location = chimitheque_types::storelocation::StoreLocation {
+            store_location_id: None,
+            store_location_name: "New test location".to_string(),
+            store_location_can_store: true,
+            store_location_color: Some("blue".to_string()),
+            store_location_full_path: None,
+            entity: Some(chimitheque_types::entity::Entity {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            store_location: Some(Box::new(chimitheque_types::storelocation::StoreLocation {
+                store_location_id: Some(1), // Parent is Main Storage
+                ..Default::default()
+            })),
+            store_location_nb_storages: Some(0),
+            store_location_nb_children: Some(0),
+        };
+
+        let id = create_update_store_location(&mut db, new_location).unwrap();
+        assert!(id > 10);
+
+        // Verify it exists and path was populated
+        let mut stmt = db.prepare("SELECT store_location_name, store_location_full_path FROM store_location WHERE store_location_id = ?").unwrap();
+        let (name, path): (String, String) = stmt
+            .query_row([id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .unwrap();
+
+        assert_eq!(name, "New test location");
+        // Path should be "Main Storage/New test location" (since parent 1 is "Main Storage")
+        assert!(path.contains("Main Storage"));
+        assert!(path.contains("New test location"));
+    }
+
+    #[test]
+    fn test_update_store_location() {
+        let mut db = init_test_storelocation();
+
+        let update_location = chimitheque_types::storelocation::StoreLocation {
+            store_location_id: Some(1),
+            store_location_name: "Updated Main Storage".to_string(),
+            store_location_can_store: false,
+            store_location_color: Some("red".to_string()),
+            store_location_full_path: None, // Will be re-calculated
+            entity: Some(chimitheque_types::entity::Entity {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            store_location: None,
+            store_location_nb_storages: Some(0),
+            store_location_nb_children: Some(0),
+        };
+
+        let id = create_update_store_location(&mut db, update_location).unwrap();
+        assert_eq!(id, 1);
+
+        // Verify changes
+        let mut stmt = db.prepare("SELECT store_location_name, store_location_can_store, store_location_color FROM store_location WHERE store_location_id = 1").unwrap();
+        let (name, can_store, color): (String, bool, String) = stmt
+            .query_row([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+            .unwrap();
+
+        assert_eq!(name, "Updated Main Storage");
+        assert!(!can_store);
+        assert_eq!(color, "red");
+    }
+
+    #[test]
+    fn test_delete_store_location() {
+        let db = init_test_storelocation();
+
+        // Use location 10 which has no children and storages
+        let target_id = 10;
+
+        // Verify it exists first
+        let mut stmt = db
+            .prepare("SELECT count(*) FROM store_location WHERE store_location_id = ?")
+            .unwrap();
+        assert_eq!(
+            stmt.query_row([target_id], |row| row.get::<_, i32>(0))
+                .unwrap(),
+            1
+        );
+
+        delete_store_location(&db, target_id).unwrap();
+
+        // Verify it's gone
+        let mut stmt = db
+            .prepare("SELECT count(*) FROM store_location WHERE store_location_id = ?")
+            .unwrap();
+        assert_eq!(
+            stmt.query_row([target_id], |row| row.get::<_, i32>(0))
+                .unwrap(),
+            0
+        );
+
+        // Verify associated storages that were linked to this location are also gone
+        // (Because delete_store_location explicitly deletes storages first)
+        let mut stmt = db
+            .prepare("SELECT count(*) FROM storage WHERE store_location = ?")
+            .unwrap();
+        assert_eq!(
+            stmt.query_row([target_id], |row| row.get::<_, i32>(0))
+                .unwrap(),
+            0
+        );
+    }
 }
