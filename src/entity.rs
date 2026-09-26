@@ -67,6 +67,26 @@ impl From<&Row<'_>> for EntityWrapper {
     }
 }
 
+/// Populates the managers for each entity in the provided slice by fetching associated manager records
+/// from the database and assigning them to the corresponding entities.
+///
+/// This function:
+/// 1. Extracts all entity IDs from the input entities slice
+/// 2. Performs a single join query to fetch all managers for those entities
+/// 3. Groups the managers by their `entity_id`
+/// 4. Assigns the grouped managers back to each entity in the slice
+///
+/// The function uses a `HashMap` to efficiently group managers by `entity_id`, avoiding the N+1 query problem
+/// by fetching all required data in a single database query. It also filters out empty manager lists before
+/// assignment to maintain consistency.
+///
+/// # Arguments
+/// * `db_connection` - A reference to the SQLite database connection
+/// * `entities` - A mutable slice of `EntityStruct` that will have their managers populated
+///
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error + Send + Sync>>` - Returns Ok(()) on success,
+///   or an error if any operation fails
 fn populate_managers(
     db_connection: &Connection,
     entities: &mut [EntityStruct],
@@ -126,6 +146,39 @@ fn populate_managers(
     Ok(())
 }
 
+/// Retrieves entities from the database based on the provided filter and permission context.
+///
+/// This function:
+/// 1. Logs the filter and `person_id` for debugging purposes
+/// 2. Determines the ordering direction (ascending or descending) based on the filter
+/// 3. Builds a permission subquery to ensure users can only access entities for which they have
+///    appropriate permissions (read/write/all permissions on entities or 'all' permission with
+///    null entity context)
+/// 4. Constructs a main query that:
+///    - Joins with `StoreLocation` to count store locations per entity
+///    - Joins with Personentities to count people per entity
+///    - Applies the permission filter to limit results to authorized entities
+///    - Applies any additional filters (search text, entity name, or specific ID)
+/// 5. Executes a count query to determine the total number of matching entities
+/// 6. Executes the main select query to fetch the entities with their counts
+/// 7. Populates manager information for each entity
+/// 8. Returns the entities along with the total count
+///
+/// The function uses COLLATE NOCASE for case-insensitive string sorting.
+///
+/// # Arguments
+/// * `db_connection` - A reference to the SQLite database connection
+/// * `filter` - A `RequestFilter` struct specifying search criteria, pagination, and ordering
+/// * `person_id` - The ID of the person making the request, used for permission checking
+///
+/// # Returns
+/// * `Result<(Vec<EntityStruct>, usize), Box<dyn std::error::Error + Send + Sync>>` - A tuple
+///   containing:
+///   - A vector of `EntityStruct` objects matching the filter criteria
+///   - The total count of entities matching the filter (before pagination)
+///
+/// # Errors
+/// Returns an error if any database operation fails or if permission checking encounters issues
 pub fn get_entities(
     db_connection: &Connection,
     filter: RequestFilter,
@@ -285,6 +338,35 @@ pub fn get_entities(
     Ok((entities, count))
 }
 
+/// Updates entity managers by synchronizing the database state with the entity's manager list.
+///
+/// This function implements a 'delete then recreate' pattern to ensure the database state
+/// matches the provided entity's manager list exactly. It performs the following operations:
+///
+/// 1. Validates that the entity has an `entity_id` (returns `EntityError::MissingEntityId` if missing)
+/// 2. Deletes all existing entity manager permissions for the entity (where `permission_item` = \"all\",
+///    `permission_name` = \"all\", and `permission_entity` = `entity_id`)
+/// 3. Deletes all existing entity-people associations for the entity
+/// 4. If the entity has managers in the `EntityStruct`, creates new entity-people associations
+///    and sets manager permissions for each manager using `set_person_manager()`
+///
+/// The function uses a database transaction to ensure all delete and insert operations
+/// succeed or fail together, maintaining data consistency.
+///
+/// # Arguments
+/// * `db_transaction` - A reference to an active database transaction
+/// * `entity` - A reference to the `EntityStruct` containing the entity data and manager list
+///
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error + Send + Sync>>` - Returns Ok(()) on success,
+///   or an error if any operation fails
+///
+/// # Errors
+/// Returns an error if:
+/// - The entity is missing an `entity_id`
+/// - A manager is missing a `person_id`
+/// - Any database operation fails
+/// - The transaction cannot be committed
 fn create_update_entity_managers(
     db_transaction: &Transaction,
     entity: &EntityStruct,
@@ -335,6 +417,34 @@ fn create_update_entity_managers(
     Ok(())
 }
 
+/// Creates a new entity in the database or updates an existing entity.
+///
+/// This function handles both creation and update operations using a database transaction
+/// for atomicity. For existing entities, it updates the name and description fields.
+/// For new entities, it inserts a new record and returns the auto-generated ID.
+///
+/// The function performs the following operations:
+/// 1. Starts a new database transaction
+/// 2. Determines if the operation is an insert (no `entity_id`) or update (with `entity_id`)
+/// 3. Builds and executes the appropriate SQL query (INSERT or UPDATE)
+/// 4. Retrieves the last inserted ID if creating a new entity
+/// 5. Calls `create_update_entity_managers()` to sync manager associations
+/// 6. Commits the transaction if all operations succeed
+///
+/// # Arguments
+/// * `db_connection` - A mutable reference to the SQLite database connection
+/// * `entity` - A mutable `EntityStruct` that will be created or updated
+///
+/// # Returns
+/// * `Result<u64, Box<dyn std::error::Error + Send + Sync>>` - Returns the entity ID
+///   (either the existing one for updates or the newly created one for inserts)
+///
+/// # Errors
+/// Returns an error if:
+/// - The database transaction cannot be started
+/// - The SQL execution fails
+/// - The manager synchronization fails
+/// - The transaction commit fails
 pub fn create_update_entity(
     db_connection: &mut Connection,
     mut entity: EntityStruct,
@@ -391,6 +501,29 @@ pub fn create_update_entity(
     Ok(last_insert_update_id)
 }
 
+/// Deletes an entity from the database by its ID.
+///
+/// This function removes an entity record from the database. It performs a simple
+/// DELETE operation on the Entity table, targeting the record with the specified
+/// `entity_id`.
+///
+/// # Arguments
+/// * `db_connection` - A mutable reference to the SQLite database connection
+/// * `entity_id` - The unique identifier of the entity to be deleted
+///
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error + Send + Sync>>` - Returns Ok(()) on success,
+///   or an error if the deletion fails
+///
+/// # Errors
+/// Returns an error if:
+/// - The DELETE SQL execution fails
+/// - The database connection is invalid
+///
+/// # Notes
+/// This function does not perform any cascade deletes or check for dependent records.
+/// It assumes the caller has verified that deleting this entity is appropriate and
+/// will not violate any data integrity constraints.
 pub fn delete_entity(
     db_connection: &mut Connection,
     entity_id: u64,

@@ -37,6 +37,25 @@ impl From<&Row<'_>> for BorrowingWrapper {
     }
 }
 
+// Toggles a storage borrowing for a given person in the database.
+//
+// This function implements a toggle operation that will:
+// - Remove an existing borrowing if one exists for the specified person, storage, and borrower
+// - Add a new borrowing if none exists for the specified person, storage, and borrower
+//
+// The operation is performed atomically using a database transaction to ensure
+// data consistency. If any operation fails, the transaction will be rolled back.
+//
+// # Arguments
+// * `db_connection` - Mutable reference to an active SQLite database connection
+// * `person_id` - The ID of the person who owns the storage being borrowed
+// * `storage_id` - The ID of the storage being borrowed
+// * `borrower_id` - The ID of the person borrowing the storage
+// * `borrowing_comment` - Optional comment about the borrowing
+//
+// # Returns
+// * `Result<(), Box<dyn std::error::Error + Send + Sync>>` - Ok(()) on success,
+//   or an error if any operation fails
 pub fn toggle_storage_borrowing(
     db_connection: &mut Connection,
     person_id: u64,
@@ -44,11 +63,14 @@ pub fn toggle_storage_borrowing(
     borrower_id: u64,
     borrowing_comment: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Log the parameters for debugging purposes
     debug!("person_id: {person_id:?} borrower_id:{borrower_id:?} storage_id:{storage_id:?}");
 
+    // Begin a database transaction to ensure atomic operations
     let db_transaction = db_connection.transaction()?;
 
-    // Does a borrowing exists for this storage and borrower and person?
+    // Check if a borrowing exists for this storage, borrower and person
+    // This query checks if there is an existing borrowing record for the given combination
     let (exist_sql, exist_values) = Query::select()
         .expr(
             Expr::case(
@@ -73,6 +95,7 @@ pub fn toggle_storage_borrowing(
     debug!("exist_values: {exist_values:?}");
 
     // Perform exist query.
+    // Execute the query to check if the borrowing exists
     let borrowing_exists: bool;
     {
         let mut stmt = db_transaction.prepare(exist_sql.as_str())?;
@@ -87,8 +110,10 @@ pub fn toggle_storage_borrowing(
     debug!("borrowing_exists: {borrowing_exists:?}");
 
     // Toggle borrowing.
+    // If the borrowing exists, delete it; otherwise, insert a new one
     if borrowing_exists {
         // Delete borrowing.
+        // Build and execute a DELETE query to remove the existing borrowing
         let (delete_sql, delete_values) = Query::delete()
             .from_table(Borrowing::Table)
             .and_where(Expr::col((Borrowing::Table, Borrowing::Person)).eq(person_id))
@@ -100,10 +125,12 @@ pub fn toggle_storage_borrowing(
         debug!("delete_values: {delete_values:?}");
 
         // Perform delete query.
+        // Execute the DELETE query to remove the borrowing
         let mut stmt = db_transaction.prepare(delete_sql.as_str())?;
         stmt.execute(&*delete_values.as_params())?;
     } else {
         // Insert borrowing.
+        // Build and execute an INSERT query to add a new borrowing
         let (insert_sql, insert_values) = Query::insert()
             .into_table(Borrowing::Table)
             .columns([
@@ -124,10 +151,12 @@ pub fn toggle_storage_borrowing(
         debug!("insert_values: {insert_values:?}");
 
         // Perform insert query.
+        // Execute the INSERT query to add the new borrowing
         let mut stmt = db_transaction.prepare(insert_sql.as_str())?;
         stmt.execute(&*insert_values.as_params())?;
     }
 
+    // Commit the transaction to finalize the changes
     db_transaction.commit()?;
 
     Ok(())
