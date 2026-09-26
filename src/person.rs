@@ -495,13 +495,12 @@ fn create_update_person_permissions(
         values.push(perm.permission_item.to_string().into());
         values.push(perm.permission_entity.into());
 
-        let sql_values: RusqliteValues = RusqliteValues(vec![]);
-        let sql_query = Query::insert()
+        let (sql_query, sql_values) = Query::insert()
             .replace()
             .into_table(Permission::Table)
             .columns(columns)
             .values(values)?
-            .to_string(SqliteQueryBuilder);
+            .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql_query: {}", sql_query.as_str());
         debug!("sql_values: {sql_values:?}");
@@ -536,12 +535,11 @@ fn create_update_person_membership(
             values.push(person.person_id.into());
             values.push(entity.entity_id.into());
 
-            let sql_values: RusqliteValues = RusqliteValues(vec![]);
-            let sql_query = Query::insert()
+            let (sql_query, sql_values) = Query::insert()
                 .into_table(Personentities::Table)
                 .columns(columns)
                 .values(values)?
-                .to_string(SqliteQueryBuilder);
+                .build_rusqlite(SqliteQueryBuilder);
 
             debug!("sql_query: {}", sql_query.as_str());
             debug!("sql_values: {sql_values:?}");
@@ -563,13 +561,12 @@ fn create_update_person_membership(
             values.push(PermissionItem::Entities.to_string().into());
             values.push(entity.entity_id.into());
 
-            let sql_values: RusqliteValues = RusqliteValues(vec![]);
-            let sql_query = Query::insert()
+            let (sql_query, sql_values) = Query::insert()
                 .replace()
                 .into_table(Permission::Table)
                 .columns(columns)
                 .values(values)?
-                .to_string(SqliteQueryBuilder);
+                .build_rusqlite(SqliteQueryBuilder);
 
             debug!("sql_query: {}", sql_query.as_str());
             debug!("sql_values: {sql_values:?}");
@@ -599,32 +596,22 @@ pub fn create_update_person(
     )];
 
     let sql_query: String;
-    let sql_values: RusqliteValues = RusqliteValues(vec![]);
+    let sql_values: RusqliteValues;
 
     if let Some(person_id) = person.person_id {
         // Update query.
-        sql_query = Query::update()
+        (sql_query, sql_values) = Query::update()
             .table(Person::Table)
             .values(columns_values)
             .and_where(Expr::col(Person::PersonId).eq(person_id))
-            .to_string(SqliteQueryBuilder);
-
-        // columns.push(Person::PersonId);
-        // values.push(SimpleExpr::Value(person_id.into()));
-
-        // sql_query = Query::insert()
-        //     .replace()
-        //     .into_table(Person::Table)
-        //     .columns(columns)
-        //     .values(values)?
-        //     .to_string(SqliteQueryBuilder);
+            .build_rusqlite(SqliteQueryBuilder);
     } else {
         // Insert query.
-        sql_query = Query::insert()
+        (sql_query, sql_values) = Query::insert()
             .into_table(Person::Table)
             .columns(columns)
             .values(values)?
-            .to_string(SqliteQueryBuilder);
+            .build_rusqlite(SqliteQueryBuilder);
     }
 
     debug!("sql_query: {}", sql_query.as_str());
@@ -698,13 +685,12 @@ pub fn set_person_manager(
         SimpleExpr::Value(entity_id.into()),
     ];
 
-    let sql_values: RusqliteValues = RusqliteValues(vec![]);
-    let sql_query = Query::insert()
+    let (sql_query, sql_values) = Query::insert()
         .replace()
         .into_table(Personentities::Table)
         .columns(columns)
         .values(values)?
-        .to_string(SqliteQueryBuilder);
+        .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
@@ -721,13 +707,12 @@ pub fn set_person_manager(
         SimpleExpr::Value(entity_id.into()),
     ];
 
-    let sql_values: RusqliteValues = RusqliteValues(vec![]);
-    let sql_query = Query::insert()
+    let (sql_query, sql_values) = Query::insert()
         .replace()
         .into_table(Entitypeople::Table)
         .columns(columns)
         .values(values)?
-        .to_string(SqliteQueryBuilder);
+        .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
@@ -748,13 +733,12 @@ pub fn set_person_manager(
         SimpleExpr::Value(person_id.into()),
     ];
 
-    let sql_values: RusqliteValues = RusqliteValues(vec![]);
-    let sql_query = Query::insert()
+    let (sql_query, sql_values) = Query::insert()
         .replace()
         .into_table(Permission::Table)
         .columns(columns)
         .values(values)?
-        .to_string(SqliteQueryBuilder);
+        .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
@@ -830,13 +814,12 @@ pub fn set_person_admin(
         SimpleExpr::Value(person_id.into()),
     ];
 
-    let sql_values: RusqliteValues = RusqliteValues(vec![]);
-    let sql_query = Query::insert()
+    let (sql_query, sql_values) = Query::insert()
         .replace()
         .into_table(Permission::Table)
         .columns(columns)
         .values(values)?
-        .to_string(SqliteQueryBuilder);
+        .build_rusqlite(SqliteQueryBuilder);
 
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
