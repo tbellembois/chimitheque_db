@@ -789,7 +789,7 @@ mod tests {
         for color in colors {
             let new_location = chimitheque_types::storelocation::StoreLocation {
                 store_location_id: None,
-                store_location_name: format!("Color test: {}", color),
+                store_location_name: format!("Color test: {color}"),
                 store_location_can_store: true,
                 store_location_color: Some(color.to_string()),
                 store_location_full_path: None,

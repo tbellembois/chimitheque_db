@@ -216,6 +216,21 @@ mod tests {
     }
 
     #[test]
+    fn test_get_entities_empty_result() {
+        let db_connection = init_test_entity();
+
+        // Test with filter that returns no results
+        let filter = RequestFilter {
+            entity_name: Some("NonExistentDepartment".to_string()),
+            ..Default::default()
+        };
+
+        let (entities, count) = get_entities(&db_connection, filter, 1).unwrap();
+        assert_eq!(count, 0);
+        assert_eq!(entities.len(), 0);
+    }
+
+    #[test]
     fn test_get_entities_managers() {
         let db_connection = init_test_entity();
 
@@ -303,6 +318,29 @@ mod tests {
     }
 
     #[test]
+    fn test_create_entity_unique_name_constraint() {
+        let mut db_connection = init_test_entity();
+
+        // Try to create an entity with a duplicate name
+        let duplicate_entity = chimitheque_types::entity::Entity {
+            entity_id: None,
+            entity_name: "Chemistry Department".to_string(), // Already exists as entity 1
+            entity_description: Some("Duplicate name test".to_string()),
+            managers: None,
+            entity_nb_store_locations: Some(0),
+            entity_nb_people: Some(0),
+        };
+
+        let result = create_update_entity(&mut db_connection, duplicate_entity);
+
+        // Should fail due to unique constraint
+        assert!(
+            result.is_err(),
+            "Should return error for duplicate entity name"
+        );
+    }
+
+    #[test]
     fn test_create_update_entity_managers() {
         let mut db_connection = init_test_entity();
 
@@ -382,6 +420,27 @@ mod tests {
     }
 
     #[test]
+    fn test_create_entity_with_invalid_manager() {
+        let mut db_connection = init_test_entity();
+
+        let new_entity = chimitheque_types::entity::Entity {
+            entity_id: None,
+            entity_name: "Invalid Manager Lab".to_string(),
+            entity_description: Some("Testing invalid manager".to_string()),
+            managers: Some(vec![chimitheque_types::person::Person {
+                person_id: Some(999), // Non-existent manager ID
+                person_email: "nonexistent@example.com".to_string(),
+                ..Default::default()
+            }]),
+            entity_nb_store_locations: Some(0),
+            entity_nb_people: Some(0),
+        };
+
+        let result = create_update_entity(&mut db_connection, new_entity);
+        assert!(result.is_err(), "Should return error for invalid manager");
+    }
+
+    #[test]
     fn test_delete_entity() {
         let mut db_connection = init_test_entity();
         let target_id = 10;
@@ -394,5 +453,55 @@ mod tests {
             .unwrap();
         let count: i32 = stmt.query_row([target_id], |row| row.get(0)).unwrap();
         assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_delete_entity_with_store_locations() {
+        let mut db_connection = init_test_entity();
+
+        // First, create a store location that depends on entity 1
+        db_connection
+        .execute(
+            "INSERT INTO store_location (store_location_id, store_location_name, entity, store_location) VALUES (11, 'Test Storage', 1, NULL)",
+            [],
+        )
+        .unwrap();
+
+        // Try to delete entity 1 which now has a store location
+        let result = delete_entity(&mut db_connection, 1);
+
+        // Should fail due to foreign key constraint
+        assert!(
+            result.is_err(),
+            "Should return error when deleting entity with store locations"
+        );
+
+        // Verify entity still exists
+        let mut stmt = db_connection
+            .prepare("SELECT count(*) FROM entity WHERE entity_id = 1")
+            .unwrap();
+        let count: i32 = stmt.query_row([], |row| row.get(0)).unwrap();
+        assert_eq!(count, 1, "Entity should still exist after failed deletion");
+    }
+
+    #[test]
+    fn test_delete_entity_with_people() {
+        let mut db_connection = init_test_entity();
+
+        // Try to delete entity 2 which has a person link (person 3)
+        let result = delete_entity(&mut db_connection, 2);
+
+        // Should fail due to foreign key constraint
+        assert!(
+            result.is_err(),
+            "Should return error when deleting entity with people"
+        );
+
+        // Verify entity still exists
+        let mut stmt = db_connection
+            .prepare("SELECT count(*) FROM entity WHERE entity_id = 2")
+            .unwrap();
+        let count: i32 = stmt.query_row([], |row| row.get(0)).unwrap();
+        assert_eq!(count, 1, "Entity should still exist after failed deletion");
     }
 }

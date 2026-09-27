@@ -329,7 +329,7 @@ CREATE TABLE IF NOT EXISTS "personentities" (
 	"personentities_person_id"	integer NOT NULL,
 	"personentities_entity_id"	integer NOT NULL,
 	PRIMARY KEY("personentities_person_id","personentities_entity_id"),
-	FOREIGN KEY("personentities_entity_id") REFERENCES "entity"("entity_id") ON DELETE CASCADE,
+	FOREIGN KEY("personentities_entity_id") REFERENCES "entity"("entity_id"),
 	FOREIGN KEY("personentities_person_id") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;
 
