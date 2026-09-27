@@ -137,3 +137,7 @@ pub fn toggle_product_bookmark(
 
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "bookmark_tests.rs"]
+mod bookmark_tests;

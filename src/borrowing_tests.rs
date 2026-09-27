@@ -475,4 +475,18 @@ mod tests {
 
         assert_eq!(count, 0);
     }
+
+    #[test]
+    fn test_borrow_nonexistent_storage() {
+        let mut db = init_test_borrowings();
+        let result = toggle_storage_borrowing(&mut db, 1, 999, 1, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_borrow_with_invalid_borrower() {
+        let mut db = init_test_borrowings();
+        let result = toggle_storage_borrowing(&mut db, 1, 1, 999, None);
+        assert!(result.is_err());
+    }
 }

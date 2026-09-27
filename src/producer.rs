@@ -117,62 +117,6 @@ pub fn get_producers(
     Ok((producers, count))
 }
 
-// pub fn create_update_producer(
-//     db_connection: &mut Connection,
-//     producer: ProducerStruct,
-// ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
-//     debug!("create_update_producer: {:#?}", producer);
-
-//     let db_transaction = db_connection.transaction()?;
-
-//     let clean_producer_label = clean(&producer.producer_label, Transform::None);
-
-//     // Update request: list of (columns, values) pairs to insert.
-//     let columns_values = vec![(Producer::ProducerLabel, clean_producer_label.clone().into())];
-
-//     // Create request: list of columns and values to insert.
-//     let columns = vec![Producer::ProducerLabel];
-//     let values = vec![SimpleExpr::Value(clean_producer_label.into())];
-
-//     let sql_query: String;
-//     let mut sql_values: RusqliteValues = RusqliteValues(vec![]);
-
-//     if let Some(producer_id) = producer.producer_id {
-//         // Update query.
-//         (sql_query, sql_values) = Query::update()
-//             .table(Producer::Table)
-//             .values(columns_values)
-//             .and_where(Expr::col(Producer::ProducerId).eq(producer_id))
-//             .build_rusqlite(SqliteQueryBuilder);
-//     } else {
-//         // Insert query.
-//         sql_query = Query::insert()
-//             .into_table(Producer::Table)
-//             .columns(columns)
-//             .values(values)?
-//             .to_string(SqliteQueryBuilder);
-//     }
-
-//     debug!("sql_query: {}", sql_query.as_str());
-//     debug!("sql_values: {:?}", sql_values);
-
-//     _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
-
-//     let last_insert_update_id: u64;
-
-//     if let Some(producer_id) = producer.producer_id {
-//         last_insert_update_id = producer_id;
-//     } else {
-//         last_insert_update_id = db_transaction.last_insert_rowid().try_into()?;
-//     }
-
-//     debug!("last_insert_update_id: {}", last_insert_update_id);
-
-//     db_transaction.commit()?;
-
-//     Ok(last_insert_update_id)
-// }
-
 #[cfg(test)]
 #[path = "producer_tests.rs"]
 mod producer_tests;

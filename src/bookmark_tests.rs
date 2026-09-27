@@ -332,4 +332,18 @@ mod tests {
 
         assert_eq!(count, 0);
     }
+
+    #[test]
+    fn test_toggle_with_invalid_person_id() {
+        let mut db = init_test_bookmarks();
+        let result = toggle_product_bookmark(&mut db, 999, 1);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_toggle_with_invalid_product_id() {
+        let mut db = init_test_bookmarks();
+        let result = toggle_product_bookmark(&mut db, 1, 999);
+        assert!(result.is_err());
+    }
 }
