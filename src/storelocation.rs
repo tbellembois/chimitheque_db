@@ -7,8 +7,7 @@ use chimitheque_utils::string::{Transform, clean};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
-    Alias, ColumnRef, CommonTableExpression, Cycle, Expr, ExprTrait, Func, Iden, JoinType, Order,
-    Query, SelectStatement, SimpleExpr, SqliteQueryBuilder, UnionType, WithClause,
+    Alias, Expr, ExprTrait, Iden, JoinType, Order, Query, SimpleExpr, SqliteQueryBuilder,
 };
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
@@ -314,114 +313,63 @@ fn populate_store_location_full_path(
     db_connection: &Connection,
     store_location: &mut StoreLocationStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    struct MyGroupConcatFunction;
-
-    impl Iden for MyGroupConcatFunction {
-        fn unquoted(&self) -> &'static str {
-            "group_concat"
-        }
-    }
-
-    // If the store location has no parent setting its name as full path.
+    // If the store location has no parent, set full path to just the name
     if store_location.store_location.is_none() {
         store_location.store_location_full_path = Some(store_location.store_location_name.clone());
         return Ok(());
     }
 
-    let parent_id = store_location
+    // Build the full path by querying each parent level
+    let mut path_parts = Vec::new();
+
+    // Start traversing from the parent (don't include the leaf node's name here)
+    let mut current_id = store_location
         .store_location
         .as_ref()
-        .unwrap()
-        .store_location_id;
+        .map(|p| p.store_location_id)
+        .ok_or("store location parent is None")?;
 
-    /*    WITH ancestor AS (SELECT store_location as p, store_location_name as n FROM store_location WHERE store_location_id = ????
-     *    UNION ALL
-     *    SELECT store_location, store_location_name FROM ancestor, store_location
-     *    WHERE ancestor.p = store_location.store_location_id)
-     *    SELECT group_concat(n, '/') AS store_location_full_path FROM ancestor */
+    // Traverse up the parent chain by querying the database
+    loop {
+        // Get the parent's name
+        let (sql, params) = Query::select()
+            .column(StoreLocation::StoreLocationName)
+            .from(StoreLocation::Table)
+            .and_where(Expr::col(StoreLocation::StoreLocationId).eq(current_id))
+            .build_rusqlite(SqliteQueryBuilder);
 
-    let base_query = SelectStatement::new()
-        .expr_as(Expr::col(StoreLocation::StoreLocation), Alias::new("p"))
-        .expr_as(Expr::col(StoreLocation::StoreLocationName), Alias::new("n"))
-        .from(StoreLocation::Table)
-        .and_where(Expr::col(StoreLocation::StoreLocationId).eq(parent_id))
-        .and_where(
-            Expr::col(StoreLocation::StoreLocationId)
-                .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
-        )
-        .to_owned();
+        let parent_name: String =
+            db_connection.query_row(&sql, &*params.as_params(), |row| row.get::<_, String>(0))?;
 
-    let cte_referencing = SelectStatement::new()
-        .columns([
-            StoreLocation::StoreLocation,
-            StoreLocation::StoreLocationName,
-        ])
-        .from(StoreLocation::Table)
-        .from(Alias::new("ancestor"))
-        .and_where(
-            Expr::col((Alias::new("ancestor"), Alias::new("p")))
-                .equals((StoreLocation::Table, StoreLocation::StoreLocationId)),
-        )
-        .to_owned();
+        path_parts.push(parent_name);
 
-    let common_table_expression = CommonTableExpression::new()
-        .query(
-            base_query
-                .clone()
-                .union(UnionType::All, cte_referencing)
-                .to_owned(),
-        )
-        .table_name(Alias::new("ancestor"))
-        .to_owned();
+        // Get the parent's parent ID
+        let (parent_id_sql, parent_id_params) = Query::select()
+            .column(StoreLocation::StoreLocation)
+            .from(StoreLocation::Table)
+            .and_where(Expr::col(StoreLocation::StoreLocationId).eq(current_id))
+            .build_rusqlite(SqliteQueryBuilder);
 
-    let select = SelectStatement::new()
-        .expr_as(
-            Func::cust(MyGroupConcatFunction).arg(ColumnRef::Column(Alias::new("n").into())),
-            Alias::new("store_location_parents"),
-        )
-        .from(Alias::new("ancestor"))
-        .to_owned();
+        if let Some(parent_id) = db_connection.query_row::<Option<u64>, _, _>(
+            &parent_id_sql,
+            &*parent_id_params.as_params(),
+            |row| row.get(0),
+        )? {
+            current_id = Some(parent_id);
+            continue;
+        }
 
-    let with_clause = WithClause::new()
-        .recursive(false)
-        .cte(common_table_expression)
-        .cycle(Cycle::new_from_expr_set_using(
-            SimpleExpr::Column(ColumnRef::Column(Alias::new("id").into())),
-            Alias::new("looped"),
-            Alias::new("traversal_path"),
-        ))
-        .to_owned();
+        break;
+    }
 
-    let (select_sql, select_values) = select.with(with_clause).build_rusqlite(SqliteQueryBuilder);
+    // Reverse to get parent -> child order and join with slashes
+    path_parts.reverse();
+    let full_path = path_parts.join("/");
 
-    debug!("select_sql: {}", select_sql.clone().as_str());
-    debug!("select_values: {select_values:?}");
+    // Add the leaf node's name to complete the path
+    let full_path_with_leaf = format!("{}/{}", full_path, store_location.store_location_name);
 
-    // Perform select query.
-    let mut stmt = db_connection.prepare(select_sql.as_str())?;
-    let mut rows = stmt.query(&*select_values.as_params())?;
-    store_location.store_location_full_path = if let Some(row) = rows.next()? {
-        let store_location_parents: String = row.get_unwrap("store_location_parents");
-
-        let mut store_location_full_path = store_location.store_location_name.clone();
-        store_location_full_path.push(',');
-        store_location_full_path.push_str(&store_location_parents);
-
-        // At this point store_location_full_path is like:
-        // store_location_name,parent1,parent2,root
-        // We should revert it and replace , by /.
-        let store_location_full_path_reversed = store_location_full_path
-            .split(',')
-            .rev()
-            .collect::<Vec<_>>()
-            .join("/");
-
-        Some(store_location_full_path_reversed)
-    } else {
-        // We should always have a result.
-        // The case where the store location has no parent is handled at the begining of the function.
-        unreachable!()
-    };
+    store_location.store_location_full_path = Some(full_path_with_leaf);
 
     Ok(())
 }

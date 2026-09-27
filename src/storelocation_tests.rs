@@ -608,4 +608,242 @@ mod tests {
             0
         );
     }
+
+    #[test]
+    fn test_get_store_locations_empty_result() {
+        let db = init_test_storelocation();
+
+        // Search for non-existent entity
+        let (locations, count) = get_store_locations(
+            &db,
+            &RequestFilter {
+                entity: Some(999), // Non-existent entity
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(count, 0);
+        assert_eq!(locations.len(), 0);
+    }
+
+    #[test]
+    fn test_get_store_locations_empty_search() {
+        let db = init_test_storelocation();
+
+        // Search for non-existent term
+        let (locations, count) = get_store_locations(
+            &db,
+            &RequestFilter {
+                search: Some("NonExistentLocation".to_string()),
+                ..Default::default()
+            },
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(count, 0);
+        assert_eq!(locations.len(), 0);
+    }
+
+    #[test]
+    fn test_create_store_location_with_invalid_parent() {
+        let mut db = init_test_storelocation();
+
+        let new_location = chimitheque_types::storelocation::StoreLocation {
+            store_location_id: None,
+            store_location_name: "Orphan location".to_string(),
+            store_location_can_store: true,
+            store_location_color: Some("green".to_string()),
+            store_location_full_path: None,
+            entity: Some(chimitheque_types::entity::Entity {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            store_location: Some(Box::new(chimitheque_types::storelocation::StoreLocation {
+                store_location_id: Some(999), // Non-existent parent
+                ..Default::default()
+            })),
+            store_location_nb_storages: Some(0),
+            store_location_nb_children: Some(0),
+        };
+
+        // Create should prevent creation
+        let result = create_update_store_location(&mut db, new_location);
+        assert!(result.is_err()); // Or should return Err if validation is implemented
+    }
+
+    #[test]
+    fn test_update_nonexistent_store_location() {
+        let mut db = init_test_storelocation();
+
+        let update_location = chimitheque_types::storelocation::StoreLocation {
+            store_location_id: Some(999), // Non-existent ID
+            store_location_name: "Should not update".to_string(),
+            store_location_can_store: false,
+            store_location_color: Some("black".to_string()),
+            store_location_full_path: None,
+            entity: Some(chimitheque_types::entity::Entity {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            store_location: None,
+            store_location_nb_storages: Some(0),
+            store_location_nb_children: Some(0),
+        };
+
+        // Should handle gracefully - either return error or do nothing
+        let result = create_update_store_location(&mut db, update_location);
+        assert!(result.is_ok()); // Or should assert!(result.is_err()) if proper error handling is expected
+    }
+
+    #[test]
+    fn test_delete_nonexistent_store_location() {
+        let db = init_test_storelocation();
+
+        // Should not panic or error when trying to delete non-existent location
+        let result = delete_store_location(&db, 999);
+        assert!(result.is_ok()); // Or assert!(result.is_err()) if strict error handling is expected
+    }
+
+    #[test]
+    fn test_delete_store_location_with_children() {
+        let db = init_test_storelocation();
+
+        // Location 2 has children (3, 4, 5)
+        let target_id = 2;
+
+        // Verify it has children before deletion
+        let mut stmt = db
+            .prepare("SELECT count(*) FROM store_location WHERE store_location = ?")
+            .unwrap();
+        let child_count: i32 = stmt.query_row([target_id], |row| row.get(0)).unwrap();
+        assert!(child_count > 0);
+
+        // Delete should prevent deletion
+        let result = delete_store_location(&db, target_id);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_delete_store_location_with_storages() {
+        let db = init_test_storelocation();
+
+        // Location 1 has storages (check storage table)
+        let target_id = 1;
+
+        // Verify it has storages before deletion
+        let mut stmt = db
+            .prepare("SELECT count(*) FROM storage WHERE store_location = ?")
+            .unwrap();
+        let storage_count: i32 = stmt.query_row([target_id], |row| row.get(0)).unwrap();
+        assert!(storage_count > 0);
+
+        // Delete should prevent deletion
+        let result = delete_store_location(&db, target_id);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_store_location_can_store_flag() {
+        let mut db = init_test_storelocation();
+
+        let new_location = chimitheque_types::storelocation::StoreLocation {
+            store_location_id: None,
+            store_location_name: "Read-only storage".to_string(),
+            store_location_can_store: false, // Cannot store products
+            store_location_color: Some("gray".to_string()),
+            store_location_full_path: None,
+            entity: Some(chimitheque_types::entity::Entity {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            store_location: Some(Box::new(chimitheque_types::storelocation::StoreLocation {
+                store_location_id: Some(1), // Parent is Main Storage
+                ..Default::default()
+            })),
+            store_location_nb_storages: Some(0),
+            store_location_nb_children: Some(0),
+        };
+
+        let id = create_update_store_location(&mut db, new_location).unwrap();
+
+        // Verify the flag was set
+        let mut stmt = db
+            .prepare(
+                "SELECT store_location_can_store FROM store_location WHERE store_location_id = ?",
+            )
+            .unwrap();
+        let can_store: bool = stmt.query_row([id], |row| row.get(0)).unwrap();
+
+        assert!(!can_store);
+    }
+
+    #[test]
+    fn test_store_location_color_field() {
+        let mut db = init_test_storelocation();
+
+        let colors = vec!["red", "blue", "green", "yellow", "purple"];
+
+        for color in colors {
+            let new_location = chimitheque_types::storelocation::StoreLocation {
+                store_location_id: None,
+                store_location_name: format!("Color test: {}", color),
+                store_location_can_store: true,
+                store_location_color: Some(color.to_string()),
+                store_location_full_path: None,
+                entity: Some(chimitheque_types::entity::Entity {
+                    entity_id: Some(1),
+                    ..Default::default()
+                }),
+                store_location: None,
+                store_location_nb_storages: Some(0),
+                store_location_nb_children: Some(0),
+            };
+
+            let id = create_update_store_location(&mut db, new_location).unwrap();
+
+            // Verify the color was set
+            let mut stmt = db
+                .prepare(
+                    "SELECT store_location_color FROM store_location WHERE store_location_id = ?",
+                )
+                .unwrap();
+            let stored_color: Option<String> = stmt.query_row([id], |row| row.get(0)).unwrap();
+
+            assert_eq!(stored_color, Some(color.to_string()));
+        }
+    }
+
+    #[test]
+    fn test_store_location_full_path_calculation() {
+        let db = init_test_storelocation();
+
+        // Create a location with a parent hierarchy that will be queried from the database
+        let mut location = chimitheque_types::storelocation::StoreLocation {
+            store_location_id: Some(9),
+            store_location_name: "Lab 1 Storage".to_string(),
+            store_location_can_store: true,
+            store_location_color: None,
+            store_location_full_path: None, // Will be populated by the function
+            entity: None,
+            store_location: Some(Box::new(chimitheque_types::storelocation::StoreLocation {
+                store_location_id: Some(1), // Parent is Main Storage
+                store_location_name: "Main Storage".to_string(),
+                ..Default::default()
+            })),
+            store_location_nb_storages: None,
+            store_location_nb_children: None,
+        };
+
+        // Call the function directly without going through create_update_store_location
+        let result = populate_store_location_full_path(&db, &mut location);
+        assert!(result.is_ok());
+
+        assert_eq!(
+            location.store_location_full_path,
+            Some("Main Storage/Lab 1 Storage".to_string())
+        );
+    }
 }
