@@ -11,7 +11,7 @@ mod tests {
     use rusqlite::Connection;
 
     fn init_test_person() -> Connection {
-        let db = crate::test_utils::init_test();
+        let mut db = crate::test_utils::init_test();
 
         db.execute("PRAGMA synchronous = OFF", []).unwrap();
         db.execute("PRAGMA foreign_keys = ON", []).unwrap();
@@ -27,10 +27,52 @@ mod tests {
             [],
         )
         .unwrap();
+        db.execute(
+            "INSERT INTO person (person_id, person_email) VALUES (102, 'test3@example.com')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO person (person_id, person_email) VALUES (103, 'test4@example.com')",
+            [],
+        )
+        .unwrap();
 
         // Insert a few entities
         db.execute("INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (100, 'Test Entity 1', 'Desc 1')", []).unwrap();
         db.execute("INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (101, 'Test Entity 2', 'Desc 2')", []).unwrap();
+
+        // Set person 100 as manager of entity 100
+        {
+            let tx = db.transaction().unwrap();
+            set_person_manager(&tx, 100, 100).unwrap();
+            tx.commit().unwrap();
+        }
+
+        // Set person 101 as manager of entity 101
+        {
+            let tx = db.transaction().unwrap();
+            set_person_manager(&tx, 101, 101).unwrap();
+            tx.commit().unwrap();
+        }
+
+        // Set person 102 as member of entity 100 (not a manager)
+        {
+            let tx = db.transaction().unwrap();
+            tx.execute(
+                "INSERT INTO personentities (personentities_person_id, personentities_entity_id) VALUES (?, ?)",
+                (102, 100),
+            )
+            .unwrap();
+            tx.execute(
+                "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (?, ?, ?, ?)",
+                (102, "r", "entities", 100),
+            )
+            .unwrap();
+            tx.commit().unwrap();
+        }
+
+        // Person 103 belongs to no entity (just a regular person)
 
         db
     }
@@ -244,5 +286,153 @@ mod tests {
             let count: i32 = stmt.query_row([person_id], |row| row.get(0)).unwrap();
             assert_eq!(count, 0, "Related permission records should be deleted");
         }
+    }
+
+    #[test]
+    fn test_manager_cannot_get_people_from_other_entities() {
+        let db_connection = init_test_person();
+
+        // Person 100 is manager of entity 100
+        // Person 101 is manager of entity 101
+        // Person 102 is member of entity 100
+        // Person 103 belongs to no entity
+
+        // Test that person 100 (manager of entity 100) can't get people from entity 101
+        let (people, _) = get_people(
+            &db_connection,
+            &chimitheque_types::requestfilter::RequestFilter::default(),
+            100,
+        )
+        .unwrap();
+
+        // Should only see people from entity 100 (themselves) and possibly 102
+        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
+        assert!(
+            people_ids.contains(&Some(100)) || people_ids.contains(&Some(102)),
+            "Manager 100 should only see people from their own entity"
+        );
+        assert!(
+            !people_ids.contains(&Some(101)),
+            "Manager 100 should not see person 101 from other entity"
+        );
+        assert!(
+            !people_ids.contains(&Some(103)),
+            "Manager 100 should not see person 103 from no entity"
+        );
+
+        // Test that person 101 (manager of entity 101) can't get people from entity 100
+        let (people, _) = get_people(
+            &db_connection,
+            &chimitheque_types::requestfilter::RequestFilter::default(),
+            101,
+        )
+        .unwrap();
+
+        // Should only see people from entity 101 (themselves)
+        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
+        assert!(
+            people_ids.contains(&Some(101)),
+            "Manager 101 should see themselves"
+        );
+        assert!(
+            !people_ids.contains(&Some(100)),
+            "Manager 101 should not see person 100 from other entity"
+        );
+        assert!(
+            !people_ids.contains(&Some(102)),
+            "Manager 101 should not see person 102 from other entity"
+        );
+        assert!(
+            !people_ids.contains(&Some(103)),
+            "Manager 101 should not see person 103 from no entity"
+        );
+    }
+
+    #[test]
+    fn test_member_cannot_get_people_from_other_entities() {
+        let db_connection = init_test_person();
+
+        // Person 102 is member of entity 100
+        // Test that person 102 can't get people from entity 101
+        let (people, _) = get_people(
+            &db_connection,
+            &chimitheque_types::requestfilter::RequestFilter::default(),
+            102,
+        )
+        .unwrap();
+
+        // Should only see people from entity 100 (themselves and 100)
+        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
+        assert!(
+            people_ids.contains(&Some(100)) || people_ids.contains(&Some(102)),
+            "Member 102 should see people from their own entity"
+        );
+        assert!(
+            !people_ids.contains(&Some(101)),
+            "Member 102 should not see person 101 from other entity"
+        );
+        assert!(
+            !people_ids.contains(&Some(103)),
+            "Member 102 should not see person 103 from no entity"
+        );
+    }
+
+    #[test]
+    fn test_person_with_no_entity_cannot_get_people() {
+        let db_connection = init_test_person();
+
+        // Person 103 belongs to no entity
+        // Test that person 103 can't get people from any entity
+        let (people, _) = get_people(
+            &db_connection,
+            &chimitheque_types::requestfilter::RequestFilter::default(),
+            103,
+        )
+        .unwrap();
+
+        // Should see no people at all
+        assert!(
+            people.is_empty(),
+            "Person with no entity should not see any people"
+        );
+    }
+
+    #[test]
+    fn test_manager_can_get_people_with_no_entities() {
+        let mut db_connection = init_test_person();
+
+        // Create a new person with no entity
+        db_connection
+            .execute(
+                "INSERT INTO person (person_id, person_email) VALUES (104, 'test5@example.com')",
+                [],
+            )
+            .unwrap();
+
+        // Set person 100 as manager of entity 100
+        {
+            let tx = db_connection.transaction().unwrap();
+            set_person_manager(&tx, 100, 100).unwrap();
+            tx.commit().unwrap();
+        }
+
+        // Test that person 100 (manager of entity 100) can get people with no entities
+        let (people, _) = get_people(
+            &db_connection,
+            &chimitheque_types::requestfilter::RequestFilter::default(),
+            100,
+        )
+        .unwrap();
+
+        // Should see people from their own entity (100) and people with no entities (103)
+        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
+        assert!(
+            people_ids.contains(&Some(100)),
+            "Manager 100 should see themselves"
+        );
+        assert!(
+            people_ids.contains(&Some(104)),
+            "Manager 100 should see person 104 with no entity"
+        );
     }
 }

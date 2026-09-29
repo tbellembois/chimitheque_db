@@ -251,25 +251,6 @@ pub fn get_people(
     };
 
     // Subquery for permissions to reduce rows early.
-    // let permission_subquery = Query::select()
-    //     .from(Permission::Table)
-    //     .columns([Permission::Person])
-    //     .and_where(Expr::col((Permission::Table, Permission::Person)).eq(person_id))
-    //     .and_where(
-    //         Expr::col((Permission::Table, Permission::PermissionItem)).is_in(["all", "entities"]),
-    //     )
-    //     .and_where(
-    //         Expr::col((Permission::Table, Permission::PermissionName)).is_in(["r", "w", "all"]),
-    //     )
-    //     .and_where(
-    //         Expr::col((Permission::Table, Permission::PermissionEntity))
-    //             .equals((
-    //                 Personentities::Table,
-    //                 Personentities::PersonentitiesEntityId,
-    //             ))
-    //             .or(Expr::col((Permission::Table, Permission::PermissionEntity)).is_null()),
-    //     )
-    //     .to_owned();
     let permission_subquery = Query::select()
         .expr(Expr::col((Person::Table, Person::PersonId)))
         .from(Person::Table)

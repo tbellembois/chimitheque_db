@@ -317,6 +317,7 @@ CREATE TABLE IF NOT EXISTS "producttags" (
 	FOREIGN KEY("producttags_tag_id") REFERENCES "tag"("tag_id") ON DELETE CASCADE
 ) STRICT;
 
+-- entities managers
 CREATE TABLE IF NOT EXISTS "entitypeople" (
 	"entitypeople_entity_id"	integer NOT NULL,
 	"entitypeople_person_id"	integer NOT NULL,
@@ -325,6 +326,7 @@ CREATE TABLE IF NOT EXISTS "entitypeople" (
 	FOREIGN KEY("entitypeople_person_id") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;
 
+-- entities person belongs to
 CREATE TABLE IF NOT EXISTS "personentities" (
 	"personentities_person_id"	integer NOT NULL,
 	"personentities_entity_id"	integer NOT NULL,
