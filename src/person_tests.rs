@@ -82,7 +82,6 @@ mod tests {
         let mut db_connection = init_test_person();
 
         // We use a transaction because set_person_manager usually takes &Transaction or &Connection
-        // Depending on your signature, if it takes &Transaction:
         let tx = db_connection.transaction().unwrap();
 
         let person_id = 100;
@@ -104,7 +103,6 @@ mod tests {
         );
 
         // 2. Verify the permissions were granted
-        // Based on create_update_entity_managers, managers usually get 'all' item and 'all' name for that entity
         let mut stmt = db_connection
             .prepare("SELECT count(*) FROM permission WHERE person = ? AND permission_item = 'all' AND permission_name = 'all' AND permission_entity = ?")
             .unwrap();
@@ -316,8 +314,8 @@ mod tests {
             "Manager 100 should not see person 101 from other entity"
         );
         assert!(
-            !people_ids.contains(&Some(103)),
-            "Manager 100 should not see person 103 from no entity"
+            people_ids.contains(&Some(103)),
+            "Manager 100 should see person 103 from no entity"
         );
 
         // Test that person 101 (manager of entity 101) can't get people from entity 100
@@ -343,57 +341,8 @@ mod tests {
             "Manager 101 should not see person 102 from other entity"
         );
         assert!(
-            !people_ids.contains(&Some(103)),
-            "Manager 101 should not see person 103 from no entity"
-        );
-    }
-
-    #[test]
-    fn test_member_cannot_get_people_from_other_entities() {
-        let db_connection = init_test_person();
-
-        // Person 102 is member of entity 100
-        // Test that person 102 can't get people from entity 101
-        let (people, _) = get_people(
-            &db_connection,
-            &chimitheque_types::requestfilter::RequestFilter::default(),
-            102,
-        )
-        .unwrap();
-
-        // Should only see people from entity 100 (themselves and 100)
-        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
-        assert!(
-            people_ids.contains(&Some(100)) || people_ids.contains(&Some(102)),
-            "Member 102 should see people from their own entity"
-        );
-        assert!(
-            !people_ids.contains(&Some(101)),
-            "Member 102 should not see person 101 from other entity"
-        );
-        assert!(
-            !people_ids.contains(&Some(103)),
-            "Member 102 should not see person 103 from no entity"
-        );
-    }
-
-    #[test]
-    fn test_person_with_no_entity_cannot_get_people() {
-        let db_connection = init_test_person();
-
-        // Person 103 belongs to no entity
-        // Test that person 103 can't get people from any entity
-        let (people, _) = get_people(
-            &db_connection,
-            &chimitheque_types::requestfilter::RequestFilter::default(),
-            103,
-        )
-        .unwrap();
-
-        // Should see no people at all
-        assert!(
-            people.is_empty(),
-            "Person with no entity should not see any people"
+            people_ids.contains(&Some(103)),
+            "Manager 101 should see person 103 from no entity"
         );
     }
 
@@ -424,15 +373,142 @@ mod tests {
         )
         .unwrap();
 
-        // Should see people from their own entity (100) and people with no entities (103)
+        // Should see people from their own entity (100) and people with no entities (103, 104)
         let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
         assert!(
             people_ids.contains(&Some(100)),
             "Manager 100 should see themselves"
         );
         assert!(
+            people_ids.contains(&Some(103)),
+            "Manager 100 should see person 103 with no entity"
+        );
+        assert!(
             people_ids.contains(&Some(104)),
             "Manager 100 should see person 104 with no entity"
         );
+        assert!(
+            !people_ids.contains(&Some(101)),
+            "Manager 100 should not see person 101 from other entity"
+        );
+        assert!(
+            people_ids.contains(&Some(102)),
+            "Manager 100 should see person 102 from his entity"
+        );
+    }
+
+    #[test]
+    fn test_member_cannot_get_people_from_other_entities() {
+        let db_connection = init_test_person();
+
+        // Person 102 is member of entity 100
+        // Test that person 102 can't get people from entity 101
+        let (people, _) = get_people(
+            &db_connection,
+            &chimitheque_types::requestfilter::RequestFilter::default(),
+            102,
+        )
+        .unwrap();
+
+        // Should only see people from entity 100 (themselves and 100)
+        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
+        assert!(
+            people_ids.contains(&Some(100)) || people_ids.contains(&Some(102)),
+            "Member 102 should see people from their own entity"
+        );
+        assert!(
+            !people_ids.contains(&Some(101)),
+            "Member 102 should not see person 101 from other entity"
+        );
+        assert!(
+            people_ids.contains(&Some(103)),
+            "Member 102 should see person 103 from no entity"
+        );
+    }
+
+    #[test]
+    fn test_person_with_no_entity_can_only_get_people_with_no_membership() {
+        let db_connection = init_test_person();
+
+        // Person 103 belongs to no entity
+        // Test that person 103 can get people with no entity memberships
+        let (people, _) = get_people(
+            &db_connection,
+            &chimitheque_types::requestfilter::RequestFilter::default(),
+            103,
+        )
+        .unwrap();
+
+        // Should see people with no entity memberships (103)
+        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
+        assert!(
+            people_ids.contains(&Some(103)),
+            "Person with no entity should see themselves"
+        );
+    }
+
+    #[test]
+    fn test_is_person_manager() {
+        let db_connection = init_test_person();
+
+        // Test person 100 is manager of entity 100 (set in init_test_person)
+        assert!(is_person_manager(&db_connection, 100, 100).unwrap());
+
+        // Test person 101 is manager of entity 101 (set in init_test_person)
+        assert!(is_person_manager(&db_connection, 101, 101).unwrap());
+
+        // Test person 102 is not manager of entity 100 (member but not manager)
+        assert!(!is_person_manager(&db_connection, 102, 100).unwrap());
+
+        // Test person 103 (no entity) is not manager of any entity
+        assert!(!is_person_manager(&db_connection, 103, 100).unwrap());
+        assert!(!is_person_manager(&db_connection, 103, 101).unwrap());
+
+        // Test person 100 is not manager of entity 101
+        assert!(!is_person_manager(&db_connection, 100, 101).unwrap());
+    }
+
+    #[test]
+    fn test_is_admin() {
+        let mut db_connection = init_test_person();
+
+        // Test person 100 is not admin initially
+        assert!(!is_person_admin(&db_connection, 100).unwrap());
+
+        // Set person 100 as admin
+        set_person_admin(&mut db_connection, 100).unwrap();
+
+        // Test person 100 is now admin
+        assert!(is_person_admin(&db_connection, 100).unwrap());
+
+        // Test person 101 is not admin
+        assert!(!is_person_admin(&db_connection, 101).unwrap());
+
+        // Unset person 100 as admin
+        unset_person_admin(&mut db_connection, 100).unwrap();
+
+        // Test person 100 is no longer admin
+        assert!(!is_person_admin(&db_connection, 100).unwrap());
+    }
+
+    #[test]
+    fn test_is_person_member_of() {
+        let db_connection = init_test_person();
+
+        // Test person 100 is member of entity 100 (set in init_test_person)
+        assert!(is_person_member_of(&db_connection, 100, 100).unwrap());
+
+        // Test person 101 is member of entity 101 (set in init_test_person)
+        assert!(is_person_member_of(&db_connection, 101, 101).unwrap());
+
+        // Test person 102 is member of entity 100 (set in init_test_person)
+        assert!(is_person_member_of(&db_connection, 102, 100).unwrap());
+
+        // Test person 103 is not member of any entity (no entity membership)
+        assert!(!is_person_member_of(&db_connection, 103, 100).unwrap());
+        assert!(!is_person_member_of(&db_connection, 103, 101).unwrap());
+
+        // Test person 100 is not member of entity 101
+        assert!(!is_person_member_of(&db_connection, 100, 101).unwrap());
     }
 }

@@ -250,6 +250,23 @@ pub fn get_people(
         Order::Asc
     };
 
+    // Subquery for people with not entity.
+    let orphan_people_subquery = Query::select()
+        .expr(Expr::col((Person::Table, Person::PersonId)))
+        .from(Person::Table)
+        .and_where(
+            Expr::col((Person::Table, Person::PersonId)).not_in_subquery(
+                Query::select()
+                    .expr(Expr::col((
+                        Personentities::Table,
+                        Personentities::PersonentitiesPersonId,
+                    )))
+                    .from(Personentities::Table)
+                    .take(),
+            ),
+        )
+        .to_owned();
+
     // Subquery for permissions to reduce rows early.
     let permission_subquery = Query::select()
         .expr(Expr::col((Person::Table, Person::PersonId)))
@@ -301,8 +318,13 @@ pub fn get_people(
             ))
             .equals((Person::Table, Person::PersonId)),
         )
-        // Apply permission subquery as a filter.
-        .and_where(Expr::col((Person::Table, Person::PersonId)).in_subquery(permission_subquery));
+        // Apply subqueries as a filter.
+        .and_where(
+            Expr::col((Person::Table, Person::PersonId))
+                .in_subquery(permission_subquery)
+                .or(Expr::col((Person::Table, Person::PersonId))
+                    .in_subquery(orphan_people_subquery)),
+        );
 
     // Apply filters.
     if let Some(entity) = filter.entity {
@@ -656,27 +678,32 @@ pub fn set_person_manager(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("set_person_manager: {person_id:#?} {entity_id:#?}");
 
+    if is_person_manager(db_transaction, person_id, entity_id)? {
+        return Ok(());
+    }
+
     // Adding the manager to the entity.
-    let columns = vec![
-        Personentities::PersonentitiesPersonId,
-        Personentities::PersonentitiesEntityId,
-    ];
-    let values = vec![
-        SimpleExpr::Value(person_id.into()),
-        SimpleExpr::Value(entity_id.into()),
-    ];
+    if !is_person_member_of(db_transaction, person_id, entity_id)? {
+        let columns = vec![
+            Personentities::PersonentitiesPersonId,
+            Personentities::PersonentitiesEntityId,
+        ];
+        let values = vec![
+            SimpleExpr::Value(person_id.into()),
+            SimpleExpr::Value(entity_id.into()),
+        ];
 
-    let (sql_query, sql_values) = Query::insert()
-        .replace()
-        .into_table(Personentities::Table)
-        .columns(columns)
-        .values(values)?
-        .build_rusqlite(SqliteQueryBuilder);
+        let (sql_query, sql_values) = Query::insert()
+            .into_table(Personentities::Table)
+            .columns(columns)
+            .values(values)?
+            .build_rusqlite(SqliteQueryBuilder);
 
-    debug!("sql_query: {}", sql_query.as_str());
-    debug!("sql_values: {sql_values:?}");
+        debug!("sql_query: {}", sql_query.as_str());
+        debug!("sql_values: {sql_values:?}");
 
-    _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+        _ = db_transaction.execute(&sql_query, &*sql_values.as_params())?;
+    }
 
     // Setting the person manager.
     let columns = vec![
@@ -689,7 +716,6 @@ pub fn set_person_manager(
     ];
 
     let (sql_query, sql_values) = Query::insert()
-        .replace()
         .into_table(Entitypeople::Table)
         .columns(columns)
         .values(values)?
@@ -715,7 +741,6 @@ pub fn set_person_manager(
     ];
 
     let (sql_query, sql_values) = Query::insert()
-        .replace()
         .into_table(Permission::Table)
         .columns(columns)
         .values(values)?
@@ -782,6 +807,10 @@ pub fn set_person_admin(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("set_person_admin: {person_id:#?}");
 
+    if is_person_admin(db_connection, person_id)? {
+        return Ok(());
+    }
+
     let columns = vec![
         Permission::PermissionItem,
         Permission::PermissionName,
@@ -827,6 +856,97 @@ pub fn unset_person_admin(
     _ = db_connection.execute(delete_sql.as_str(), &*delete_values.as_params())?;
 
     Ok(())
+}
+
+pub fn is_person_admin(
+    db_connection: &Connection,
+    person_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    debug!("is_admin: {person_id:#?}");
+
+    // Create select query to check if person is admin
+    let (sql, values) = Query::select()
+        .expr(Expr::col(Permission::PermissionItem).count())
+        .from(Permission::Table)
+        .and_where(Expr::col(Permission::Person).eq(person_id))
+        .and_where(Expr::col(Permission::PermissionItem).eq("all"))
+        .and_where(Expr::col(Permission::PermissionName).eq("all"))
+        .and_where(Expr::col(Permission::PermissionEntity).is_null())
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("sql: {}", sql.as_str());
+    debug!("values: {values:?}");
+
+    // Perform select query
+    let mut stmt = db_connection.prepare(sql.as_str())?;
+    let mut rows = stmt.query(&*values.as_params())?;
+    let count: i64 = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    Ok(count > 0)
+}
+
+pub fn is_person_manager(
+    db_connection: &Connection,
+    person_id: u64,
+    entity_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    debug!("is_person_manager: {person_id:#?} {entity_id:#?}");
+
+    // Create select query to check if person is manager of entity
+    let (sql, values) = Query::select()
+        .expr(Expr::col(Entitypeople::EntitypeoplePersonId).count())
+        .from(Entitypeople::Table)
+        .and_where(Expr::col(Entitypeople::EntitypeoplePersonId).eq(person_id))
+        .and_where(Expr::col(Entitypeople::EntitypeopleEntityId).eq(entity_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("sql: {}", sql.as_str());
+    debug!("values: {values:?}");
+
+    // Perform select query
+    let mut stmt = db_connection.prepare(sql.as_str())?;
+    let mut rows = stmt.query(&*values.as_params())?;
+    let count: i64 = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    Ok(count > 0)
+}
+
+pub fn is_person_member_of(
+    db_connection: &Connection,
+    person_id: u64,
+    entity_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    debug!("is_person_member_of: {person_id:#?} {entity_id:#?}");
+
+    // Create select query to check if person is member of entity
+    let (sql, values) = Query::select()
+        .expr(Expr::col(Personentities::PersonentitiesPersonId).count())
+        .from(Personentities::Table)
+        .and_where(Expr::col(Personentities::PersonentitiesPersonId).eq(person_id))
+        .and_where(Expr::col(Personentities::PersonentitiesEntityId).eq(entity_id))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    debug!("sql: {}", sql.as_str());
+    debug!("values: {values:?}");
+
+    // Perform select query
+    let mut stmt = db_connection.prepare(sql.as_str())?;
+    let mut rows = stmt.query(&*values.as_params())?;
+    let count: i64 = if let Some(row) = rows.next()? {
+        row.get_unwrap(0)
+    } else {
+        0
+    };
+
+    Ok(count > 0)
 }
 
 pub fn delete_person(
