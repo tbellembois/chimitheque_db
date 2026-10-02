@@ -5,7 +5,6 @@ use crate::{
     category::Category,
     cenumber::CeNumber,
     classofcompound::ClassOfCompound,
-    define::STORAGE_BARECODE_RE,
     empiricalformula::EmpiricalFormula,
     entity::{Entity, EntityWrapper},
     entitypeople::Entitypeople,
@@ -37,6 +36,7 @@ use crate::{
     tag::Tag,
     unit::Unit,
 };
+use chimitheque_defines::STORAGE_BARECODE_RE;
 use chimitheque_types::{
     casnumber::CasNumber as CasNumberStruct, category::Category as CategoryStruct,
     cenumber::CeNumber as CeNumberStruct,
@@ -2490,16 +2490,6 @@ pub fn create_update_product(
             .values(columns_values)
             .and_where(Expr::col(Product::ProductId).eq(product_id))
             .to_string(SqliteQueryBuilder);
-
-        // columns.push(Product::ProductId);
-        // values.push(SimpleExpr::Value(product_id.into()));
-
-        // sql_query = Query::insert()
-        //     .replace()
-        //     .into_table(Product::Table)
-        //     .columns(columns)
-        //     .values(values)?
-        //     .to_string(SqliteQueryBuilder);
     } else {
         // Insert query.
         sql_query = Query::insert()
@@ -3000,3 +2990,7 @@ pub fn delete_product(
 
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "product_tests.rs"]
+mod product_tests;

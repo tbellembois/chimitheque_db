@@ -38,7 +38,7 @@ env_logger = { version = "0.11.10", default-features = false }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 log = { version = "0.4.29", default-features = false }
 qrcode-png = { version = "0.4.1", default-features = false }
-regex = { version = "1.12.3", default-features = false }
+regex = { version = "1.13.1", default-features = false }
 rusqlite = { version = "0.38.0", default-features = false, features = ["load_extension", "bundled"] }
 sea-query = { version = "1.0.1", default-features = false, features = ["derive", "backend-sqlite"] }
 sea-query-rusqlite = { version = "0.8.0", default-features = false }
@@ -49,6 +49,10 @@ tempfile = { version = "3.27.0", default-features = false }
 chimitheque_types = { git = "https://github.com/tbellembois/chimitheque_types.git", branch = "main" }
 chimitheque_traits = { git = "https://github.com/tbellembois/chimitheque_traits.git", branch = "main" }
 chimitheque_utils = { git = "https://github.com/tbellembois/chimitheque_utils.git", branch = "main" }
+chimitheque_defines = { git = "https://github.com/tbellembois/chimitheque_defines.git", branch = "main" }
+
+[patch."https://github.com/tbellembois/chimitheque_defines.git"]
+chimitheque_defines = { path = "/home/tbellembois/workspace/workspace_rust/chimitheque_defines" }
 
 [patch."https://github.com/tbellembois/chimitheque_types.git"]
 chimitheque_types = { path = "../chimitheque_types" }

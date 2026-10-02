@@ -1,19 +1,19 @@
+use chimitheque_defines::{
+    CATEGORIES, CLASSES_OF_COMPOUNDS, CMR_CAS, HAZARD_STATEMENT_RE, PHYSICAL_STATES,
+    PRECAUTIONARY_STATEMENT_RE, PRODUCERS, SIGNAL_WORDS, SUPPLIERS, SYMBOLS, TAGS, UNITS,
+};
 use chimitheque_types::{
     casnumber::CasNumber, cenumber::CeNumber, empiricalformula::EmpiricalFormula,
     linearformula::LinearFormula, name::Name, requestfilter::RequestFilter,
 };
 use log::{debug, error, info};
-use rusqlite::{Batch, Connection, OpenFlags, Transaction, fallible_iterator::FallibleIterator};
+use rusqlite::{
+    Batch, Connection, OpenFlags, Transaction, fallible_iterator::FallibleIterator, params,
+};
 use std::env;
 use std::path::Path;
 
-use crate::{
-    define::{
-        CATEGORIES, CLASSES_OF_COMPOUNDS, CMR_CAS, HAZARD_STATEMENT_RE, PHYSICAL_STATES,
-        PRECAUTIONARY_STATEMENT_RE, PRODUCERS, SIGNAL_WORDS, SUPPLIERS, SYMBOLS, TAGS,
-    },
-    searchable::{create_update, get_many},
-};
+use crate::searchable::{create_update, get_many};
 
 #[must_use]
 pub fn connect_test() -> Connection {
@@ -396,62 +396,13 @@ pub fn populate_db_with_base_data(
     }
 
     info!("- adding units");
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (1,'L',1.0,'quantity',NULL)", ())?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (2,'mL',0.001,'quantity',1)", ())?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (3,'µL',1.0e-06,'quantity',1)", ())?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (5,'g',1.0,'quantity',NULL)", ())?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (4,'kg',1000.0,'quantity',5)", ())?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (6,'mg',0.001,'quantity',5)", ())?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (7,'µg',1.0e-06,'quantity',5)", ())?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (8,'m',1.0,'quantity',NULL)", ())?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (9,'dm',10.0,'quantity',8)", ())?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (10,'cm',100.0,'quantity',8)", ())?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (11,'°K',1.0,'temperature',NULL)",
-        (),
-    )?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (12,'°F',1.0,'temperature',11)", ())?;
-    tx.execute("INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (13,'°C',1.0,'temperature',11)", ())?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (16,'mM',1.0,'concentration',NULL)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (14,'nM',1.0e-06,'concentration',16)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (15,'µM',1.0e-03,'concentration',16)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (20,'g/L',1.0,'concentration',NULL)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (17,'ng/L',1.0e-09,'concentration',20)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (18,'µg/L',1.0e-06,'concentration',20)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (19,'mg/L',1.0e-03,'concentration',20)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (21,'%',1.0,'concentration',NULL)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit)  VALUES (22,'X',1.0,'concentration',NULL)",
-        (),
-    )?;
-    tx.execute(
-        "INSERT OR IGNORE INTO unit (unit_label, unit_multiplier, unit_type) VALUES ('g/mol', 1, 'molecular_weight');",
-        (),
-    )?;
+    for unit in UNITS {
+        let (unit_id, unit_label, unit_multiplier, unit_type, unit) = unit;
+        tx.execute(
+            "INSERT OR IGNORE INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![unit_id, unit_label, unit_multiplier, unit_type, unit],
+        )?;
+    }
 
     info!("- adding chimitheque admin");
     tx.execute(
@@ -530,6 +481,14 @@ mod tests {
 
     #[test]
     fn init_db_success() {
+        init_test();
+        let mut db_connection = connect_test();
+        create_tables(&mut db_connection).unwrap();
+        assert!(populate_db_with_base_data(&mut db_connection).is_ok());
+    }
+
+    #[test]
+    fn populate_db_with_base_data_success() {
         init_test();
         let mut db_connection = connect_test();
         create_tables(&mut db_connection).unwrap();
