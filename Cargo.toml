@@ -52,7 +52,7 @@ chimitheque_utils = { git = "https://github.com/tbellembois/chimitheque_utils.gi
 chimitheque_defines = { git = "https://github.com/tbellembois/chimitheque_defines.git", branch = "main" }
 
 [patch."https://github.com/tbellembois/chimitheque_defines.git"]
-chimitheque_defines = { path = "/home/tbellembois/workspace/workspace_rust/chimitheque_defines" }
+chimitheque_defines = { path = "../chimitheque_defines" }
 
 [patch."https://github.com/tbellembois/chimitheque_types.git"]
 chimitheque_types = { path = "../chimitheque_types" }
