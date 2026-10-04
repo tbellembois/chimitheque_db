@@ -34,12 +34,15 @@ CREATE TABLE IF NOT EXISTS "ce_number" (
 	PRIMARY KEY("ce_number_id")
 ) STRICT;
 
+-- defined in ../define.rs CATEGORIES
 CREATE TABLE IF NOT EXISTS "category" (
 	"category_id"	INTEGER,
 	"category_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("category_id")
 ) STRICT;
 
+
+-- defined in ../define.rs CLASSES_OF_COMPOUNDS
 CREATE TABLE IF NOT EXISTS "class_of_compound" (
 	"class_of_compound_id"	INTEGER,
 	"class_of_compound_label"	TEXT NOT NULL UNIQUE,
@@ -58,6 +61,11 @@ CREATE TABLE IF NOT EXISTS "linear_formula" (
 	PRIMARY KEY("linear_formula_id")
 ) STRICT;
 
+-- defined in ghscode_11.txt
+-- skip the first line
+-- each line are tabs separated hazard statements if starting with a H
+-- first item is the hazard_statement_reference
+-- second item is the hazard_statement_label
 CREATE TABLE IF NOT EXISTS "hazard_statement" (
 	"hazard_statement_id"	INTEGER,
 	"hazard_statement_label"	TEXT NOT NULL,
@@ -66,6 +74,11 @@ CREATE TABLE IF NOT EXISTS "hazard_statement" (
 	PRIMARY KEY("hazard_statement_id")
 ) STRICT;
 
+-- defined in ghscode_11.txt
+-- skip the first line
+-- each line are tabs separated precautionary statements if starting with a P
+-- first item is the precautionary_statement_reference
+-- second item is the precautionary_statement_label
 CREATE TABLE IF NOT EXISTS "precautionary_statement" (
 	"precautionary_statement_id"	INTEGER,
 	"precautionary_statement_label"	TEXT NOT NULL,
@@ -73,30 +86,35 @@ CREATE TABLE IF NOT EXISTS "precautionary_statement" (
 	PRIMARY KEY("precautionary_statement_id")
 ) STRICT;
 
+-- defined in ../define.rs PHYSICAL_STATES
 CREATE TABLE IF NOT EXISTS "physical_state" (
 	"physical_state_id"	INTEGER,
 	"physical_state_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("physical_state_id")
 ) STRICT;
 
+-- defined in ../define.rs SIGNAL_WORDS
 CREATE TABLE IF NOT EXISTS "signal_word" (
 	"signal_word_id"	INTEGER,
 	"signal_word_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("signal_word_id")
 ) STRICT;
 
+-- defined in ../define.rs SYMBOLS
 CREATE TABLE IF NOT EXISTS "symbol" (
 	"symbol_id"	INTEGER,
 	"symbol_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("symbol_id")
 ) STRICT;
 
+-- defined in ../define.rs TAGS
 CREATE TABLE IF NOT EXISTS "tag" (
 	"tag_id"	INTEGER,
 	"tag_label"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("tag_id")
 ) STRICT;
 
+-- defined in ../define.rs PRODUCERS
 CREATE TABLE IF NOT EXISTS "producer" (
 	"producer_id"	INTEGER,
 	"producer_label"	TEXT NOT NULL UNIQUE,
@@ -111,6 +129,7 @@ CREATE TABLE IF NOT EXISTS "producer_ref" (
 	FOREIGN KEY("producer") REFERENCES "producer"("producer_id") ON DELETE CASCADE
 ) STRICT;
 
+-- defined in ../define.rs SUPPLIERS
 CREATE TABLE IF NOT EXISTS "supplier" (
 	"supplier_id"	INTEGER,
 	"supplier_label"	TEXT NOT NULL UNIQUE,
@@ -131,6 +150,7 @@ CREATE TABLE IF NOT EXISTS "name" (
 	PRIMARY KEY("name_id")
 ) STRICT;
 
+-- defined in ../define.rs UNITS
 CREATE TABLE IF NOT EXISTS "unit" (
 	"unit_id"	INTEGER,
 	"unit_label"	TEXT NOT NULL UNIQUE,
@@ -146,8 +166,6 @@ CREATE TABLE IF NOT EXISTS "permission" (
 	"permission_name"	TEXT NOT NULL,
 	"permission_item"	TEXT NOT NULL,
 	"permission_entity"	INTEGER,
-	-- PRIMARY KEY("permission_id"),
-	-- PRIMARY KEY("person", "permission_name", "permission_item"),
 	FOREIGN KEY("person") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;
 

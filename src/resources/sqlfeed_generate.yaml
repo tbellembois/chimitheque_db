@@ -1,0 +1,783 @@
+    # cp chimitheque_base_data.sqlite test.sqlite \
+    #&& sqlseed fill --seed 123 --config sqlfeed_generate.yaml \
+    #&& sqlite3 test.sqlite .dump > test.sql \
+    #&& sed -i '/^BEGIN TRANSACTION;$/d; /^COMMIT;$/d' test.sql
+    db_path: ./test.sqlite
+    provider: faker
+    locale: en_US
+
+    tables:
+    - name: person
+      columns:
+      - name: person_email
+        generator: email
+        constraints:
+          unique: true
+
+    - name: cas_number
+      columns:
+      - name: cas_number_label
+        generator: pattern
+        params:
+          regex: "^(?P<group1>[0-9]{2,7})-(?P<group2>[0-9]{2})-(?P<checkdigit>[0-9]{1})$"
+        constraints:
+          unique: true
+      - name: cas_number_cmr
+        generator: choice
+        params:
+          choices: [C1A, M1A, R1A, C1B, M1B, R1B, C2, M2, R2]
+
+    - name: category
+      columns:
+      - name: category_label
+        generator: template
+        params:
+          template: CATEGORY-{sequence:04d}
+        constraints:
+          unique: true
+
+    - name: ce_number
+      columns:
+      - name: ce_number_label
+        generator: pattern
+        params:
+          regex: "^(?P<group1>[0-9]{3})-(?P<group2>[0-9]{3})-(?P<checkdigit>[0-9]{1})$"
+        constraints:
+          unique: true
+
+    - name: class_of_compound
+      columns:
+      - name: class_of_compound_label
+        generator: template
+        params:
+          template: CLASS_OF-{sequence:04d}
+        constraints:
+          unique: true
+
+    - name: empirical_formula
+      columns:
+      - name: empirical_formula_label
+        generator: pattern
+        params:
+          regex: r#"^(?:[A-Z][a-z]?\d*)+$"
+        constraints:
+          unique: true
+
+    - name: linear_formula
+      columns:
+      - name: linear_formula_label
+        generator: pattern
+        params:
+          regex: r#"^\s*y\s*=\s*[-+]?(?:\d+(?:\.\d+)?|\.\d+)\s*\*?\s*x\s*(?:[-+]\s*(?:\d+(?:\.\d+)?|\.\d+))?\s*$"
+        constraints:
+          unique: true
+
+    - name: name
+      columns:
+      - name: name_label
+        generator: template
+        params:
+          template: PRODUCT_NAME-{sequence:04d}
+        constraints:
+          unique: true
+
+    # - name: physical_state
+    #   columns:
+    #   - name: physical_state_label
+    #     generator: template
+    #     params:
+    #       template: PHYSICAL-{sequence:04d}
+    #     constraints:
+    #       unique: true
+
+    - name: producer
+      columns:
+      - name: producer_label
+        generator: template
+        params:
+          template: PRODUCER-{sequence:04d}
+        constraints:
+          unique: true
+
+    - name: producer_ref
+      columns:
+      - name: producer_ref_label
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: producer
+        generator: foreign_key
+        params:
+          ref_table: producer
+          ref_column: producer_id
+          strategy: random
+
+    # - name: signal_word
+    #   columns:
+    #   - name: signal_word_label
+    #     generator: template
+    #     params:
+    #       template: SIGNAL_W-{sequence:04d}
+    #     constraints:
+    #       unique: true
+
+    - name: supplier
+      columns:
+      - name: supplier_label
+        generator: template
+        params:
+          template: SUPPLIER-{sequence:04d}
+        constraints:
+          unique: true
+
+    - name: supplier_ref
+      columns:
+      - name: supplier_ref_label
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: supplier
+        generator: foreign_key
+        params:
+          ref_table: supplier
+          ref_column: supplier_id
+          strategy: random
+
+    # - name: symbol
+    #   columns:
+    #   - name: symbol_label
+    #     generator: template
+    #     params:
+    #       template: SYMBOL_L-{sequence:04d}
+    #     constraints:
+    #       unique: true
+
+    - name: tag
+      columns:
+      - name: tag_label
+        generator: template
+        params:
+          template: TAG_LABE-{sequence:04d}
+        constraints:
+          unique: true
+
+    # - name: unit
+    #   columns:
+    #   - name: unit_label
+    #     generator: template
+    #     params:
+    #       template: UNIT_LAB-{sequence:04d}
+    #     constraints:
+    #       unique: true
+    #   - name: unit_multiplier
+    #     generator: float
+    #     params:
+    #       min_value: 0.0
+    #       max_value: 999999.0
+    #       precision: 2
+    #   - name: unit_type
+    #     generator: string
+    #     params:
+    #       min_length: 5
+    #       max_length: 50
+    #   - name: unit
+    #     generator: foreign_key
+    #     params:
+    #       ref_table: unit
+    #       ref_column: unit_id
+    #       strategy: random
+    #     null_ratio: 1.0
+
+    # - name: hazard_statement
+    #   columns:
+    #   - name: hazard_statement_label
+    #     generator: string
+    #     params:
+    #       min_length: 5
+    #       max_length: 50
+    #   - name: hazard_statement_reference
+    #     generator: template
+    #     params:
+    #       template: HAZARD_S-{sequence:04d}
+    #     constraints:
+    #       unique: true
+    #   - name: hazard_statement_cmr
+    #     generator: string
+    #     params:
+    #       min_length: 5
+    #       max_length: 50
+
+    # - name: precautionary_statement
+    #   columns:
+    #   - name: precautionary_statement_label
+    #     generator: string
+    #     params:
+    #       min_length: 5
+    #       max_length: 50
+    #   - name: precautionary_statement_reference
+    #     generator: template
+    #     params:
+    #       template: PRECAUTI-{sequence:04d}
+    #     constraints:
+    #       unique: true
+
+    - name: entity
+      columns:
+      - name: entity_name
+        generator: template
+        params:
+          template: ENTITY_N-{sequence:04d}
+        constraints:
+          unique: true
+      - name: entity_description
+        generator: text
+        params:
+          min_length: 50
+          max_length: 300
+
+    - name: product
+      columns:
+      - name: product_type
+        generator: choice
+        params:
+          choices: [chem, bio, cons]
+      - name: product_inchi
+        generator: pattern
+        params:
+          regex: "^InChI=1[S]?/[A-Z0-9.+-]+(/c[0-9xX*(),-]+)?(/h[0-9hH,+-]+)?.*$"        
+      - name: product_inchikey
+        generator: pattern
+        params:
+          regex: "^[A-Z]{14}-[A-Z]{9}[SN][A][A-Z]-[A-Z]$"
+      - name: product_canonical_smiles
+        generator: pattern
+        params:
+          regex: r#"(\[[^\]]+]|Br?|Cl?|N|O|S|P|F|I|b|c|n|o|s|p|\(|\)|\.|=|#|-[0-9]*|\+|\/|\\|:|@|\?|>|\*|\$|%[0-9]{2}|[0-9])"        
+      - name: product_specificity
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: product_msds
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: product_restricted
+        generator: integer
+        params:
+          min_value: 0
+          max_value: 1
+      - name: product_radioactive
+        generator: integer
+        params:
+          min_value: 0
+          max_value: 1
+      - name: product_threed_formula
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: product_twod_formula
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: product_disposal_comment
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: product_remark
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: product_qrcode
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: product_sheet
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: product_concentration
+        generator: float
+        params:
+          min_value: 0.0
+          max_value: 999999.0
+          precision: 2
+      - name: product_temperature
+        generator: float
+        params:
+          min_value: 0.0
+          max_value: 999999.0
+          precision: 2
+      - name: product_molecular_weight
+        generator: float
+        params:
+          min_value: 0.0
+          max_value: 999999.0
+          precision: 2
+      - name: cas_number
+        generator: foreign_key
+        params:
+          ref_table: cas_number
+          ref_column: cas_number_id
+          strategy: random
+      - name: ce_number
+        generator: foreign_key
+        params:
+          ref_table: ce_number
+          ref_column: ce_number_id
+          strategy: random
+      - name: person
+        generator: foreign_key
+        params:
+          ref_table: person
+          ref_column: person_id
+          strategy: random
+      - name: empirical_formula
+        generator: foreign_key
+        params:
+          ref_table: empirical_formula
+          ref_column: empirical_formula_id
+          strategy: random
+      - name: linear_formula
+        generator: foreign_key
+        params:
+          ref_table: linear_formula
+          ref_column: linear_formula_id
+          strategy: random
+      - name: physical_state
+        generator: foreign_key
+        params:
+          ref_table: physical_state
+          ref_column: physical_state_id
+          strategy: random
+      - name: signal_word
+        generator: foreign_key
+        params:
+          ref_table: signal_word
+          ref_column: signal_word_id
+          strategy: random
+      - name: name
+        generator: foreign_key
+        params:
+          ref_table: name
+          ref_column: name_id
+          strategy: random
+      - name: producer_ref
+        generator: foreign_key
+        params:
+          ref_table: producer_ref
+          ref_column: producer_ref_id
+          strategy: random
+      - name: unit_molecular_weight
+        generator: foreign_key
+        params:
+          ref_table: unit
+          ref_column: unit_id
+          strategy: random
+      - name: unit_temperature
+        generator: foreign_key
+        params:
+          ref_table: unit
+          ref_column: unit_id
+          strategy: random
+      - name: category
+        generator: foreign_key
+        params:
+          ref_table: category
+          ref_column: category_id
+          strategy: random
+      - name: product_number_per_carton
+        generator: integer
+        params:
+          min_value: 0
+          max_value: 999999
+      - name: product_number_per_bag
+        generator: integer
+        params:
+          min_value: 0
+          max_value: 999999
+
+    - name: store_location
+      columns:
+      - name: store_location_name
+        generator: catch_phrase
+      - name: store_location_color
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: store_location_can_store
+        generator: integer
+        params:
+          min_value: 0
+          max_value: 1
+      - name: store_location_full_path
+        generator: string
+        params:
+          min_length: 10
+          max_length: 100
+      - name: entity
+        generator: foreign_key
+        params:
+          ref_table: entity
+          ref_column: entity_id
+          strategy: random
+      - name: store_location
+        generator: foreign_key
+        params:
+          ref_table: store_location
+          ref_column: store_location_id
+          strategy: random
+        null_ratio: 1.0
+
+    - name: storage
+      columns:
+      - name: storage_creation_date
+        generator: integer
+        params:
+          min_value: 1577836800
+          max_value: 1893456000
+      - name: storage_modification_date
+        generator: integer
+        params:
+          min_value: 1577836800
+          max_value: 1893456000
+      - name: storage_entry_date
+        generator: integer
+        params:
+          min_value: 1577836800
+          max_value: 1893456000
+        null_ratio: 0.25
+      - name: storage_exit_date
+        generator: integer
+        params:
+          min_value: 1577836800
+          max_value: 1893456000
+        null_ratio: 0.50
+      - name: storage_opening_date
+        generator: integer
+        params:
+          min_value: 1577836800
+          max_value: 1893456000
+        null_ratio: 0.25
+      - name: storage_expiration_date
+        generator: integer
+        params:
+          min_value: 1577836800
+          max_value: 1893456000
+        null_ratio: 0.25
+      - name: storage_quantity
+        generator: float
+        params:
+          min_value: 1.0
+          max_value: 50.0
+          precision: 2
+      - name: storage_barecode
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: storage_comment
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: storage_reference
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: storage_batch_number
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: storage_to_destroy
+        generator: integer
+        params:
+          min_value: 0
+          max_value: 1
+      - name: storage_archive
+        generator: integer
+        params:
+          min_value: 0
+          max_value: 1
+      - name: storage_qrcode
+        generator: bytes
+        params:
+          length: 32
+      - name: storage_concentration
+        generator: float
+        params:
+          min_value: 0.0
+          max_value: 999999.0
+          precision: 2
+      - name: storage_number_of_bag
+        generator: integer
+        params:
+          min_value: 0
+          max_value: 999999
+      - name: storage_number_of_carton
+        generator: integer
+        params:
+          min_value: 0
+          max_value: 999999
+      - name: person
+        generator: foreign_key
+        params:
+          ref_table: person
+          ref_column: person_id
+          strategy: random
+      - name: product
+        generator: foreign_key
+        params:
+          ref_table: product
+          ref_column: product_id
+          strategy: random
+      - name: store_location
+        generator: foreign_key
+        params:
+          ref_table: store_location
+          ref_column: store_location_id
+          strategy: random
+      - name: unit_concentration
+        generator: foreign_key
+        params:
+          ref_table: unit
+          ref_column: unit_id
+          strategy: random
+        null_ratio: 0.25
+      - name: unit_quantity
+        generator: foreign_key
+        params:
+          ref_table: unit
+          ref_column: unit_id
+          strategy: random
+      - name: supplier
+        generator: foreign_key
+        params:
+          ref_table: supplier
+          ref_column: supplier_id
+          strategy: random
+        null_ratio: 0.25
+      - name: storage
+        generator: foreign_key
+        params:
+          ref_table: storage
+          ref_column: storage_id
+          strategy: random
+        null_ratio: 1.0
+
+    - name: bookmark
+      columns:
+      - name: person
+        generator: foreign_key
+        params:
+          ref_table: person
+          ref_column: person_id
+          strategy: random
+      - name: product
+        generator: foreign_key
+        params:
+          ref_table: product
+          ref_column: product_id
+          strategy: random
+
+    - name: borrowing
+      columns:
+      - name: borrowing_comment
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: person
+        generator: foreign_key
+        params:
+          ref_table: person
+          ref_column: person_id
+          strategy: random
+      - name: borrower
+        generator: foreign_key
+        params:
+          ref_table: person
+          ref_column: person_id
+          strategy: random
+      - name: storage
+        generator: foreign_key
+        params:
+          ref_table: storage
+          ref_column: storage_id
+          strategy: random
+        constraints:
+          unique: true
+
+    - name: permission
+      columns:
+      - name: person
+        generator: foreign_key
+        params:
+          ref_table: person
+          ref_column: person_id
+          strategy: random
+      - name: permission_name
+        generator: catch_phrase
+      - name: permission_item
+        generator: string
+        params:
+          min_length: 5
+          max_length: 50
+      - name: permission_entity
+        generator: foreign_key
+        params:
+          ref_table: entity
+          ref_column: entity_id
+          strategy: random
+        null_ratio: 0.25
+
+    - name: productclassesofcompounds
+      columns:
+      - name: productclassesofcompounds_product_id
+        generator: foreign_key
+        params:
+          ref_table: product
+          ref_column: product_id
+          strategy: random
+      - name: productclassesofcompounds_class_of_compound_id
+        generator: foreign_key
+        params:
+          ref_table: class_of_compound
+          ref_column: class_of_compound_id
+          strategy: random
+
+    - name: producthazardstatements
+      columns:
+      - name: producthazardstatements_product_id
+        generator: foreign_key
+        params:
+          ref_table: product
+          ref_column: product_id
+          strategy: random
+      - name: producthazardstatements_hazard_statement_id
+        generator: foreign_key
+        params:
+          ref_table: hazard_statement
+          ref_column: hazard_statement_id
+          strategy: random
+
+    - name: productprecautionarystatements
+      columns:
+      - name: productprecautionarystatements_product_id
+        generator: foreign_key
+        params:
+          ref_table: product
+          ref_column: product_id
+          strategy: random
+      - name: productprecautionarystatements_precautionary_statement_id
+        generator: foreign_key
+        params:
+          ref_table: precautionary_statement
+          ref_column: precautionary_statement_id
+          strategy: random
+
+    - name: productsupplierrefs
+      columns:
+      - name: productsupplierrefs_product_id
+        generator: foreign_key
+        params:
+          ref_table: product
+          ref_column: product_id
+          strategy: random
+      - name: productsupplierrefs_supplier_ref_id
+        generator: foreign_key
+        params:
+          ref_table: supplier_ref
+          ref_column: supplier_ref_id
+          strategy: random
+
+    - name: productsymbols
+      columns:
+      - name: productsymbols_product_id
+        generator: foreign_key
+        params:
+          ref_table: product
+          ref_column: product_id
+          strategy: random
+      - name: productsymbols_symbol_id
+        generator: foreign_key
+        params:
+          ref_table: symbol
+          ref_column: symbol_id
+          strategy: random
+
+    - name: productsynonyms
+      columns:
+      - name: productsynonyms_product_id
+        generator: foreign_key
+        params:
+          ref_table: product
+          ref_column: product_id
+          strategy: random
+      - name: productsynonyms_name_id
+        generator: foreign_key
+        params:
+          ref_table: name
+          ref_column: name_id
+          strategy: random
+
+    - name: producttags
+      columns:
+      - name: producttags_product_id
+        generator: foreign_key
+        params:
+          ref_table: product
+          ref_column: product_id
+          strategy: random
+      - name: producttags_tag_id
+        generator: foreign_key
+        params:
+          ref_table: tag
+          ref_column: tag_id
+          strategy: random
+
+    - name: entitypeople
+      columns:
+      - name: entitypeople_entity_id
+        generator: foreign_key
+        params:
+          ref_table: entity
+          ref_column: entity_id
+          strategy: random
+      - name: entitypeople_person_id
+        generator: foreign_key
+        params:
+          ref_table: person
+          ref_column: person_id
+          strategy: random
+
+    - name: personentities
+      columns:
+      - name: personentities_person_id
+        generator: foreign_key
+        params:
+          ref_table: person
+          ref_column: person_id
+          strategy: random
+      - name: personentities_entity_id
+        generator: foreign_key
+        params:
+          ref_table: entity
+          ref_column: entity_id
+          strategy: random
+
+    associations: []
+
+

@@ -769,6 +769,7 @@ fn populate_symbols(
 
         // Populate product symbols.
         let mut symbols: Vec<chimitheque_types::symbol::Symbol> = vec![];
+
         for row in rows {
             let product_symbols_wrapper = row?;
             symbols.push(chimitheque_types::symbol::Symbol {
@@ -1936,6 +1937,10 @@ pub fn create_update_product(
     name.sanitize_and_validate()?;
 
     if name.name_id.is_none() {
+        name.sanitize_and_validate()?;
+
+        debug!("creating name: {name}");
+
         let name_id = searchable::create_update(
             &NameStruct {
                 ..Default::default()
@@ -1958,6 +1963,8 @@ pub fn create_update_product(
         && cas_number.cas_number_id.is_none()
     {
         cas_number.sanitize_and_validate()?;
+
+        debug!("creating cas number: {cas_number}");
 
         let cas_number_id = searchable::create_update(
             &CasNumberStruct {
@@ -1982,6 +1989,8 @@ pub fn create_update_product(
     {
         ce_number.sanitize_and_validate()?;
 
+        debug!("creating ce number: {ce_number}");
+
         let ce_number_id = searchable::create_update(
             &CeNumberStruct {
                 ..Default::default()
@@ -2004,6 +2013,8 @@ pub fn create_update_product(
         && empirical_formula.empirical_formula_id.is_none()
     {
         empirical_formula.sanitize_and_validate()?;
+
+        debug!("creating empirical formula: {empirical_formula}");
 
         let empirical_formula_id = searchable::create_update(
             &EmpiricalFormulaStruct {
@@ -2028,6 +2039,8 @@ pub fn create_update_product(
     {
         linear_formula.sanitize_and_validate()?;
 
+        debug!("creating linear formula: {linear_formula}");
+
         let linear_formula_id = searchable::create_update(
             &LinearFormulaStruct {
                 ..Default::default()
@@ -2051,6 +2064,8 @@ pub fn create_update_product(
     {
         category.sanitize_and_validate()?;
 
+        debug!("creating category: {category}");
+
         let category_id = searchable::create_update(
             &CategoryStruct {
                 ..Default::default()
@@ -2072,6 +2087,8 @@ pub fn create_update_product(
     if let Some(producer_ref) = product.producer_ref.clone()
         && producer_ref.producer_ref_id.is_none()
     {
+        debug!("creating producer ref: {producer_ref}");
+
         let producer_ref_id = Some(producerref::create_update_producer_ref(
             &db_transaction,
             &producer_ref,
@@ -2094,6 +2111,8 @@ pub fn create_update_product(
 
             let mut name_id = name.name_id;
             if name_id.is_none() {
+                debug!("creating synonym: {name}");
+
                 name_id = Some(searchable::create_update(
                     &NameStruct {
                         ..Default::default()
@@ -2124,6 +2143,8 @@ pub fn create_update_product(
 
             let mut class_of_compound_id = class_of_compound.class_of_compound_id;
             if class_of_compound_id.is_none() {
+                debug!("creating class of compound: {class_of_compound}");
+
                 class_of_compound_id = Some(searchable::create_update(
                     &ClassOfCompoundStruct {
                         ..Default::default()
@@ -2152,6 +2173,8 @@ pub fn create_update_product(
         for supplier_ref in supplier_refs {
             let mut supplier_ref_id = supplier_ref.supplier_ref_id;
             if supplier_ref_id.is_none() {
+                debug!("creating supplier ref: {supplier_ref}");
+
                 supplier_ref_id = Some(supplierref::create_update_supplier_ref(
                     &db_transaction,
                     &supplier_ref,
@@ -2175,6 +2198,8 @@ pub fn create_update_product(
 
         for mut tag in tags {
             tag.sanitize_and_validate()?;
+
+            debug!("creating tag: {tag}");
 
             let mut tag_id = tag.tag_id;
             if tag_id.is_none() {
