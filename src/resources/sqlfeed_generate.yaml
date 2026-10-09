@@ -32,7 +32,7 @@
       - name: category_label
         generator: template
         params:
-          template: CATEGORY-{sequence:04d}
+          template: CATEGORY-{sequence:05d}
         constraints:
           unique: true
 
@@ -50,7 +50,7 @@
       - name: class_of_compound_label
         generator: template
         params:
-          template: CLASS_OF-{sequence:04d}
+          template: CLASS_OF-{sequence:05d}
         constraints:
           unique: true
 
@@ -59,7 +59,7 @@
       - name: empirical_formula_label
         generator: pattern
         params:
-          regex: r#"^(?:[A-Z][a-z]?\d*)+$"
+          regex: "^(?:[A-Z][a-z]?\\d[0,2]])[2,16]$"
         constraints:
           unique: true
 
@@ -68,7 +68,7 @@
       - name: linear_formula_label
         generator: pattern
         params:
-          regex: r#"^\s*y\s*=\s*[-+]?(?:\d+(?:\.\d+)?|\.\d+)\s*\*?\s*x\s*(?:[-+]\s*(?:\d+(?:\.\d+)?|\.\d+))?\s*$"
+          regex: "^(?:[A-Z][a-z]?\\d[0,2])[2,16]$"
         constraints:
           unique: true
 
@@ -77,7 +77,7 @@
       - name: name_label
         generator: template
         params:
-          template: PRODUCT_NAME-{sequence:04d}
+          template: PRODUCT_NAME-{sequence:05d}
         constraints:
           unique: true
 
@@ -86,7 +86,7 @@
     #   - name: physical_state_label
     #     generator: template
     #     params:
-    #       template: PHYSICAL-{sequence:04d}
+    #       template: PHYSICAL-{sequence:05d}
     #     constraints:
     #       unique: true
 
@@ -95,7 +95,7 @@
       - name: producer_label
         generator: template
         params:
-          template: PRODUCER-{sequence:04d}
+          template: PRODUCER-{sequence:05d}
         constraints:
           unique: true
 
@@ -118,7 +118,7 @@
     #   - name: signal_word_label
     #     generator: template
     #     params:
-    #       template: SIGNAL_W-{sequence:04d}
+    #       template: SIGNAL_W-{sequence:05d}
     #     constraints:
     #       unique: true
 
@@ -127,7 +127,7 @@
       - name: supplier_label
         generator: template
         params:
-          template: SUPPLIER-{sequence:04d}
+          template: SUPPLIER-{sequence:05d}
         constraints:
           unique: true
 
@@ -150,7 +150,7 @@
     #   - name: symbol_label
     #     generator: template
     #     params:
-    #       template: SYMBOL_L-{sequence:04d}
+    #       template: SYMBOL_L-{sequence:05d}
     #     constraints:
     #       unique: true
 
@@ -159,7 +159,7 @@
       - name: tag_label
         generator: template
         params:
-          template: TAG_LABE-{sequence:04d}
+          template: TAG_LABE-{sequence:05d}
         constraints:
           unique: true
 
@@ -168,7 +168,7 @@
     #   - name: unit_label
     #     generator: template
     #     params:
-    #       template: UNIT_LAB-{sequence:04d}
+    #       template: UNIT_LAB-{sequence:05d}
     #     constraints:
     #       unique: true
     #   - name: unit_multiplier
@@ -200,7 +200,7 @@
     #   - name: hazard_statement_reference
     #     generator: template
     #     params:
-    #       template: HAZARD_S-{sequence:04d}
+    #       template: HAZARD_S-{sequence:05d}
     #     constraints:
     #       unique: true
     #   - name: hazard_statement_cmr
@@ -219,7 +219,7 @@
     #   - name: precautionary_statement_reference
     #     generator: template
     #     params:
-    #       template: PRECAUTI-{sequence:04d}
+    #       template: PRECAUTI-{sequence:05d}
     #     constraints:
     #       unique: true
 
@@ -228,7 +228,7 @@
       - name: entity_name
         generator: template
         params:
-          template: ENTITY_N-{sequence:04d}
+          template: ENTITY_N-{sequence:05d}
         constraints:
           unique: true
       - name: entity_description
@@ -254,7 +254,7 @@
       - name: product_canonical_smiles
         generator: pattern
         params:
-          regex: r#"(\[[^\]]+]|Br?|Cl?|N|O|S|P|F|I|b|c|n|o|s|p|\(|\)|\.|=|#|-[0-9]*|\+|\/|\\|:|@|\?|>|\*|\$|%[0-9]{2}|[0-9])"        
+          regex: "(\\[[^\\]]+]|Br?|Cl?|N|O|S|P|F|I|b|c|n|o|s|p|\\(|\\)|\\.|=|#|-[0-9]*|\\+|\/|\\|:|@|\\?|>|\\*|\\$|%[0-9]{2}|[0-9])"        
       - name: product_specificity
         generator: string
         params:
@@ -629,12 +629,13 @@
           ref_column: person_id
           strategy: random
       - name: permission_name
-        generator: catch_phrase
-      - name: permission_item
-        generator: string
+        generator: choice
         params:
-          min_length: 5
-          max_length: 50
+          choices: [n, r, w, all]
+      - name: permission_item
+        generator: choice
+        params:
+          choices: [all, entities, storages, products, rproducts]
       - name: permission_entity
         generator: foreign_key
         params:

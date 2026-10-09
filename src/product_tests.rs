@@ -67,7 +67,7 @@ mod tests {
     fn test_get_products_with_name_filter() {
         let db = init_test_products();
         let filter = chimitheque_types::requestfilter::RequestFilter {
-            name: Some(1),
+            name: Some(6),
             ..Default::default()
         };
         let person_id = 1;
@@ -76,9 +76,9 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 3);
-        assert_eq!(products.len(), 3);
-        assert_eq!(products[0].name.name_label, "PRODUCT_NAME-0001");
+        assert_eq!(count, 5);
+        assert_eq!(products.len(), 5);
+        assert_eq!(products[0].name.name_label, "PRODUCT_NAME-00006");
     }
 
     #[test]
@@ -94,8 +94,8 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 327);
-        assert_eq!(products.len(), 327);
+        assert_eq!(count, 334);
+        assert_eq!(products.len(), 334);
         assert_eq!(products[0].product_type, ProductType::Chem);
     }
 
@@ -103,7 +103,7 @@ mod tests {
     fn test_get_products_with_category_filter() {
         let db = init_test_products();
         let filter = chimitheque_types::requestfilter::RequestFilter {
-            category: Some(4),
+            category: Some(3),
             ..Default::default()
         };
         let person_id = 1;
@@ -112,12 +112,9 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 3);
-        assert_eq!(products.len(), 3);
-        assert_eq!(
-            products[0].clone().category.unwrap().category_label,
-            "Cellular Growth Factor"
-        );
+        assert_eq!(count, 2);
+        assert_eq!(products.len(), 2);
+        assert_eq!(products[0].clone().category.unwrap().category_label, "Drug");
     }
 
     #[test]
@@ -133,8 +130,8 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 489);
-        assert_eq!(products.len(), 489);
+        assert_eq!(count, 503);
+        assert_eq!(products.len(), 503);
         assert_eq!(
             products[0].clone().signal_word.unwrap().signal_word_label,
             "danger"
@@ -154,8 +151,8 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 11);
-        assert_eq!(products.len(), 11);
+        assert_eq!(count, 15);
+        assert_eq!(products.len(), 15);
     }
 
     #[test]
@@ -179,7 +176,7 @@ mod tests {
     fn test_get_products_with_tag_filter() {
         let db = init_test_products();
         let filter = chimitheque_types::requestfilter::RequestFilter {
-            tags: Some(vec![1]),
+            tags: Some(vec![6]),
             ..Default::default()
         };
         let person_id = 1;
@@ -205,15 +202,15 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 120);
-        assert_eq!(products.len(), 120);
+        assert_eq!(count, 102);
+        assert_eq!(products.len(), 102);
     }
 
     #[test]
     fn test_get_products_with_producer_ref_filter() {
         let db = init_test_products();
         let filter = chimitheque_types::requestfilter::RequestFilter {
-            producer_ref: Some(1),
+            producer_ref: Some(997),
             ..Default::default()
         };
         let person_id = 1;
@@ -222,8 +219,8 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 3);
-        assert_eq!(products.len(), 3);
+        assert_eq!(count, 5);
+        assert_eq!(products.len(), 5);
     }
 
     #[test]
@@ -239,12 +236,12 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(products.len(), 1);
+        assert_eq!(count, 2);
+        assert_eq!(products.len(), 2);
     }
 
     #[test]
-    fn test_create_product2() {
+    fn test_create_product() {
         let mut db = init_test_products();
         let product = ProductStruct {
             product_id: None,
@@ -453,10 +450,14 @@ mod tests {
         let result = populate_synonyms(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].synonyms.as_ref().unwrap().len(), 1);
+        assert_eq!(products[0].synonyms.as_ref().unwrap().len(), 2);
         assert_eq!(
             products[0].synonyms.as_ref().unwrap()[0].name_label,
-            "PRODUCT_NAME-0426"
+            "PRODUCT_NAME-00625"
+        );
+        assert_eq!(
+            products[0].synonyms.as_ref().unwrap()[1].name_label,
+            "PRODUCT_NAME-00911"
         );
     }
 
@@ -471,10 +472,10 @@ mod tests {
         let result = populate_classes_of_compound(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].classes_of_compound.as_ref().unwrap().len(), 1);
+        assert_eq!(products[0].classes_of_compound.as_ref().unwrap().len(), 2);
         assert_eq!(
             products[0].classes_of_compound.as_ref().unwrap()[0].class_of_compound_label,
-            "CLASS_OF-0220"
+            "CLASS_OF-00419"
         );
     }
 
@@ -501,10 +502,14 @@ mod tests {
         let result = populate_symbols(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].symbols.as_ref().unwrap().len(), 1);
+        assert_eq!(products[0].symbols.as_ref().unwrap().len(), 2);
         assert_eq!(
             products[0].symbols.as_ref().unwrap()[0].symbol_label,
-            "GHS02"
+            "GHS01"
+        );
+        assert_eq!(
+            products[0].symbols.as_ref().unwrap()[1].symbol_label,
+            "GHS04"
         );
     }
 
@@ -519,10 +524,10 @@ mod tests {
         let result = populate_hazard_statements(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].hazard_statements.as_ref().unwrap().len(), 1);
+        assert_eq!(products[0].hazard_statements.as_ref().unwrap().len(), 4);
         assert_eq!(
             products[0].hazard_statements.as_ref().unwrap()[0].hazard_statement_reference,
-            "H221"
+            "H210"
         );
     }
 
@@ -544,7 +549,7 @@ mod tests {
         assert_eq!(
             products[0].precautionary_statements.as_ref().unwrap()[0]
                 .precautionary_statement_reference,
-            "P230"
+            "P422"
         );
     }
 
@@ -559,10 +564,14 @@ mod tests {
         let result = populate_supplier_refs(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].supplier_refs.as_ref().unwrap().len(), 1);
+        assert_eq!(products[0].supplier_refs.as_ref().unwrap().len(), 2);
         assert_eq!(
             products[0].supplier_refs.as_ref().unwrap()[0].supplier_ref_label,
-            "3Bkl eXLQpTgsoTSQwSpyo PuBZnEUdq-JlVlfLzwRkxr"
+            "liJ9Toi-xAANb4EYc3Lz 3Wz542yIkkBgxTjxINGn"
+        );
+        assert_eq!(
+            products[0].supplier_refs.as_ref().unwrap()[1].supplier_ref_label,
+            "z4U8KyjhiuZj-O0ctY"
         );
     }
 
@@ -577,10 +586,14 @@ mod tests {
         let result = populate_tags(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].tags.as_ref().unwrap().len(), 1);
+        assert_eq!(products[0].tags.as_ref().unwrap().len(), 2);
         assert_eq!(
             products[0].tags.as_ref().unwrap()[0].tag_label,
-            "TAG_LABE-0372"
+            "TAG_LABE-00571"
+        );
+        assert_eq!(
+            products[0].tags.as_ref().unwrap()[1].tag_label,
+            "TAG_LABE-00857"
         );
     }
 }
