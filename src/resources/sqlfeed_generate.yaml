@@ -2,6 +2,10 @@
     #&& sqlseed fill --seed 123 --config sqlfeed_generate.yaml \
     #&& sqlite3 test.sqlite .dump > test.sql \
     #&& sed -i '/^BEGIN TRANSACTION;$/d; /^COMMIT;$/d' test.sql
+    # Generated data must satisfy the constraints of shema.sql (CHECK, UNIQUE,
+    # composite primary keys). Composite uniqueness relies on the "coverage" FK
+    # strategy on the first column: each table generates 1000 rows (the default
+    # count), which must not exceed the number of referenced parent rows.
     db_path: ./test.sqlite
     provider: faker
     locale: en_US
@@ -106,6 +110,8 @@
         params:
           min_length: 5
           max_length: 50
+        constraints:
+          unique: true
       - name: producer
         generator: foreign_key
         params:
@@ -138,6 +144,8 @@
         params:
           min_length: 5
           max_length: 50
+        constraints:
+          unique: true
       - name: supplier
         generator: foreign_key
         params:
@@ -320,7 +328,7 @@
       - name: product_molecular_weight
         generator: float
         params:
-          min_value: 0.0
+          min_value: 0.01
           max_value: 999999.0
           precision: 2
       - name: cas_number
@@ -398,12 +406,12 @@
       - name: product_number_per_carton
         generator: integer
         params:
-          min_value: 0
+          min_value: 1
           max_value: 999999
       - name: product_number_per_bag
         generator: integer
         params:
-          min_value: 0
+          min_value: 1
           max_value: 999999
 
     - name: store_location
@@ -451,16 +459,18 @@
         params:
           min_value: 1577836800
           max_value: 1893456000
+      # Entries in 2020-2024 and exits in 2025-2029, so that
+      # storage_exit_date >= storage_entry_date (CHECK constraint).
       - name: storage_entry_date
         generator: integer
         params:
           min_value: 1577836800
-          max_value: 1893456000
+          max_value: 1735689599
         null_ratio: 0.25
       - name: storage_exit_date
         generator: integer
         params:
-          min_value: 1577836800
+          min_value: 1735689600
           max_value: 1893456000
         null_ratio: 0.50
       - name: storage_opening_date
@@ -524,12 +534,12 @@
       - name: storage_number_of_bag
         generator: integer
         params:
-          min_value: 0
+          min_value: 1
           max_value: 999999
       - name: storage_number_of_carton
         generator: integer
         params:
-          min_value: 0
+          min_value: 1
           max_value: 999999
       - name: person
         generator: foreign_key
@@ -584,7 +594,7 @@
         params:
           ref_table: person
           ref_column: person_id
-          strategy: random
+          strategy: coverage
       - name: product
         generator: foreign_key
         params:
@@ -627,7 +637,7 @@
         params:
           ref_table: person
           ref_column: person_id
-          strategy: random
+          strategy: coverage
       - name: permission_name
         generator: choice
         params:
@@ -651,7 +661,7 @@
         params:
           ref_table: product
           ref_column: product_id
-          strategy: random
+          strategy: coverage
       - name: productclassesofcompounds_class_of_compound_id
         generator: foreign_key
         params:
@@ -666,7 +676,7 @@
         params:
           ref_table: product
           ref_column: product_id
-          strategy: random
+          strategy: coverage
       - name: producthazardstatements_hazard_statement_id
         generator: foreign_key
         params:
@@ -681,7 +691,7 @@
         params:
           ref_table: product
           ref_column: product_id
-          strategy: random
+          strategy: coverage
       - name: productprecautionarystatements_precautionary_statement_id
         generator: foreign_key
         params:
@@ -696,7 +706,7 @@
         params:
           ref_table: product
           ref_column: product_id
-          strategy: random
+          strategy: coverage
       - name: productsupplierrefs_supplier_ref_id
         generator: foreign_key
         params:
@@ -711,7 +721,7 @@
         params:
           ref_table: product
           ref_column: product_id
-          strategy: random
+          strategy: coverage
       - name: productsymbols_symbol_id
         generator: foreign_key
         params:
@@ -726,7 +736,7 @@
         params:
           ref_table: product
           ref_column: product_id
-          strategy: random
+          strategy: coverage
       - name: productsynonyms_name_id
         generator: foreign_key
         params:
@@ -741,7 +751,7 @@
         params:
           ref_table: product
           ref_column: product_id
-          strategy: random
+          strategy: coverage
       - name: producttags_tag_id
         generator: foreign_key
         params:
@@ -756,7 +766,7 @@
         params:
           ref_table: entity
           ref_column: entity_id
-          strategy: random
+          strategy: coverage
       - name: entitypeople_person_id
         generator: foreign_key
         params:
@@ -771,7 +781,7 @@
         params:
           ref_table: person
           ref_column: person_id
-          strategy: random
+          strategy: coverage
       - name: personentities_entity_id
         generator: foreign_key
         params:

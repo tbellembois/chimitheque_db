@@ -317,9 +317,6 @@ pub fn create_tables(
         stmt.execute([])?;
     }
 
-    // Bring existing databases up to date with shema.sql.
-    crate::migration::migrate(db_connection)?;
-
     Ok(())
 }
 
@@ -506,5 +503,260 @@ mod tests {
         populate_db_with_base_data(&mut db_connection).unwrap();
         let tx = db_connection.transaction().unwrap();
         assert!(update_ghs_statements(&tx).is_ok());
+    }
+
+    #[test]
+    fn product_type_check_constraint() {
+        init_test();
+        let mut db_connection = connect_test();
+        create_tables(&mut db_connection).unwrap();
+        db_connection
+            .execute_batch(
+                "INSERT INTO name (name_id, name_label) VALUES (1, 'ETHANOL');
+                 INSERT INTO person (person_id, person_email) VALUES (1, 'admin@example.com');",
+            )
+            .unwrap();
+
+        let insert = |product_id: i64, product_type: &str| {
+            db_connection.execute(
+                "INSERT INTO product (product_id, product_type, name, person) VALUES (?1, ?2, 1, 1)",
+                params![product_id, product_type],
+            )
+        };
+        for (product_id, product_type) in [(1, "chem"), (2, "bio"), (3, "cons")] {
+            insert(product_id, product_type).unwrap();
+        }
+        let error = insert(4, "xyz").unwrap_err();
+        assert!(
+            error.to_string().contains("CHECK constraint failed"),
+            "{error}"
+        );
+
+        let error = db_connection
+            .execute(
+                "UPDATE product SET product_type = 'Chem' WHERE product_id = 1",
+                [],
+            )
+            .unwrap_err();
+        assert!(
+            error.to_string().contains("CHECK constraint failed"),
+            "{error}"
+        );
+    }
+
+    /// A new database with foreign keys on, one name, person, entity and product.
+    fn constraints_db() -> Connection {
+        init_test();
+        let mut db_connection = connect_test();
+        create_tables(&mut db_connection).unwrap();
+        db_connection
+            .execute_batch(
+                "PRAGMA foreign_keys = ON;
+                 INSERT INTO name (name_id, name_label) VALUES (1, 'ETHANOL');
+                 INSERT INTO person (person_id, person_email) VALUES (1, 'admin@example.com');
+                 INSERT INTO entity (entity_id, entity_name) VALUES (1, 'lab');
+                 INSERT INTO product (product_id, product_type, name) VALUES (1, 'chem', 1);",
+            )
+            .unwrap();
+        db_connection
+    }
+
+    fn assert_rejected(db_connection: &Connection, sql: &str, expected: &str) {
+        let error = db_connection.execute(sql, []).unwrap_err();
+        assert!(error.to_string().contains(expected), "{sql}: {error}");
+    }
+
+    #[test]
+    fn create_tables_is_idempotent() {
+        let mut db_connection = constraints_db();
+        create_tables(&mut db_connection).unwrap();
+        populate_db_with_base_data(&mut db_connection).unwrap();
+        create_tables(&mut db_connection).unwrap();
+        let products: i64 = db_connection
+            .query_row("SELECT COUNT(*) FROM product", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(products, 1);
+    }
+
+    #[test]
+    fn schema_rejects_invalid_values() {
+        let db_connection = constraints_db();
+        let check = "CHECK constraint failed";
+        for sql in [
+            // Empty labels.
+            "INSERT INTO name (name_label) VALUES ('')",
+            "INSERT INTO tag (tag_label) VALUES ('')",
+            "INSERT INTO person (person_email) VALUES ('')",
+            "INSERT INTO store_location (store_location_name, entity) VALUES ('', 1)",
+            // Booleans.
+            "UPDATE product SET product_restricted = 2 WHERE product_id = 1",
+            "INSERT INTO store_location (store_location_name, entity, store_location_can_store) VALUES ('a', 1, -1)",
+            // Allowed values.
+            "INSERT INTO unit (unit_label, unit_type) VALUES ('x', 'volume')",
+            "INSERT INTO permission (person, permission_name, permission_item) VALUES (1, 'x', 'all')",
+            "INSERT INTO permission (person, permission_name, permission_item) VALUES (1, 'r', 'x')",
+            // Ranges.
+            "UPDATE product SET product_molecular_weight = 0 WHERE product_id = 1",
+            "UPDATE product SET product_number_per_carton = 0 WHERE product_id = 1",
+            "UPDATE product SET product_concentration = -1 WHERE product_id = 1",
+            "INSERT INTO unit (unit_label, unit_type, unit_multiplier) VALUES ('x', 'quantity', 0)",
+            // Own parent.
+            "INSERT INTO store_location (store_location_id, store_location_name, entity, store_location) VALUES (5, 'a', 1, 5)",
+        ] {
+            assert_rejected(&db_connection, sql, check);
+        }
+
+        for sql in [
+            "UPDATE product SET product_restricted = NULL WHERE product_id = 1",
+            "INSERT INTO unit (unit_label) VALUES ('x')",
+        ] {
+            assert_rejected(&db_connection, sql, "NOT NULL constraint failed");
+        }
+    }
+
+    #[test]
+    fn schema_accepts_valid_and_missing_optional_values() {
+        let db_connection = constraints_db();
+        db_connection
+            .execute_batch(
+                "UPDATE product SET product_restricted = 1, product_molecular_weight = 46.07,
+                    product_number_per_carton = NULL, product_concentration = 0 WHERE product_id = 1;
+                 INSERT INTO store_location (store_location_id, store_location_name, entity, store_location_can_store)
+                    VALUES (1, 'shelf', 1, 1);
+                 INSERT INTO store_location (store_location_name, entity, store_location) VALUES ('box', 1, 1);
+                 INSERT INTO permission (person, permission_name, permission_item, permission_entity)
+                    VALUES (1, 'r', 'products', NULL), (1, 'all', 'all', 1);",
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn bookmark_is_unique_per_person_and_product() {
+        let db_connection = constraints_db();
+        db_connection
+            .execute("INSERT INTO bookmark (person, product) VALUES (1, 1)", [])
+            .unwrap();
+        assert_rejected(
+            &db_connection,
+            "INSERT INTO bookmark (person, product) VALUES (1, 1)",
+            "UNIQUE constraint failed",
+        );
+    }
+
+    #[test]
+    fn deleting_an_entity_deletes_its_permissions() {
+        let db_connection = constraints_db();
+        db_connection
+            .execute_batch(
+                "INSERT INTO permission (person, permission_name, permission_item, permission_entity)
+                    VALUES (1, 'all', 'all', 1), (1, 'r', 'products', NULL);
+                 DELETE FROM entity WHERE entity_id = 1;",
+            )
+            .unwrap();
+        let permissions: Vec<Option<i64>> = db_connection
+            .prepare("SELECT permission_entity FROM permission")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(permissions, [None]);
+
+        assert_rejected(
+            &db_connection,
+            "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'r', 'products', 99)",
+            "FOREIGN KEY constraint failed",
+        );
+    }
+
+    #[test]
+    fn references_are_unique_per_producer_and_supplier() {
+        let db_connection = constraints_db();
+        db_connection
+            .execute_batch(
+                "INSERT INTO producer (producer_id, producer_label) VALUES (1, 'P1'), (2, 'P2');
+                 INSERT INTO supplier (supplier_id, supplier_label) VALUES (1, 'S1'), (2, 'S2');
+                 INSERT INTO producer_ref (producer_ref_label, producer) VALUES ('REF', 1), ('REF', 2);
+                 INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES ('REF', 1), ('REF', 2);",
+            )
+            .unwrap();
+        for sql in [
+            "INSERT INTO producer_ref (producer_ref_label, producer) VALUES ('REF', 1)",
+            "INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES ('REF', 1)",
+        ] {
+            assert_rejected(&db_connection, sql, "UNIQUE constraint failed");
+        }
+    }
+
+    #[test]
+    fn permissions_are_unique() {
+        let db_connection = constraints_db();
+        db_connection
+            .execute_batch(
+                "INSERT INTO permission (person, permission_name, permission_item, permission_entity)
+                    VALUES (1, 'r', 'products', NULL), (1, 'all', 'all', 1);",
+            )
+            .unwrap();
+
+        // Duplicates are rejected, including with a NULL entity (all entities).
+        for sql in [
+            "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'r', 'products', NULL)",
+            "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'all', 'all', 1)",
+        ] {
+            assert_rejected(&db_connection, sql, "UNIQUE constraint failed");
+        }
+
+        // REPLACE, used when saving a person's permissions, keeps a single row.
+        db_connection
+            .execute(
+                "REPLACE INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, 'r', 'products', NULL)",
+                [],
+            )
+            .unwrap();
+        let count: i64 = db_connection
+            .query_row("SELECT COUNT(*) FROM permission", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn base_data_permissions_are_not_duplicated_at_each_startup() {
+        let mut db_connection = constraints_db();
+        let count_permissions = |db_connection: &Connection| -> i64 {
+            db_connection
+                .query_row("SELECT COUNT(*) FROM permission", [], |row| row.get(0))
+                .unwrap()
+        };
+        populate_db_with_base_data(&mut db_connection).unwrap();
+        let first = count_permissions(&db_connection);
+        create_tables(&mut db_connection).unwrap();
+        populate_db_with_base_data(&mut db_connection).unwrap();
+        assert_eq!(count_permissions(&db_connection), first);
+    }
+
+    #[test]
+    fn storage_exit_date_is_not_before_entry_date() {
+        let db_connection = constraints_db();
+        db_connection
+            .execute(
+                "INSERT INTO store_location (store_location_id, store_location_name, entity) VALUES (1, 'shelf', 1)",
+                [],
+            )
+            .unwrap();
+        let insert = |entry: Option<i64>, exit: Option<i64>| {
+            db_connection.execute(
+                "INSERT INTO storage (storage_entry_date, storage_exit_date, product, store_location) VALUES (?1, ?2, 1, 1)",
+                params![entry, exit],
+            )
+        };
+        insert(Some(100), Some(200)).unwrap();
+        insert(Some(100), Some(100)).unwrap();
+        insert(None, Some(100)).unwrap();
+        insert(Some(100), None).unwrap();
+        let error = insert(Some(200), Some(100)).unwrap_err();
+        assert!(
+            error.to_string().contains("CHECK constraint failed"),
+            "{error}"
+        );
     }
 }

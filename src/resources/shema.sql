@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS "bookmark" (
 	"person"	INTEGER NOT NULL,
 	"product"	INTEGER NOT NULL,
 	PRIMARY KEY("bookmark_id"),
+	UNIQUE("person", "product"),
 	FOREIGN KEY("person") REFERENCES "person"("person_id") ON DELETE CASCADE,
 	FOREIGN KEY("product") REFERENCES "product"("product_id") ON DELETE CASCADE
 ) STRICT;
@@ -23,21 +24,21 @@ CREATE TABLE IF NOT EXISTS "borrowing" (
 
 CREATE TABLE IF NOT EXISTS "cas_number" (
 	"cas_number_id"	INTEGER,
-	"cas_number_label"	TEXT NOT NULL UNIQUE,
+	"cas_number_label"	TEXT NOT NULL UNIQUE CHECK ("cas_number_label" <> ''),
 	"cas_number_cmr"	TEXT,
 	PRIMARY KEY("cas_number_id")
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS "ce_number" (
 	"ce_number_id"	INTEGER,
-	"ce_number_label"	TEXT NOT NULL UNIQUE,
+	"ce_number_label"	TEXT NOT NULL UNIQUE CHECK ("ce_number_label" <> ''),
 	PRIMARY KEY("ce_number_id")
 ) STRICT;
 
 -- defined in ../define.rs CATEGORIES
 CREATE TABLE IF NOT EXISTS "category" (
 	"category_id"	INTEGER,
-	"category_label"	TEXT NOT NULL UNIQUE,
+	"category_label"	TEXT NOT NULL UNIQUE CHECK ("category_label" <> ''),
 	PRIMARY KEY("category_id")
 ) STRICT;
 
@@ -45,19 +46,19 @@ CREATE TABLE IF NOT EXISTS "category" (
 -- defined in ../define.rs CLASSES_OF_COMPOUNDS
 CREATE TABLE IF NOT EXISTS "class_of_compound" (
 	"class_of_compound_id"	INTEGER,
-	"class_of_compound_label"	TEXT NOT NULL UNIQUE,
+	"class_of_compound_label"	TEXT NOT NULL UNIQUE CHECK ("class_of_compound_label" <> ''),
 	PRIMARY KEY("class_of_compound_id")
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS "empirical_formula" (
 	"empirical_formula_id"	INTEGER,
-	"empirical_formula_label"	TEXT NOT NULL UNIQUE,
+	"empirical_formula_label"	TEXT NOT NULL UNIQUE CHECK ("empirical_formula_label" <> ''),
 	PRIMARY KEY("empirical_formula_id")
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS "linear_formula" (
 	"linear_formula_id"	INTEGER,
-	"linear_formula_label"	TEXT NOT NULL UNIQUE,
+	"linear_formula_label"	TEXT NOT NULL UNIQUE CHECK ("linear_formula_label" <> ''),
 	PRIMARY KEY("linear_formula_id")
 ) STRICT;
 
@@ -68,8 +69,8 @@ CREATE TABLE IF NOT EXISTS "linear_formula" (
 -- second item is the hazard_statement_label
 CREATE TABLE IF NOT EXISTS "hazard_statement" (
 	"hazard_statement_id"	INTEGER,
-	"hazard_statement_label"	TEXT NOT NULL,
-	"hazard_statement_reference"	TEXT NOT NULL UNIQUE,
+	"hazard_statement_label"	TEXT NOT NULL CHECK ("hazard_statement_label" <> ''),
+	"hazard_statement_reference"	TEXT NOT NULL UNIQUE CHECK ("hazard_statement_reference" <> ''),
 	"hazard_statement_cmr"	TEXT,
 	PRIMARY KEY("hazard_statement_id")
 ) STRICT;
@@ -81,104 +82,107 @@ CREATE TABLE IF NOT EXISTS "hazard_statement" (
 -- second item is the precautionary_statement_label
 CREATE TABLE IF NOT EXISTS "precautionary_statement" (
 	"precautionary_statement_id"	INTEGER,
-	"precautionary_statement_label"	TEXT NOT NULL,
-	"precautionary_statement_reference"	TEXT NOT NULL UNIQUE,
+	"precautionary_statement_label"	TEXT NOT NULL CHECK ("precautionary_statement_label" <> ''),
+	"precautionary_statement_reference"	TEXT NOT NULL UNIQUE CHECK ("precautionary_statement_reference" <> ''),
 	PRIMARY KEY("precautionary_statement_id")
 ) STRICT;
 
 -- defined in ../define.rs PHYSICAL_STATES
 CREATE TABLE IF NOT EXISTS "physical_state" (
 	"physical_state_id"	INTEGER,
-	"physical_state_label"	TEXT NOT NULL UNIQUE,
+	"physical_state_label"	TEXT NOT NULL UNIQUE CHECK ("physical_state_label" <> ''),
 	PRIMARY KEY("physical_state_id")
 ) STRICT;
 
 -- defined in ../define.rs SIGNAL_WORDS
 CREATE TABLE IF NOT EXISTS "signal_word" (
 	"signal_word_id"	INTEGER,
-	"signal_word_label"	TEXT NOT NULL UNIQUE,
+	"signal_word_label"	TEXT NOT NULL UNIQUE CHECK ("signal_word_label" <> ''),
 	PRIMARY KEY("signal_word_id")
 ) STRICT;
 
 -- defined in ../define.rs SYMBOLS
 CREATE TABLE IF NOT EXISTS "symbol" (
 	"symbol_id"	INTEGER,
-	"symbol_label"	TEXT NOT NULL UNIQUE,
+	"symbol_label"	TEXT NOT NULL UNIQUE CHECK ("symbol_label" <> ''),
 	PRIMARY KEY("symbol_id")
 ) STRICT;
 
 -- defined in ../define.rs TAGS
 CREATE TABLE IF NOT EXISTS "tag" (
 	"tag_id"	INTEGER,
-	"tag_label"	TEXT NOT NULL UNIQUE,
+	"tag_label"	TEXT NOT NULL UNIQUE CHECK ("tag_label" <> ''),
 	PRIMARY KEY("tag_id")
 ) STRICT;
 
 -- defined in ../define.rs PRODUCERS
 CREATE TABLE IF NOT EXISTS "producer" (
 	"producer_id"	INTEGER,
-	"producer_label"	TEXT NOT NULL UNIQUE,
+	"producer_label"	TEXT NOT NULL UNIQUE CHECK ("producer_label" <> ''),
 	PRIMARY KEY("producer_id")
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS "producer_ref" (
 	"producer_ref_id"	INTEGER,
-	"producer_ref_label"	TEXT NOT NULL,
+	"producer_ref_label"	TEXT NOT NULL CHECK ("producer_ref_label" <> ''),
 	"producer"	INTEGER NOT NULL,
 	PRIMARY KEY("producer_ref_id"),
+	UNIQUE("producer", "producer_ref_label"),
 	FOREIGN KEY("producer") REFERENCES "producer"("producer_id") ON DELETE CASCADE
 ) STRICT;
 
 -- defined in ../define.rs SUPPLIERS
 CREATE TABLE IF NOT EXISTS "supplier" (
 	"supplier_id"	INTEGER,
-	"supplier_label"	TEXT NOT NULL UNIQUE,
+	"supplier_label"	TEXT NOT NULL UNIQUE CHECK ("supplier_label" <> ''),
 	PRIMARY KEY("supplier_id")
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS "supplier_ref" (
 	"supplier_ref_id"	INTEGER,
-	"supplier_ref_label"	TEXT NOT NULL,
+	"supplier_ref_label"	TEXT NOT NULL CHECK ("supplier_ref_label" <> ''),
 	"supplier"	INTEGER NOT NULL,
 	PRIMARY KEY("supplier_ref_id"),
+	UNIQUE("supplier", "supplier_ref_label"),
 	FOREIGN KEY("supplier") REFERENCES "supplier"("supplier_id") ON DELETE CASCADE
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS "name" (
 	"name_id"	INTEGER,
-	"name_label"	TEXT NOT NULL UNIQUE,
+	"name_label"	TEXT NOT NULL UNIQUE CHECK ("name_label" <> ''),
 	PRIMARY KEY("name_id")
 ) STRICT;
 
 -- defined in ../define.rs UNITS
 CREATE TABLE IF NOT EXISTS "unit" (
 	"unit_id"	INTEGER,
-	"unit_label"	TEXT NOT NULL UNIQUE,
-	"unit_multiplier"	REAL NOT NULL DEFAULT 1,
-	"unit_type"	TEXT,
-	"unit"	INTEGER,
+	"unit_label"	TEXT NOT NULL UNIQUE CHECK ("unit_label" <> ''),
+	"unit_multiplier"	REAL NOT NULL DEFAULT 1 CHECK ("unit_multiplier" > 0),
+	"unit_type"	TEXT NOT NULL CHECK ("unit_type" IN ('quantity', 'concentration', 'temperature', 'molecular_weight')),
+	"unit"	INTEGER CHECK ("unit" <> "unit_id"),
 	PRIMARY KEY("unit_id"),
 	FOREIGN KEY("unit") REFERENCES "unit"("unit_id")
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS "permission" (
 	"person"	INTEGER NOT NULL,
-	"permission_name"	TEXT NOT NULL,
-	"permission_item"	TEXT NOT NULL,
+	"permission_name"	TEXT NOT NULL CHECK ("permission_name" IN ('n', 'r', 'w', 'b', 'all')),
+	"permission_item"	TEXT NOT NULL CHECK ("permission_item" IN ('all', 'entities', 'products', 'rproducts', 'storages', 'store_locations')),
 	"permission_entity"	INTEGER,
-	FOREIGN KEY("person") REFERENCES "person"("person_id") ON DELETE CASCADE
+	FOREIGN KEY("person") REFERENCES "person"("person_id") ON DELETE CASCADE,
+	FOREIGN KEY("permission_entity") REFERENCES "entity"("entity_id") ON DELETE CASCADE
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS "entity" (
 	"entity_id"	INTEGER,
-	"entity_name"	TEXT NOT NULL UNIQUE,
+	"entity_name"	TEXT NOT NULL UNIQUE CHECK ("entity_name" <> ''),
 	"entity_description"	TEXT,
 	PRIMARY KEY("entity_id")
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS "person" (
 	"person_id"	INTEGER,
-	"person_email"	TEXT NOT NULL UNIQUE,
+	"person_email"	TEXT NOT NULL UNIQUE CHECK ("person_email" <> ''),
 	PRIMARY KEY("person_id")
 ) STRICT;
 
@@ -190,17 +194,17 @@ CREATE TABLE IF NOT EXISTS "product" (
 	"product_canonical_smiles"	TEXT,
 	"product_specificity"	TEXT,
 	"product_msds"	TEXT,
-	"product_restricted"	INTEGER DEFAULT 0,
-	"product_radioactive"	INTEGER DEFAULT 0,
+	"product_restricted"	INTEGER NOT NULL DEFAULT 0 CHECK ("product_restricted" IN (0, 1)),
+	"product_radioactive"	INTEGER NOT NULL DEFAULT 0 CHECK ("product_radioactive" IN (0, 1)),
 	"product_threed_formula"	TEXT,
 	"product_twod_formula"	TEXT,
 	"product_disposal_comment"	TEXT,
 	"product_remark"	TEXT,
 	"product_qrcode"	TEXT,
 	"product_sheet"	TEXT,
-	"product_concentration"	REAL,
+	"product_concentration"	REAL CHECK ("product_concentration" >= 0),
 	"product_temperature"	REAL,
-	"product_molecular_weight"	REAL,
+	"product_molecular_weight"	REAL CHECK ("product_molecular_weight" > 0),
 	"cas_number"	INTEGER,
 	"ce_number"	INTEGER,
 	"person"	INTEGER NOT NULL DEFAULT 1,
@@ -213,8 +217,8 @@ CREATE TABLE IF NOT EXISTS "product" (
 	"unit_molecular_weight"	INTEGER,
 	"unit_temperature"	INTEGER,
 	"category"	INTEGER,
-	"product_number_per_carton"	INTEGER,
-	"product_number_per_bag"	INTEGER,
+	"product_number_per_carton"	INTEGER CHECK ("product_number_per_carton" > 0),
+	"product_number_per_bag"	INTEGER CHECK ("product_number_per_bag" > 0),
 	PRIMARY KEY("product_id"),
 	FOREIGN KEY("cas_number") REFERENCES "cas_number"("cas_number_id"),
 	FOREIGN KEY("category") REFERENCES "category"("category_id"),
@@ -232,12 +236,12 @@ CREATE TABLE IF NOT EXISTS "product" (
 
 CREATE TABLE IF NOT EXISTS "store_location" (
 	"store_location_id"	INTEGER,
-	"store_location_name"	TEXT NOT NULL,
+	"store_location_name"	TEXT NOT NULL CHECK ("store_location_name" <> ''),
 	"store_location_color"	TEXT,
-	"store_location_can_store"	INTEGER DEFAULT 0,
+	"store_location_can_store"	INTEGER NOT NULL DEFAULT 0 CHECK ("store_location_can_store" IN (0, 1)),
 	"store_location_full_path"	TEXT,
 	"entity"	INTEGER NOT NULL,
-	"store_location"	INTEGER,
+	"store_location"	INTEGER CHECK ("store_location" <> "store_location_id"),
 	PRIMARY KEY("store_location_id"),
 	FOREIGN KEY("entity") REFERENCES "entity"("entity_id"),
 	FOREIGN KEY("store_location") REFERENCES "store_location"("store_location_id")
@@ -251,25 +255,26 @@ CREATE TABLE IF NOT EXISTS "storage" (
 	"storage_exit_date"	INTEGER,
 	"storage_opening_date"	INTEGER,
 	"storage_expiration_date"	INTEGER,
-	"storage_quantity"	REAL,
+	"storage_quantity"	REAL CHECK ("storage_quantity" >= 0),
 	"storage_barecode"	TEXT,
 	"storage_comment"	TEXT,
 	"storage_reference"	TEXT,
 	"storage_batch_number"	TEXT,
-	"storage_to_destroy"	INTEGER DEFAULT 0,
-	"storage_archive"	INTEGER DEFAULT 0,
+	"storage_to_destroy"	INTEGER NOT NULL DEFAULT 0 CHECK ("storage_to_destroy" IN (0, 1)),
+	"storage_archive"	INTEGER NOT NULL DEFAULT 0 CHECK ("storage_archive" IN (0, 1)),
 	"storage_qrcode"	BLOB,
-	"storage_concentration"	REAL,
-	"storage_number_of_bag"	INTEGER,
-	"storage_number_of_carton"	INTEGER,
+	"storage_concentration"	REAL CHECK ("storage_concentration" >= 0),
+	"storage_number_of_bag"	INTEGER CHECK ("storage_number_of_bag" > 0),
+	"storage_number_of_carton"	INTEGER CHECK ("storage_number_of_carton" > 0),
 	"person"	INTEGER NOT NULL DEFAULT 1,
 	"product"	INTEGER NOT NULL,
 	"store_location"	INTEGER NOT NULL,
 	"unit_concentration"	INTEGER,
 	"unit_quantity"	INTEGER,
 	"supplier"	INTEGER,
-	"storage"	INTEGER,
+	"storage"	INTEGER CHECK ("storage" <> "storage_id"),
 	PRIMARY KEY("storage_id"),
+	CHECK ("storage_exit_date" >= "storage_entry_date"),
 	FOREIGN KEY("person") REFERENCES "person"("person_id") ON DELETE SET DEFAULT,
 	FOREIGN KEY("product") REFERENCES "product"("product_id"),
 	FOREIGN KEY("storage") REFERENCES "storage"("storage_id") ON DELETE CASCADE,
@@ -354,156 +359,60 @@ CREATE TABLE IF NOT EXISTS "personentities" (
 ) STRICT;
 
 
-DROP INDEX IF EXISTS idx_bookmark;
-DROP INDEX IF EXISTS idx_borrowing;
-DROP INDEX IF EXISTS idx_cas_number;
-DROP INDEX IF EXISTS idx_category;
-DROP INDEX IF EXISTS idx_ce_number;
-DROP INDEX IF EXISTS idx_class_of_compound;
-DROP INDEX IF EXISTS idx_empirical_formula;
-DROP INDEX IF EXISTS idx_entity;
-DROP INDEX IF EXISTS idx_hazard_statement;
-DROP INDEX IF EXISTS idx_linear_formula;
-DROP INDEX IF EXISTS idx_name;
-DROP INDEX IF EXISTS idx_person;
-DROP INDEX IF EXISTS idx_physical_state;
-DROP INDEX IF EXISTS idx_precautionary_statement;
-DROP INDEX IF EXISTS idx_producer;
-DROP INDEX IF EXISTS idx_producer_ref;
-DROP INDEX IF EXISTS idx_signal_word;
-DROP INDEX IF EXISTS idx_supplier;
-DROP INDEX IF EXISTS idx_supplier_ref;
-DROP INDEX IF EXISTS idx_symbol;
-DROP INDEX IF EXISTS idx_tag;
-DROP INDEX IF EXISTS idx_unit;
-CREATE INDEX IF NOT EXISTS idx_bookmark ON bookmark (person,product);
-CREATE INDEX IF NOT EXISTS idx_borrowing ON borrowing (person,storage);
-CREATE INDEX IF NOT EXISTS idx_cas_number ON cas_number (cas_number_label);
-CREATE INDEX IF NOT EXISTS idx_category ON category (category_label);
-CREATE INDEX IF NOT EXISTS idx_ce_number ON ce_number (ce_number_label);
-CREATE INDEX IF NOT EXISTS idx_class_of_compound ON class_of_compound (class_of_compound_label);
-CREATE INDEX IF NOT EXISTS idx_empirical_formula ON empirical_formula (empirical_formula_label);
-CREATE INDEX IF NOT EXISTS idx_entity ON entity (entity_name);
-CREATE INDEX IF NOT EXISTS idx_hazard_statement ON hazard_statement (hazard_statement_reference);
-CREATE INDEX IF NOT EXISTS idx_linear_formula ON linear_formula (linear_formula_label);
-CREATE INDEX IF NOT EXISTS idx_name ON name (name_label);
-CREATE INDEX IF NOT EXISTS idx_person ON person (person_email);
-CREATE INDEX IF NOT EXISTS idx_physical_state ON physical_state (physical_state_label);
-CREATE INDEX IF NOT EXISTS idx_precautionary_statement ON precautionary_statement (precautionary_statement_reference);
-CREATE INDEX IF NOT EXISTS idx_producer ON producer (producer_label);
-CREATE INDEX IF NOT EXISTS idx_producer_ref ON producer_ref (producer,producer_ref_label);
-CREATE INDEX IF NOT EXISTS idx_signal_word ON signal_word (signal_word_label);
-CREATE INDEX IF NOT EXISTS idx_supplier ON supplier (supplier_label);
-CREATE INDEX IF NOT EXISTS idx_supplier_ref ON supplier_ref (supplier,supplier_ref_label);
-CREATE INDEX IF NOT EXISTS idx_symbol ON symbol (symbol_label);
-CREATE INDEX IF NOT EXISTS idx_tag ON tag (tag_label);
-CREATE INDEX IF NOT EXISTS idx_unit ON unit (unit_label);
+
+-- Indexes.
+-- UNIQUE columns and PRIMARY KEYs already have an index (including the first
+-- columns of a composite key), so they are not indexed again here.
+-- create_tables runs at each startup: every statement must be idempotent.
+
+CREATE INDEX IF NOT EXISTS idx_borrowing ON borrowing (person, storage);
 
 -- products one to one
-DROP INDEX IF EXISTS idx_product_cas_number;
-DROP INDEX IF EXISTS idx_product_ce_number;
-DROP INDEX IF EXISTS idx_product_empirical_formula;
-DROP INDEX IF EXISTS idx_product_linear_formula;
-DROP INDEX IF EXISTS idx_product_name;
-DROP INDEX IF EXISTS idx_product_type;
-DROP INDEX IF EXISTS idx_product_person;
-DROP INDEX IF EXISTS idx_product_category;
-DROP INDEX IF EXISTS idx_product_producer_ref;
-DROP INDEX IF EXISTS idx_product_supplier_ref;
-DROP INDEX IF EXISTS idx_product_signal_word;
-DROP INDEX IF EXISTS idx_product_unit_temperature;
-DROP INDEX IF EXISTS idx_product_unit_molecular_weight;
 CREATE INDEX IF NOT EXISTS idx_product_cas_number ON product (cas_number);
 CREATE INDEX IF NOT EXISTS idx_product_ce_number ON product (ce_number);
 CREATE INDEX IF NOT EXISTS idx_product_empirical_formula ON product (empirical_formula);
 CREATE INDEX IF NOT EXISTS idx_product_linear_formula ON product (linear_formula);
 CREATE INDEX IF NOT EXISTS idx_product_name ON product (name);
 CREATE INDEX IF NOT EXISTS idx_product_type ON product (product_type);
-CREATE INDEX IF NOT EXISTS idx_product_person ON product(person);
-CREATE INDEX IF NOT EXISTS idx_product_category ON product(category);
-CREATE INDEX IF NOT EXISTS idx_product_producer_ref ON product(producer_ref);
-CREATE INDEX IF NOT EXISTS idx_product_signal_word ON product(signal_word);
-CREATE INDEX IF NOT EXISTS idx_product_unit_temperature ON product(unit_temperature);
-CREATE INDEX IF NOT EXISTS idx_product_unit_molecular_weight ON product(unit_molecular_weight);
+CREATE INDEX IF NOT EXISTS idx_product_person ON product (person);
+CREATE INDEX IF NOT EXISTS idx_product_category ON product (category);
+CREATE INDEX IF NOT EXISTS idx_product_producer_ref ON product (producer_ref);
+CREATE INDEX IF NOT EXISTS idx_product_signal_word ON product (signal_word);
+CREATE INDEX IF NOT EXISTS idx_product_unit_temperature ON product (unit_temperature);
+CREATE INDEX IF NOT EXISTS idx_product_unit_molecular_weight ON product (unit_molecular_weight);
 
--- products one to many
-DROP INDEX IF EXISTS idx_producttags_tag;
-DROP INDEX IF EXISTS idx_producttags_tag_reverse;
-CREATE INDEX IF NOT EXISTS idx_producttags_tag ON producttags(producttags_product_id,producttags_tag_id);
-CREATE INDEX IF NOT EXISTS idx_producttags_tag_reverse ON producttags(producttags_tag_id,producttags_product_id);
-
-DROP INDEX IF EXISTS idx_productsynonyms_name;
-DROP INDEX IF EXISTS idx_productsynonyms_name_reverse;
-CREATE INDEX IF NOT EXISTS idx_productsynonyms_name ON productsynonyms(productsynonyms_product_id,productsynonyms_name_id);
-CREATE INDEX IF NOT EXISTS idx_productsynonyms_name_reverse ON productsynonyms(productsynonyms_name_id,productsynonyms_product_id);
-
-DROP INDEX IF EXISTS idx_productsymbols_symbol;
-DROP INDEX IF EXISTS idx_productsymbols_symbol_reverse;
-CREATE INDEX IF NOT EXISTS idx_productsymbols_symbol ON productsymbols(productsymbols_product_id,productsymbols_symbol_id);
-CREATE INDEX IF NOT EXISTS idx_productsymbols_symbol_reverse ON productsymbols(productsymbols_symbol_id,productsymbols_product_id);
-
-DROP INDEX IF EXISTS idx_productsupplierrefs_supplier_ref;
-DROP INDEX IF EXISTS idx_productsupplierrefs_supplier_ref_reverse;
-CREATE INDEX IF NOT EXISTS idx_productsupplierrefs_supplier_ref ON productsupplierrefs(productsupplierrefs_product_id,productsupplierrefs_supplier_ref_id);
-CREATE INDEX IF NOT EXISTS idx_productsupplierrefs_supplier_ref_reverse ON productsupplierrefs(productsupplierrefs_supplier_ref_id, productsupplierrefs_product_id);
-
-DROP INDEX IF EXISTS idx_producthazardstatements_hazard;
-DROP INDEX IF EXISTS idx_producthazardstatements_hazard_reverse;
-CREATE INDEX IF NOT EXISTS idx_producthazardstatements_hazard ON producthazardstatements(producthazardstatements_hazard_statement_id, producthazardstatements_product_id);
-CREATE INDEX IF NOT EXISTS idx_producthazardstatements_hazard_reverse ON producthazardstatements(producthazardstatements_product_id, producthazardstatements_hazard_statement_id);
-
-DROP INDEX IF EXISTS idx_productprecautionarystatements_precautionary;
-DROP INDEX IF EXISTS idx_productprecautionarystatements_precautionary_reverse;
-CREATE INDEX IF NOT EXISTS idx_productprecautionarystatements_precautionary ON productprecautionarystatements(productprecautionarystatements_precautionary_statement_id,productprecautionarystatements_product_id);
-CREATE INDEX IF NOT EXISTS idx_productprecautionarystatements_precautionary_reverse ON productprecautionarystatements(productprecautionarystatements_product_id, productprecautionarystatements_precautionary_statement_id);
-
-DROP INDEX IF EXISTS idx_productclassesofcompounds_coc;
-DROP INDEX IF EXISTS idx_productclassesofcompounds_coc_reverse;
-CREATE INDEX IF NOT EXISTS idx_productclassesofcompounds_coc ON productclassesofcompounds(productclassesofcompounds_class_of_compound_id, productclassesofcompounds_product_id);
-CREATE INDEX IF NOT EXISTS idx_productclassesofcompounds_coc_reverse ON productclassesofcompounds(productclassesofcompounds_product_id, productclassesofcompounds_class_of_compound_id);
+-- products one to many: the primary key covers (product, item), these cover (item, product)
+CREATE INDEX IF NOT EXISTS idx_producttags_tag_reverse ON producttags (producttags_tag_id, producttags_product_id);
+CREATE INDEX IF NOT EXISTS idx_productsynonyms_name_reverse ON productsynonyms (productsynonyms_name_id, productsynonyms_product_id);
+CREATE INDEX IF NOT EXISTS idx_productsymbols_symbol_reverse ON productsymbols (productsymbols_symbol_id, productsymbols_product_id);
+CREATE INDEX IF NOT EXISTS idx_productsupplierrefs_supplier_ref_reverse ON productsupplierrefs (productsupplierrefs_supplier_ref_id, productsupplierrefs_product_id);
+CREATE INDEX IF NOT EXISTS idx_producthazardstatements_hazard ON producthazardstatements (producthazardstatements_hazard_statement_id, producthazardstatements_product_id);
+CREATE INDEX IF NOT EXISTS idx_productprecautionarystatements_precautionary ON productprecautionarystatements (productprecautionarystatements_precautionary_statement_id, productprecautionarystatements_product_id);
+CREATE INDEX IF NOT EXISTS idx_productclassesofcompounds_coc ON productclassesofcompounds (productclassesofcompounds_class_of_compound_id, productclassesofcompounds_product_id);
 
 -- permissions
-DROP INDEX IF EXISTS idx_permission_fast;
-DROP INDEX IF EXISTS idx_permission_person;
-DROP INDEX IF EXISTS idx_permission_item;
-DROP INDEX IF EXISTS idx_permission_name;
-CREATE INDEX IF NOT EXISTS idx_permission_fast ON permission(person, permission_item, permission_name);
-CREATE INDEX idx_permission_person ON permission(person);
-CREATE INDEX idx_permission_item ON permission(permission_item);
-CREATE INDEX idx_permission_name ON permission(permission_name);
+-- One row per (person, name, item, entity). A NULL entity (all entities) counts
+-- as one value, which a plain UNIQUE constraint would not do.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_permission_unique ON permission (person, permission_name, permission_item, IFNULL(permission_entity, -1));
+CREATE INDEX IF NOT EXISTS idx_permission_fast ON permission (person, permission_item, permission_name);
+CREATE INDEX IF NOT EXISTS idx_permission_item ON permission (permission_item);
+CREATE INDEX IF NOT EXISTS idx_permission_name ON permission (permission_name);
+CREATE INDEX IF NOT EXISTS idx_permission_entity ON permission (permission_entity);
 
 -- store locations
-DROP INDEX IF EXISTS idx_store_location_name;
-DROP INDEX IF EXISTS idx_store_location_entity;
-DROP INDEX IF EXISTS idx_store_location_parent;
 CREATE INDEX IF NOT EXISTS idx_store_location_name ON store_location (store_location_name);
 CREATE INDEX IF NOT EXISTS idx_store_location_entity ON store_location (entity);
 CREATE INDEX IF NOT EXISTS idx_store_location_parent ON store_location (store_location);
 
--- entities
-DROP INDEX IF EXISTS idx_entity_name;
-DROP INDEX IF EXISTS idx_entity_id;
-DROP INDEX IF EXISTS idx_personentities_entity;
-DROP INDEX IF EXISTS idx_personentities_person;
-CREATE INDEX IF NOT EXISTS idx_entity_name ON entity(entity_name);
-CREATE INDEX IF NOT EXISTS idx_entity_id ON entity(entity_id);
-
--- people
-CREATE INDEX IF NOT EXISTS idx_person_email ON Person(person_email);
+-- entities: the primary keys cover (entity, person) and (person, entity)
+CREATE INDEX IF NOT EXISTS idx_entitypeople_person ON entitypeople (entitypeople_person_id);
+CREATE INDEX IF NOT EXISTS idx_personentities_entity ON personentities (personentities_entity_id);
 
 -- storages
-DROP INDEX IF EXISTS idx_storage;
-DROP INDEX IF EXISTS idx_storage_store_location;
-DROP INDEX IF EXISTS idx_storage_person;
-DROP INDEX IF EXISTS idx_storage_supplier;
-DROP INDEX IF EXISTS idx_storage_storage;
 CREATE INDEX IF NOT EXISTS idx_storage ON storage (product);
-CREATE INDEX IF NOT EXISTS idx_storage_store_location ON storage(store_location);
-CREATE INDEX IF NOT EXISTS idx_storage_person ON storage(person);
-CREATE INDEX IF NOT EXISTS idx_storage_supplier ON storage(supplier);
-CREATE INDEX IF NOT EXISTS idx_storage_storage ON storage(storage);
-
-CREATE INDEX IF NOT EXISTS idx_personentities_entity ON personentities(personentities_entity_id);
-CREATE INDEX IF NOT EXISTS idx_personentities_person ON personentities(personentities_person_id);
+CREATE INDEX IF NOT EXISTS idx_storage_store_location ON storage (store_location);
+CREATE INDEX IF NOT EXISTS idx_storage_person ON storage (person);
+CREATE INDEX IF NOT EXISTS idx_storage_supplier ON storage (supplier);
+CREATE INDEX IF NOT EXISTS idx_storage_storage ON storage (storage);
 
 COMMIT;
