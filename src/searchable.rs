@@ -214,17 +214,20 @@ pub fn create_update(
 
         last_insert_id = item_id;
     } else {
+        // Get or create: an item with the same (UNIQUE) text is reused. The no-op
+        // update makes RETURNING give the existing id, which DO NOTHING would not.
         let query = format!(
-            "INSERT INTO {} ({}) VALUES (?1)",
-            item.get_table_name(),
-            item.get_text_field_name()
+            "INSERT INTO {table} ({text}) VALUES (?1) \
+             ON CONFLICT ({text}) DO UPDATE SET {text} = excluded.{text} \
+             RETURNING {id}",
+            table = item.get_table_name(),
+            text = item.get_text_field_name(),
+            id = item.get_id_field_name()
         );
 
         debug!("{query:?}");
 
-        db_connection.execute(&query, [text])?;
-
-        last_insert_id = u64::try_from(db_connection.last_insert_rowid())?;
+        last_insert_id = db_connection.query_row(&query, [text], |row| row.get(0))?;
     }
 
     Ok(last_insert_id)
@@ -331,10 +334,17 @@ pub mod tests {
 
         let last_insert_id =
             create_update(searchable, None, &db_connection, "a non existing item").unwrap();
-        let mayerr_last_insert_id =
-            create_update(searchable, None, &db_connection, fake_searchables[0]);
-
         assert!(last_insert_id > 0);
-        assert!(mayerr_last_insert_id.is_err());
+
+        // Creating an existing item reuses it instead of failing.
+        let existing_id = parse(searchable, &db_connection, fake_searchables[0])
+            .unwrap()
+            .and_then(|existing| existing.get_id())
+            .unwrap();
+        let reused_id =
+            create_update(searchable, None, &db_connection, fake_searchables[0]).unwrap();
+        assert_eq!(reused_id, existing_id);
+        let (_, count_after) = get_many(searchable, &db_connection, &request_filter).unwrap();
+        assert_eq!(count_after, total_count + 1);
     }
 }

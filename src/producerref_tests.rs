@@ -289,4 +289,38 @@ mod tests {
         let ref_id1 = create_update_producer_ref(&conn, &ref1).unwrap();
         verify_producer_ref(&conn, ref_id1, 1, expected_label).unwrap();
     }
+
+    #[test]
+    fn test_create_update_producer_ref_reuses_existing() {
+        let conn = init_test_producerrefs();
+        let count = |conn: &rusqlite::Connection| -> i64 {
+            conn.query_row("SELECT COUNT(*) FROM producer_ref", [], |row| row.get(0))
+                .unwrap()
+        };
+
+        let new_ref = |producer_id: u64| ProducerRefStruct {
+            match_exact_search: false,
+            producer_ref_id: None,
+            producer_ref_label: String::from("Shared reference"),
+            producer: ProducerStruct {
+                match_exact_search: false,
+                producer_id: Some(producer_id),
+                producer_label: String::default(),
+            },
+        };
+
+        let first_id = create_update_producer_ref(&conn, &new_ref(1)).unwrap();
+        let rows = count(&conn);
+
+        // The same label for the same producer, sent without an id, is reused.
+        let second_id = create_update_producer_ref(&conn, &new_ref(1)).unwrap();
+        assert_eq!(second_id, first_id);
+        assert_eq!(count(&conn), rows);
+        verify_producer_ref(&conn, second_id, 1, "Shared reference").unwrap();
+
+        // The same label for another producer is a different reference.
+        let other_id = create_update_producer_ref(&conn, &new_ref(2)).unwrap();
+        assert_ne!(other_id, first_id);
+        assert_eq!(count(&conn), rows + 1);
+    }
 }

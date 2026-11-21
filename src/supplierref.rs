@@ -5,8 +5,10 @@ use chimitheque_types::{
 use chimitheque_utils::string::{Transform, clean};
 use log::debug;
 use rusqlite::{Connection, Row};
-use sea_query::{Alias, Expr, ExprTrait, Iden, Order, Query, SimpleExpr, SqliteQueryBuilder};
-use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
+use sea_query::{
+    Alias, Expr, ExprTrait, Iden, OnConflict, Order, Query, SimpleExpr, SqliteQueryBuilder,
+};
+use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
 use crate::supplier::Supplier;
@@ -182,41 +184,46 @@ pub fn create_update_supplier_ref(
         SimpleExpr::Value(supplier_ref.supplier.supplier_id.into()),
     ];
 
-    let sql_query: String;
-    let mut sql_values: RusqliteValues = RusqliteValues(vec![]);
-
     if let Some(supplier_ref_id) = supplier_ref.supplier_ref_id {
         // Update query.
-        (sql_query, sql_values) = Query::update()
+        let (sql_query, sql_values) = Query::update()
             .table(SupplierRef::Table)
             .values(columns_values)
             .and_where(Expr::col(SupplierRef::SupplierRefId).eq(supplier_ref_id))
             .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql_query: {}", sql_query.as_str());
+        debug!("sql_values: {sql_values:?}");
+
+        _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
+
+        Ok(supplier_ref_id)
     } else {
-        // Insert query.
-        sql_query = Query::insert()
+        // Get or create: a reference with the same label for the same supplier
+        // (UNIQUE) is reused. The no-op update makes RETURNING give the existing
+        // id, which DO NOTHING would not.
+        let (sql_query, sql_values) = Query::insert()
             .into_table(SupplierRef::Table)
             .columns(columns)
             .values(values)?
-            .to_string(SqliteQueryBuilder);
+            .on_conflict(
+                OnConflict::columns([SupplierRef::Supplier, SupplierRef::SupplierRefLabel])
+                    .update_column(SupplierRef::SupplierRefLabel)
+                    .to_owned(),
+            )
+            .returning_col(SupplierRef::SupplierRefId)
+            .build_rusqlite(SqliteQueryBuilder);
+
+        debug!("sql_query: {}", sql_query.as_str());
+        debug!("sql_values: {sql_values:?}");
+
+        let supplier_ref_id: u64 =
+            db_connection.query_row(&sql_query, &*sql_values.as_params(), |row| row.get(0))?;
+
+        debug!("supplier_ref_id: {supplier_ref_id}");
+
+        Ok(supplier_ref_id)
     }
-
-    debug!("sql_query: {}", sql_query.as_str());
-    debug!("sql_values: {sql_values:?}");
-
-    _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
-
-    let last_insert_update_id: u64;
-
-    if let Some(supplier_ref_id) = supplier_ref.supplier_ref_id {
-        last_insert_update_id = supplier_ref_id;
-    } else {
-        last_insert_update_id = db_connection.last_insert_rowid().try_into()?;
-    }
-
-    debug!("last_insert_update_id: {last_insert_update_id}");
-
-    Ok(last_insert_update_id)
 }
 
 #[cfg(test)]
