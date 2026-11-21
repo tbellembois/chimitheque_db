@@ -594,4 +594,32 @@ mod tests {
             ["3D Cell Culture", "Acid"]
         );
     }
+
+    #[test]
+    fn test_get_products_with_product_specificity_filter() {
+        let db = init_test_products();
+
+        // Specificity contains "ab" (LIKE is case-insensitive for ASCII).
+        let filter = chimitheque_types::requestfilter::RequestFilter {
+            product_specificity: Some("ab".to_string()),
+            ..Default::default()
+        };
+        let (products, count) = get_products(&db, filter, 1).unwrap();
+        assert_eq!(count, 23);
+        assert!(products.iter().all(|product| {
+            product
+                .product_specificity
+                .as_deref()
+                .is_some_and(|specificity| specificity.to_lowercase().contains("ab"))
+        }));
+
+        // The full specificity of product 1.
+        let filter = chimitheque_types::requestfilter::RequestFilter {
+            product_specificity: Some("Sdu1isVEkhXNsLXVqRpvX3hr6cS55M2".to_string()),
+            ..Default::default()
+        };
+        let (products, count) = get_products(&db, filter, 1).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(products[0].product_id, Some(1));
+    }
 }

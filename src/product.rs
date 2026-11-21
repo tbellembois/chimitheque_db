@@ -1515,6 +1515,16 @@ pub fn get_products(
             |_| {},
         )
         .conditions(
+            filter.product_specificity.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((Product::Table, Product::ProductSpecificity))
+                        .like(format!("%{}%", filter.product_specificity.clone().unwrap())),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
             filter.cas_number.is_some(),
             |q| {
                 q.and_where(Expr::col(Product::CasNumber).eq(filter.cas_number.unwrap()));

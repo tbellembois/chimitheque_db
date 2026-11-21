@@ -795,11 +795,31 @@ pub fn get_storages(
                     |_| {},
         )
         .conditions(
+            filter.storages.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((Storage::Table, Storage::StorageId))
+                        .is_in(filter.storages.clone().unwrap()),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
             filter.custom_name_part_of.is_some(),
             |q| {
                 q.and_where(
                     Expr::col((Name::Table, Name::NameLabel))
                         .like(format!("%{}%", filter.custom_name_part_of.clone().unwrap())),
+                );
+            },
+            |_| {},
+        )
+        .conditions(
+            filter.product_specificity.is_some(),
+            |q| {
+                q.and_where(
+                    Expr::col((Product::Table, Product::ProductSpecificity))
+                        .like(format!("%{}%", filter.product_specificity.clone().unwrap())),
                 );
             },
             |_| {},
@@ -1801,3 +1821,7 @@ pub fn unarchive_storage(
 
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "storage_tests.rs"]
+mod storage_tests;
