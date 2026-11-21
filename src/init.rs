@@ -114,7 +114,7 @@ pub fn sanitize(
 
                 if let Err(err) = mayerr {
                     if !skip_errors {
-                        return Err(err);
+                        return Err(err.into());
                     }
 
                     error!("skipping error: {err} for {cas_number:?}");
@@ -153,7 +153,7 @@ pub fn sanitize(
 
                 if let Err(err) = mayerr {
                     if !skip_errors {
-                        return Err(err);
+                        return Err(err.into());
                     }
 
                     error!("skipping error: {err} for {ce_number:?}");
@@ -192,7 +192,7 @@ pub fn sanitize(
 
                 if let Err(err) = mayerr {
                     if !skip_errors {
-                        return Err(err);
+                        return Err(err.into());
                     }
 
                     error!("skipping error: {err} for {name:?}");
@@ -231,7 +231,7 @@ pub fn sanitize(
 
                 if let Err(err) = mayerr {
                     if !skip_errors {
-                        return Err(err);
+                        return Err(err.into());
                     }
 
                     error!("skipping error: {err} for {empirical_formula:?}");
@@ -270,7 +270,7 @@ pub fn sanitize(
 
                 if let Err(err) = mayerr {
                     if !skip_errors {
-                        return Err(err);
+                        return Err(err.into());
                     }
 
                     error!("skipping error: {err} for {linear_formula:?}");
