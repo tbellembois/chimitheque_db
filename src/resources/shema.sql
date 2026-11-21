@@ -356,6 +356,7 @@ CREATE TABLE IF NOT EXISTS "personentities" (
 	"personentities_person_id"	integer NOT NULL,
 	"personentities_entity_id"	integer NOT NULL,
 	PRIMARY KEY("personentities_person_id","personentities_entity_id"),
+	-- No ON DELETE CASCADE: an entity can not be deleted while it has members.
 	FOREIGN KEY("personentities_entity_id") REFERENCES "entity"("entity_id"),
 	FOREIGN KEY("personentities_person_id") REFERENCES "person"("person_id") ON DELETE CASCADE
 ) STRICT;

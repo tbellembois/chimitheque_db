@@ -488,20 +488,55 @@ mod tests {
     fn test_delete_entity_with_people() {
         let mut db_connection = init_test_entity();
 
-        // Try to delete entity 2 which has a person link (person 3)
+        // Entity 2 has members (persons 3 and 6). Its managers and
+        // permissions would be deleted with it; its members block the deletion.
         let result = delete_entity(&mut db_connection, 2);
 
         // Should fail due to foreign key constraint
+        let error = result.expect_err("Should return error when deleting entity with people");
         assert!(
-            result.is_err(),
-            "Should return error when deleting entity with people"
+            error.to_string().contains("FOREIGN KEY constraint failed"),
+            "{error}"
         );
 
-        // Verify entity still exists
-        let mut stmt = db_connection
-            .prepare("SELECT count(*) FROM entity WHERE entity_id = 2")
+        // Verify entity and its members still exist
+        let count =
+            |sql: &str| -> i32 { db_connection.query_row(sql, [], |row| row.get(0)).unwrap() };
+        assert_eq!(
+            count("SELECT count(*) FROM entity WHERE entity_id = 2"),
+            1,
+            "Entity should still exist after failed deletion"
+        );
+        assert_eq!(
+            count("SELECT count(*) FROM personentities WHERE personentities_entity_id = 2"),
+            2
+        );
+    }
+
+    #[test]
+    fn test_delete_entity_after_removing_members() {
+        let mut db_connection = init_test_entity();
+
+        // Members are what blocks the deletion: without them it succeeds.
+        db_connection
+            .execute(
+                "DELETE FROM personentities WHERE personentities_entity_id = 2",
+                [],
+            )
             .unwrap();
-        let count: i32 = stmt.query_row([], |row| row.get(0)).unwrap();
-        assert_eq!(count, 1, "Entity should still exist after failed deletion");
+        delete_entity(&mut db_connection, 2).unwrap();
+
+        // The entity is gone, with its managers and permissions.
+        let count =
+            |sql: &str| -> i32 { db_connection.query_row(sql, [], |row| row.get(0)).unwrap() };
+        assert_eq!(count("SELECT count(*) FROM entity WHERE entity_id = 2"), 0);
+        assert_eq!(
+            count("SELECT count(*) FROM entitypeople WHERE entitypeople_entity_id = 2"),
+            0
+        );
+        assert_eq!(
+            count("SELECT count(*) FROM permission WHERE permission_entity = 2"),
+            0
+        );
     }
 }
