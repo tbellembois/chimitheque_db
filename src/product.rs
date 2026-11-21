@@ -1933,12 +1933,9 @@ pub fn create_update_product(
     //
     // name
     //
-    let mut name = product.name.clone();
-    name.sanitize_and_validate()?;
+    let name = product.name.clone();
 
     if name.name_id.is_none() {
-        name.sanitize_and_validate()?;
-
         debug!("creating name: {name}");
 
         let name_id = searchable::create_update(
@@ -1959,11 +1956,9 @@ pub fn create_update_product(
     //
     // cas number
     //
-    if let Some(mut cas_number) = product.cas_number.clone()
+    if let Some(cas_number) = product.cas_number.clone()
         && cas_number.cas_number_id.is_none()
     {
-        cas_number.sanitize_and_validate()?;
-
         debug!("creating cas number: {cas_number}");
 
         let cas_number_id = searchable::create_update(
@@ -1984,11 +1979,9 @@ pub fn create_update_product(
     //
     // ce number
     //
-    if let Some(mut ce_number) = product.ce_number.clone()
+    if let Some(ce_number) = product.ce_number.clone()
         && ce_number.ce_number_id.is_none()
     {
-        ce_number.sanitize_and_validate()?;
-
         debug!("creating ce number: {ce_number}");
 
         let ce_number_id = searchable::create_update(
@@ -2009,11 +2002,9 @@ pub fn create_update_product(
     //
     // empirical formula
     //
-    if let Some(mut empirical_formula) = product.empirical_formula.clone()
+    if let Some(empirical_formula) = product.empirical_formula.clone()
         && empirical_formula.empirical_formula_id.is_none()
     {
-        empirical_formula.sanitize_and_validate()?;
-
         debug!("creating empirical formula: {empirical_formula}");
 
         let empirical_formula_id = searchable::create_update(
@@ -2034,11 +2025,9 @@ pub fn create_update_product(
     //
     // linear formula
     //
-    if let Some(mut linear_formula) = product.linear_formula.clone()
+    if let Some(linear_formula) = product.linear_formula.clone()
         && linear_formula.linear_formula_id.is_none()
     {
-        linear_formula.sanitize_and_validate()?;
-
         debug!("creating linear formula: {linear_formula}");
 
         let linear_formula_id = searchable::create_update(
@@ -2059,11 +2048,9 @@ pub fn create_update_product(
     //
     // category
     //
-    if let Some(mut category) = product.category.clone()
+    if let Some(category) = product.category.clone()
         && category.category_id.is_none()
     {
-        category.sanitize_and_validate()?;
-
         debug!("creating category: {category}");
 
         let category_id = searchable::create_update(
@@ -2106,9 +2093,7 @@ pub fn create_update_product(
     if let Some(synonyms) = product.synonyms {
         let mut product_synonyms: Vec<NameStruct> = Vec::new();
 
-        for mut name in synonyms {
-            name.sanitize_and_validate()?;
-
+        for name in synonyms {
             let mut name_id = name.name_id;
             if name_id.is_none() {
                 debug!("creating synonym: {name}");
@@ -2138,9 +2123,7 @@ pub fn create_update_product(
     if let Some(classes_of_compound) = product.classes_of_compound {
         let mut product_classes_of_compound: Vec<ClassOfCompoundStruct> = Vec::new();
 
-        for mut class_of_compound in classes_of_compound {
-            class_of_compound.sanitize_and_validate()?;
-
+        for class_of_compound in classes_of_compound {
             let mut class_of_compound_id = class_of_compound.class_of_compound_id;
             if class_of_compound_id.is_none() {
                 debug!("creating class of compound: {class_of_compound}");
@@ -2196,9 +2179,7 @@ pub fn create_update_product(
     if let Some(tags) = product.tags {
         let mut product_tags: Vec<TagStruct> = Vec::new();
 
-        for mut tag in tags {
-            tag.sanitize_and_validate()?;
-
+        for tag in tags {
             debug!("creating tag: {tag}");
 
             let mut tag_id = tag.tag_id;

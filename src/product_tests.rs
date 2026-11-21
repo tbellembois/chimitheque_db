@@ -247,7 +247,7 @@ mod tests {
             product_id: None,
             name: NameStruct {
                 name_id: None,
-                name_label: "This is a new product".to_string(),
+                name_label: "THIS IS A NEW PRODUCT".to_string(),
                 ..Default::default()
             },
             person: PersonStruct {
@@ -381,7 +381,7 @@ mod tests {
             product_id: Some(1),
             name: NameStruct {
                 name_id: None,
-                name_label: "This is a new product".to_string(),
+                name_label: "THIS IS A NEW PRODUCT".to_string(),
                 ..Default::default()
             },
             person: PersonStruct {
