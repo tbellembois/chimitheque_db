@@ -196,6 +196,7 @@ impl TryFrom<&Row<'_>> for StorageWrapper {
             },
             product: ProductStruct {
                 product_id: row.get_unwrap("product_id"),
+                product_specificity: row.get_unwrap("product_specificity"),
                 name: NameStruct {
                     name_id: row.get_unwrap("name_id"),
                     name_label: row.get_unwrap("name_label"),
@@ -1049,6 +1050,7 @@ pub fn get_storages(
         .expr(Expr::col((Person::Table, Person::PersonId)))
         .expr(Expr::col((Person::Table, Person::PersonEmail)))
         .expr(Expr::col((Product::Table, Product::ProductId)))
+        .expr(Expr::col((Product::Table, Product::ProductSpecificity)))
         .expr(Expr::col((Name::Table, Name::NameId)))
         .expr(Expr::col((Name::Table, Name::NameLabel)))
         .expr(Expr::col((
