@@ -759,4 +759,56 @@ mod tests {
             "{error}"
         );
     }
+
+    #[test]
+    fn storage_expiration_date_is_not_before_entry_date() {
+        let db_connection = constraints_db();
+        db_connection
+            .execute(
+                "INSERT INTO store_location (store_location_id, store_location_name, entity) VALUES (1, 'shelf', 1)",
+                [],
+            )
+            .unwrap();
+        let insert = |entry: Option<i64>, expiration: Option<i64>| {
+            db_connection.execute(
+                "INSERT INTO storage (storage_entry_date, storage_expiration_date, product, store_location) VALUES (?1, ?2, 1, 1)",
+                params![entry, expiration],
+            )
+        };
+        insert(Some(100), Some(200)).unwrap();
+        insert(Some(100), Some(100)).unwrap();
+        insert(None, Some(100)).unwrap();
+        insert(Some(100), None).unwrap();
+        let error = insert(Some(200), Some(100)).unwrap_err();
+        assert!(
+            error.to_string().contains("CHECK constraint failed"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn storage_opening_date_is_not_before_entry_date() {
+        let db_connection = constraints_db();
+        db_connection
+            .execute(
+                "INSERT INTO store_location (store_location_id, store_location_name, entity) VALUES (1, 'shelf', 1)",
+                [],
+            )
+            .unwrap();
+        let insert = |entry: Option<i64>, opening: Option<i64>| {
+            db_connection.execute(
+                "INSERT INTO storage (storage_entry_date, storage_opening_date, product, store_location) VALUES (?1, ?2, 1, 1)",
+                params![entry, opening],
+            )
+        };
+        insert(Some(100), Some(200)).unwrap();
+        insert(Some(100), Some(100)).unwrap();
+        insert(None, Some(100)).unwrap();
+        insert(Some(100), None).unwrap();
+        let error = insert(Some(200), Some(100)).unwrap_err();
+        assert!(
+            error.to_string().contains("CHECK constraint failed"),
+            "{error}"
+        );
+    }
 }

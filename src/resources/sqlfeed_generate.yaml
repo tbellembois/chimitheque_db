@@ -463,7 +463,8 @@
           min_value: 1577836800
           max_value: 1893456000
       # Entries in 2020-2024 and exits in 2025-2029, so that
-      # storage_exit_date >= storage_entry_date (CHECK constraint).
+      # storage_exit_date, storage_opening_date and storage_expiration_date
+      # >= storage_entry_date (CHECK constraints).
       - name: storage_entry_date
         generator: integer
         params:
@@ -479,13 +480,13 @@
       - name: storage_opening_date
         generator: integer
         params:
-          min_value: 1577836800
+          min_value: 1735689600
           max_value: 1893456000
         null_ratio: 0.25
       - name: storage_expiration_date
         generator: integer
         params:
-          min_value: 1577836800
+          min_value: 1735689600
           max_value: 1893456000
         null_ratio: 0.25
       - name: storage_quantity

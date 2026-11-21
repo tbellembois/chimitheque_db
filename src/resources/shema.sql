@@ -275,6 +275,8 @@ CREATE TABLE IF NOT EXISTS "storage" (
 	"storage"	INTEGER CHECK ("storage" <> "storage_id"),
 	PRIMARY KEY("storage_id"),
 	CHECK ("storage_exit_date" >= "storage_entry_date"),
+	CHECK ("storage_expiration_date" >= "storage_entry_date"),
+	CHECK ("storage_opening_date" >= "storage_entry_date"),
 	FOREIGN KEY("person") REFERENCES "person"("person_id") ON DELETE SET DEFAULT,
 	FOREIGN KEY("product") REFERENCES "product"("product_id"),
 	FOREIGN KEY("storage") REFERENCES "storage"("storage_id") ON DELETE CASCADE,
