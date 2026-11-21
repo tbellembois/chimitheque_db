@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS "person" (
 
 CREATE TABLE IF NOT EXISTS "product" (
 	"product_id"	INTEGER,
-	"product_type"	TEXT NOT NULL,
+	"product_type"	TEXT NOT NULL CHECK ("product_type" IN ('chem', 'bio', 'cons')),
 	"product_inchi"	TEXT,
 	"product_inchikey"	TEXT,
 	"product_canonical_smiles"	TEXT,

@@ -317,6 +317,9 @@ pub fn create_tables(
         stmt.execute([])?;
     }
 
+    // Bring existing databases up to date with shema.sql.
+    crate::migration::migrate(db_connection)?;
+
     Ok(())
 }
 

@@ -11,6 +11,7 @@ pub mod entitypeople;
 pub mod hazardstatement;
 pub mod init;
 pub mod linearformula;
+pub mod migration;
 pub mod name;
 pub mod permission;
 pub mod person;
