@@ -6,6 +6,9 @@
     # composite primary keys). Composite uniqueness relies on the "coverage" FK
     # strategy on the first column: each table generates 1000 rows (the default
     # count), which must not exceed the number of referenced parent rows.
+    # The product link tables (product*) generate 2000 rows instead: the
+    # sqlfeed_links_transform.py transform gives every product two different
+    # items. Keep its item counts in sync with the generated data.
     db_path: ./test.sqlite
     provider: faker
     locale: en_US
@@ -655,6 +658,8 @@
         null_ratio: 0.25
 
     - name: productclassesofcompounds
+      count: 2000
+      transform: sqlfeed_links_transform.py
       columns:
       - name: productclassesofcompounds_product_id
         generator: foreign_key
@@ -670,6 +675,8 @@
           strategy: random
 
     - name: producthazardstatements
+      count: 2000
+      transform: sqlfeed_links_transform.py
       columns:
       - name: producthazardstatements_product_id
         generator: foreign_key
@@ -685,6 +692,8 @@
           strategy: random
 
     - name: productprecautionarystatements
+      count: 2000
+      transform: sqlfeed_links_transform.py
       columns:
       - name: productprecautionarystatements_product_id
         generator: foreign_key
@@ -700,6 +709,8 @@
           strategy: random
 
     - name: productsupplierrefs
+      count: 2000
+      transform: sqlfeed_links_transform.py
       columns:
       - name: productsupplierrefs_product_id
         generator: foreign_key
@@ -715,6 +726,8 @@
           strategy: random
 
     - name: productsymbols
+      count: 2000
+      transform: sqlfeed_links_transform.py
       columns:
       - name: productsymbols_product_id
         generator: foreign_key
@@ -730,6 +743,8 @@
           strategy: random
 
     - name: productsynonyms
+      count: 2000
+      transform: sqlfeed_links_transform.py
       columns:
       - name: productsynonyms_product_id
         generator: foreign_key
@@ -745,6 +760,8 @@
           strategy: random
 
     - name: producttags
+      count: 2000
+      transform: sqlfeed_links_transform.py
       columns:
       - name: producttags_product_id
         generator: foreign_key

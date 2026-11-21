@@ -47,6 +47,14 @@ mod tests {
         db
     }
 
+    /// Labels of the populated items, sorted: the populate queries have no
+    /// ORDER BY, so the item order is not guaranteed.
+    fn sorted_labels<T>(items: &[T], label: impl Fn(&T) -> &String) -> Vec<String> {
+        let mut labels: Vec<String> = items.iter().map(|item| label(item).clone()).collect();
+        labels.sort();
+        labels
+    }
+
     #[test]
     fn test_get_products() {
         let db = init_test_products();
@@ -76,9 +84,16 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 5);
-        assert_eq!(products.len(), 5);
-        assert_eq!(products[0].name.name_label, "PRODUCT_NAME-00408");
+        // 5 products named PRODUCT_NAME-00408, and 2 having it as synonym.
+        assert_eq!(count, 7);
+        assert_eq!(products.len(), 7);
+        assert_eq!(
+            products
+                .iter()
+                .filter(|product| product.name.name_label == "PRODUCT_NAME-00408")
+                .count(),
+            5
+        );
     }
 
     #[test]
@@ -151,8 +166,8 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 10);
-        assert_eq!(products.len(), 10);
+        assert_eq!(count, 23);
+        assert_eq!(products.len(), 23);
     }
 
     #[test]
@@ -168,8 +183,8 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 7);
-        assert_eq!(products.len(), 7);
+        assert_eq!(count, 17);
+        assert_eq!(products.len(), 17);
     }
 
     #[test]
@@ -202,8 +217,8 @@ mod tests {
         assert!(result.is_ok());
 
         let (products, count) = result.unwrap();
-        assert_eq!(count, 93);
-        assert_eq!(products.len(), 93);
+        assert_eq!(count, 223);
+        assert_eq!(products.len(), 223);
     }
 
     #[test]
@@ -450,10 +465,10 @@ mod tests {
         let result = populate_synonyms(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].synonyms.as_ref().unwrap().len(), 1);
         assert_eq!(
-            products[0].synonyms.as_ref().unwrap()[0].name_label,
-            "PRODUCT_NAME-00425"
+            sorted_labels(products[0].synonyms.as_ref().unwrap(), |item| &item
+                .name_label),
+            ["PRODUCT_NAME-00001", "PRODUCT_NAME-00002"]
         );
     }
 
@@ -468,10 +483,11 @@ mod tests {
         let result = populate_classes_of_compound(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].classes_of_compound.as_ref().unwrap().len(), 1);
         assert_eq!(
-            products[0].classes_of_compound.as_ref().unwrap()[0].class_of_compound_label,
-            "CLASS_OF-00219"
+            sorted_labels(products[0].classes_of_compound.as_ref().unwrap(), |item| {
+                &item.class_of_compound_label
+            }),
+            ["acetal", "acetophenone"]
         );
     }
 
@@ -498,10 +514,10 @@ mod tests {
         let result = populate_symbols(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].symbols.as_ref().unwrap().len(), 1);
         assert_eq!(
-            products[0].symbols.as_ref().unwrap()[0].symbol_label,
-            "GHS08"
+            sorted_labels(products[0].symbols.as_ref().unwrap(), |item| &item
+                .symbol_label),
+            ["GHS01", "GHS02"]
         );
     }
 
@@ -516,10 +532,11 @@ mod tests {
         let result = populate_hazard_statements(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].hazard_statements.as_ref().unwrap().len(), 1);
         assert_eq!(
-            products[0].hazard_statements.as_ref().unwrap()[0].hazard_statement_reference,
-            "H313"
+            sorted_labels(products[0].hazard_statements.as_ref().unwrap(), |item| {
+                &item.hazard_statement_reference
+            }),
+            ["H200", "H201"]
         );
     }
 
@@ -535,13 +552,11 @@ mod tests {
         assert!(result.is_ok());
 
         assert_eq!(
-            products[0].precautionary_statements.as_ref().unwrap().len(),
-            1
-        );
-        assert_eq!(
-            products[0].precautionary_statements.as_ref().unwrap()[0]
-                .precautionary_statement_reference,
-            "P282"
+            sorted_labels(
+                products[0].precautionary_statements.as_ref().unwrap(),
+                |item| &item.precautionary_statement_reference
+            ),
+            ["P101", "P102"]
         );
     }
 
@@ -556,10 +571,10 @@ mod tests {
         let result = populate_supplier_refs(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].supplier_refs.as_ref().unwrap().len(), 1);
         assert_eq!(
-            products[0].supplier_refs.as_ref().unwrap()[0].supplier_ref_label,
-            "fOPGgakPHvuzpb2PjjwqFq8q8S158"
+            sorted_labels(products[0].supplier_refs.as_ref().unwrap(), |item| &item
+                .supplier_ref_label),
+            ["Il0IneWQ", "gurRQFua3lWiaO5nflsqcL39H8"]
         );
     }
 
@@ -574,10 +589,9 @@ mod tests {
         let result = populate_tags(&db, &mut products);
         assert!(result.is_ok());
 
-        assert_eq!(products[0].tags.as_ref().unwrap().len(), 1);
         assert_eq!(
-            products[0].tags.as_ref().unwrap()[0].tag_label,
-            "TAG_LABE-00371"
+            sorted_labels(products[0].tags.as_ref().unwrap(), |item| &item.tag_label),
+            ["3D Cell Culture", "Acid"]
         );
     }
 }
