@@ -489,4 +489,21 @@ mod tests {
         let result = toggle_storage_borrowing(&mut db, 1, 1, 999, None);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_toggle_product_borrowing_without_comment_stores_null() {
+        let mut db = init_test_borrowings();
+        let (person_id, borrower_id, storage_id) = (4, 4, 10);
+
+        toggle_storage_borrowing(&mut db, person_id, storage_id, borrower_id, None).unwrap();
+
+        let comment: Option<String> = db
+            .query_row(
+                "SELECT borrowing_comment FROM borrowing WHERE person = ? AND storage = ?",
+                [person_id, storage_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(comment, None);
+    }
 }
