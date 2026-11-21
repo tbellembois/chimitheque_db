@@ -158,7 +158,7 @@ mod tests {
 
         // Test ascending order
         let ascending_filter = RequestFilter {
-            order: "asc".to_string(),
+            order: chimitheque_types::sortorder::SortOrder::Asc,
             ..Default::default()
         };
         let (entities, _) = get_entities(&db_connection, ascending_filter, 1).unwrap();
@@ -171,7 +171,7 @@ mod tests {
 
         // Test descending order
         let descending_filter = RequestFilter {
-            order: "desc".to_string(),
+            order: chimitheque_types::sortorder::SortOrder::Desc,
             ..Default::default()
         };
         let (entities, _) = get_entities(&db_connection, descending_filter, 1).unwrap();

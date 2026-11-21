@@ -37,6 +37,7 @@ use crate::{
     unit::Unit,
 };
 use chimitheque_defines::STORAGE_BARECODE_RE;
+use chimitheque_types::sortorder::SortOrder;
 use chimitheque_types::{
     casnumber::CasNumber as CasNumberStruct, category::Category as CategoryStruct,
     cenumber::CeNumber as CeNumberStruct,
@@ -1201,10 +1202,9 @@ pub fn get_products(
         (Product::Table, Product::ProductId).into_column_ref()
     };
 
-    let order = if filter.order.eq_ignore_ascii_case("desc") {
-        Order::Desc
-    } else {
-        Order::Asc
+    let order = match filter.order {
+        SortOrder::Asc => Order::Asc,
+        SortOrder::Desc => Order::Desc,
     };
 
     // Create a subquery for permission filtering

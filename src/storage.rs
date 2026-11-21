@@ -4,6 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use chimitheque_types::sortorder::SortOrder;
 use chimitheque_types::{
     borrowing::Borrowing as BorrowingStruct, entity::Entity as EntityStruct, error::ParseError,
     name::Name as NameStruct, person::Person as PersonStruct, product::Product as ProductStruct,
@@ -393,10 +394,9 @@ pub fn get_storages(
         (Storage::Table, Storage::StorageId).into_column_ref()
     };
 
-    let order = if filter.order.eq_ignore_ascii_case("desc") {
-        Order::Desc
-    } else {
-        Order::Asc
+    let order = match filter.order {
+        SortOrder::Asc => Order::Asc,
+        SortOrder::Desc => Order::Desc,
     };
 
     // Create a subquery for permission filtering

@@ -1,3 +1,4 @@
+use chimitheque_types::sortorder::SortOrder;
 use chimitheque_types::{
     permission::{Permission as PermissionStruct, PermissionItem, PermissionName},
     person::Person as PersonStruct,
@@ -244,10 +245,9 @@ pub fn get_people(
     debug!("filter:{filter:?}");
     debug!("person_id:{person_id:?}");
 
-    let order = if filter.order.eq_ignore_ascii_case("desc") {
-        Order::Desc
-    } else {
-        Order::Asc
+    let order = match filter.order {
+        SortOrder::Asc => Order::Asc,
+        SortOrder::Desc => Order::Desc,
     };
 
     // Subquery for people with not entity.

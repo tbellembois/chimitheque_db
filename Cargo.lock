@@ -79,7 +79,7 @@ dependencies = [
  "chimitheque_utils",
  "chrono",
  "csv",
- "env_logger 0.11.11",
+ "env_logger",
  "image",
  "log",
  "qrcode-png",
@@ -113,7 +113,6 @@ dependencies = [
  "chimitheque_utils",
  "chrono",
  "email_address",
- "env_logger 0.10.2",
  "jsonpath-rust",
  "log",
  "regex",
@@ -127,7 +126,7 @@ name = "chimitheque_utils"
 version = "0.1.0"
 dependencies = [
  "chimitheque_defines",
- "env_logger 0.11.11",
+ "env_logger",
  "log",
  "regex",
 ]
@@ -231,15 +230,6 @@ checksum = "900d271a03799a1ee8d1ca9b19893b48ca674a9284fefcfb85f05e74ed314217"
 dependencies = [
  "log",
  "regex",
-]
-
-[[package]]
-name = "env_logger"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
-dependencies = [
- "log",
 ]
 
 [[package]]
@@ -492,15 +482,15 @@ dependencies = [
 
 [[package]]
 name = "jsonpath-rust"
-version = "0.3.5"
+version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06cc127b7c3d270be504572364f9569761a180b981919dd0d87693a7f5fb7829"
+checksum = "b1c4668c489390e66d586fe2238ee8568473f7ac1607b411342f787c5e1bedd7"
 dependencies = [
  "pest",
  "pest_derive",
  "regex",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror",
 ]
 
 [[package]]
@@ -777,7 +767,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c51c9ae4df8a7fba42103df5c621fa3c37eccf3a3c650879e90fc48b11cc192c"
 dependencies = [
  "hashbrown",
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]
@@ -840,7 +830,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]
@@ -979,31 +969,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
-dependencies = [
- "thiserror-impl 1.0.69",
-]
-
-[[package]]
-name = "thiserror"
 version = "2.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09e52cb86a36cede5cb101bf8908837b3e4c6e5e59fe7fd85c23fb56200d189e"
 dependencies = [
- "thiserror-impl 2.0.21",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
+ "thiserror-impl",
 ]
 
 [[package]]

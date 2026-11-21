@@ -1,4 +1,5 @@
 use crate::{entity::Entity, permission::Permission, storage::Storage};
+use chimitheque_types::sortorder::SortOrder;
 use chimitheque_types::{
     entity::Entity as EntityStruct, requestfilter::RequestFilter,
     storelocation::StoreLocation as StoreLocationStruct,
@@ -85,10 +86,9 @@ pub fn get_store_locations(
     debug!("filter:{filter:?}");
     debug!("person_id:{person_id:?}");
 
-    let order = if filter.order.eq_ignore_ascii_case("desc") {
-        Order::Desc
-    } else {
-        Order::Asc
+    let order = match filter.order {
+        SortOrder::Asc => Order::Asc,
+        SortOrder::Desc => Order::Desc,
     };
 
     // Subquery for permissions to reduce rows early.
