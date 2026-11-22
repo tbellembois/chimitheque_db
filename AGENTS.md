@@ -34,6 +34,7 @@ Before implementing new functionality, inspect existing types and their tests to
 - Add comments for complex or non-obvious logic rather than commenting every line.
 - Follow the existing serialization and deserialization conventions.
 - Keep implementations consistent with similar types already present in the crate.
+- Do not define shared data (regular expressions, code lists, reference data, HTTP header names) as constants or statics in this crate: add it to the chimitheque_defines crate and import it from there. Runtime state (caches, counters, `Once` guards) and settings specific to this crate (e.g. user interface styles) stay in the crate.
 
 ## Testing
 
