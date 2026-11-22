@@ -15,7 +15,8 @@ use std::path::Path;
 
 use crate::searchable::{create_update, get_many};
 
-/// Opens an in-memory database with the regex extension, for the tests.
+/// Opens an in-memory database with the regex extension and the foreign keys
+/// enforced, for the tests.
 ///
 /// The extension is read from the `SQLITE_EXTENSION_DIR` directory.
 #[must_use]
@@ -30,6 +31,11 @@ pub fn connect_test() -> Connection {
             .load_extension(sql_extension_regex, None::<&str>)
             .expect("Unable to load regexp extension.");
     };
+
+    // As `connect`: a test breaking a foreign key fails as in production.
+    db_connection
+        .execute("PRAGMA foreign_keys = ON", [])
+        .expect("Failed to enable foreign keys");
 
     db_connection
 }

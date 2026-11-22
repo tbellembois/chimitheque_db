@@ -419,12 +419,19 @@ mod tests {
     fn test_delete_product() {
         let mut db = init_test_products();
 
-        let result = delete_product(&mut db, 1);
+        // Product 1 has storages: the database refuses, the handler checks it
+        // first with `product_has_storages`.
+        assert!(product_has_storages(&db, 1).unwrap());
+        assert!(delete_product(&mut db, 1).is_err());
+
+        // Product 2 has none.
+        assert!(!product_has_storages(&db, 2).unwrap());
+        let result = delete_product(&mut db, 2);
         assert!(result.is_ok());
 
         // Verify the product was deleted
         let filter = chimitheque_types::requestfilter::RequestFilter {
-            id: Some(1),
+            id: Some(2),
             ..Default::default()
         };
         let result = get_products(&db, filter, 1);
