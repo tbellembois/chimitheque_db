@@ -517,6 +517,41 @@ pub fn delete_store_location(
     Ok(())
 }
 
+/// Returns whether the store location has storages, archived ones included.
+/// History storages do not count: they are deleted with the store location.
+/// A store location with storages can not be deleted.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn store_location_has_storages(
+    db_connection: &Connection,
+    store_location_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(db_connection.query_row(
+        "SELECT EXISTS (SELECT 1 FROM storage WHERE store_location = ?1 AND storage IS NULL)",
+        [store_location_id],
+        |row| row.get(0),
+    )?)
+}
+
+/// Returns whether the store location has child store locations. A store
+/// location with children can not be deleted.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn store_location_has_children(
+    db_connection: &Connection,
+    store_location_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(db_connection.query_row(
+        "SELECT EXISTS (SELECT 1 FROM store_location WHERE store_location = ?1)",
+        [store_location_id],
+        |row| row.get(0),
+    )?)
+}
+
 #[cfg(test)]
 #[path = "storelocation_tests.rs"]
 mod storelocation_tests;

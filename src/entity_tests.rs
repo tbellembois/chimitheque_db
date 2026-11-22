@@ -539,4 +539,33 @@ mod tests {
             0
         );
     }
+
+    #[test]
+    fn test_entity_name_exists() {
+        let db_connection = init_test_entity();
+
+        assert!(entity_name_exists(&db_connection, "Physics Department", None).unwrap());
+        assert!(entity_name_exists(&db_connection, "Physics Department", Some(1)).unwrap());
+        // The entity being updated keeps its own name.
+        assert!(!entity_name_exists(&db_connection, "Physics Department", Some(2)).unwrap());
+        // Names are compared exactly, like the UNIQUE constraint.
+        assert!(!entity_name_exists(&db_connection, "physics department", None).unwrap());
+        assert!(!entity_name_exists(&db_connection, "Unknown", None).unwrap());
+    }
+
+    #[test]
+    fn test_entity_has_members_and_store_locations() {
+        let db_connection = init_test_entity();
+        db_connection
+            .execute(
+                "INSERT INTO store_location (store_location_id, store_location_name, entity) VALUES (1, 'Shelf', 1)",
+                [],
+            )
+            .unwrap();
+
+        assert!(entity_has_members(&db_connection, 2).unwrap());
+        assert!(!entity_has_members(&db_connection, 10).unwrap());
+        assert!(entity_has_store_locations(&db_connection, 1).unwrap());
+        assert!(!entity_has_store_locations(&db_connection, 2).unwrap());
+    }
 }

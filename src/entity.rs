@@ -540,6 +540,59 @@ pub fn delete_entity(
     Ok(())
 }
 
+/// Returns whether an entity other than `except_entity_id` is named
+/// `entity_name`. Pass the id of the entity being updated, or `None` for a new
+/// one.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn entity_name_exists(
+    db_connection: &Connection,
+    entity_name: &str,
+    except_entity_id: Option<u64>,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(db_connection.query_row(
+        "SELECT EXISTS (SELECT 1 FROM entity WHERE entity_name = ?1 AND entity_id IS NOT ?2)",
+        rusqlite::params![entity_name, except_entity_id],
+        |row| row.get(0),
+    )?)
+}
+
+/// Returns whether the entity has members. An entity with members can not be
+/// deleted.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn entity_has_members(
+    db_connection: &Connection,
+    entity_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(db_connection.query_row(
+        "SELECT EXISTS (SELECT 1 FROM personentities WHERE personentities_entity_id = ?1)",
+        [entity_id],
+        |row| row.get(0),
+    )?)
+}
+
+/// Returns whether the entity has store locations. An entity with store
+/// locations can not be deleted.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn entity_has_store_locations(
+    db_connection: &Connection,
+    entity_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(db_connection.query_row(
+        "SELECT EXISTS (SELECT 1 FROM store_location WHERE entity = ?1)",
+        [entity_id],
+        |row| row.get(0),
+    )?)
+}
+
 #[cfg(test)]
 #[path = "entity_tests.rs"]
 mod entity_tests;

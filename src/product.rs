@@ -3007,6 +3007,23 @@ pub fn delete_product(
     Ok(())
 }
 
+/// Returns whether the product has storages, archived and history ones
+/// included. A product with storages can not be deleted.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn product_has_storages(
+    db_connection: &Connection,
+    product_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(db_connection.query_row(
+        "SELECT EXISTS (SELECT 1 FROM storage WHERE product = ?1)",
+        [product_id],
+        |row| row.get(0),
+    )?)
+}
+
 #[cfg(test)]
 #[path = "product_tests.rs"]
 mod product_tests;

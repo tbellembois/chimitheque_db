@@ -965,6 +965,25 @@ pub fn delete_person(
     Ok(())
 }
 
+/// Returns whether a person other than `except_person_id` has the email
+/// `person_email`. Pass the id of the person being updated, or `None` for a
+/// new one.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn person_email_exists(
+    db_connection: &Connection,
+    person_email: &str,
+    except_person_id: Option<u64>,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(db_connection.query_row(
+        "SELECT EXISTS (SELECT 1 FROM person WHERE person_email = ?1 AND person_id IS NOT ?2)",
+        rusqlite::params![person_email, except_person_id],
+        |row| row.get(0),
+    )?)
+}
+
 #[cfg(test)]
 #[path = "person_tests.rs"]
 mod person_tests;

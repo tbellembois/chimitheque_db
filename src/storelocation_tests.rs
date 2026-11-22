@@ -846,4 +846,20 @@ mod tests {
             Some("Main Storage/Lab 1 Storage".to_string())
         );
     }
+
+    #[test]
+    fn test_store_location_has_storages_and_children() {
+        let db = init_test_storelocation();
+        // A history storage in store location 4: it does not count.
+        db.execute(
+            "INSERT INTO storage (storage_id, person, product, store_location, storage) VALUES (11, 1, 1, 4, 1)",
+            [],
+        )
+        .unwrap();
+
+        assert!(store_location_has_storages(&db, 3).unwrap());
+        assert!(!store_location_has_storages(&db, 4).unwrap());
+        assert!(store_location_has_children(&db, 2).unwrap());
+        assert!(!store_location_has_children(&db, 4).unwrap());
+    }
 }

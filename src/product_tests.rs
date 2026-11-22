@@ -622,4 +622,18 @@ mod tests {
         assert_eq!(count, 1);
         assert_eq!(products[0].product_id, Some(1));
     }
+
+    #[test]
+    fn test_product_has_storages() {
+        let db_connection = init_test_products();
+        let product_id =
+            |sql: &str| -> u64 { db_connection.query_row(sql, [], |row| row.get(0)).unwrap() };
+        let with_storages = product_id("SELECT product FROM storage LIMIT 1");
+        let without_storages = product_id(
+            "SELECT product_id FROM product WHERE product_id NOT IN (SELECT product FROM storage) LIMIT 1",
+        );
+
+        assert!(product_has_storages(&db_connection, with_storages).unwrap());
+        assert!(!product_has_storages(&db_connection, without_storages).unwrap());
+    }
 }

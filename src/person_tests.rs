@@ -511,4 +511,15 @@ mod tests {
         // Test person 100 is not member of entity 101
         assert!(!is_person_member_of(&db_connection, 100, 101).unwrap());
     }
+
+    #[test]
+    fn test_person_email_exists() {
+        let db_connection = init_test_person();
+
+        assert!(person_email_exists(&db_connection, "test2@example.com", None).unwrap());
+        assert!(person_email_exists(&db_connection, "test2@example.com", Some(100)).unwrap());
+        // The person being updated keeps their own email.
+        assert!(!person_email_exists(&db_connection, "test2@example.com", Some(101)).unwrap());
+        assert!(!person_email_exists(&db_connection, "unknown@example.com", None).unwrap());
+    }
 }
