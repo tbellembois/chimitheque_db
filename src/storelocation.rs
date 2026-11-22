@@ -6,12 +6,13 @@ use chimitheque_types::{
 };
 use chimitheque_utils::string::{Transform, clean};
 use log::debug;
-use rusqlite::{Connection, Row};
+use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
     Alias, Expr, ExprTrait, Iden, JoinType, Order, Query, SimpleExpr, SqliteQueryBuilder,
 };
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
+use std::collections::HashSet;
 
 /// Table and column names of the `store_location` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
@@ -386,6 +387,43 @@ fn populate_store_location_full_path(
     Ok(())
 }
 
+/// Rebuilds the full paths of the descendants of the store location, under its
+/// `full_path`.
+fn update_descendant_full_paths(
+    db_transaction: &Transaction,
+    store_location_id: u64,
+    full_path: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let mut parents = vec![(store_location_id, full_path.to_string())];
+    // Guards against a loop in the tree.
+    let mut visited = HashSet::from([store_location_id]);
+
+    while let Some((parent_id, parent_full_path)) = parents.pop() {
+        let mut stmt = db_transaction.prepare(
+            "SELECT store_location_id, store_location_name FROM store_location WHERE store_location = ?1",
+        )?;
+        let children = stmt
+            .query_map([parent_id], |row| {
+                Ok((row.get::<_, u64>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        for (child_id, child_name) in children {
+            if !visited.insert(child_id) {
+                continue;
+            }
+            let child_full_path = format!("{parent_full_path}/{child_name}");
+            db_transaction.execute(
+                "UPDATE store_location SET store_location_full_path = ?1 WHERE store_location_id = ?2",
+                (&child_full_path, child_id),
+            )?;
+            parents.push((child_id, child_full_path));
+        }
+    }
+
+    Ok(())
+}
+
 /// Creates the store location, or updates it if it has an id, with its full
 /// path. Returns its id.
 pub fn create_update_store_location(
@@ -400,6 +438,7 @@ pub fn create_update_store_location(
     populate_store_location_full_path(&db_transaction, &mut store_location)?;
 
     let clean_store_location_name = clean(&store_location.store_location_name, Transform::None);
+    let full_path = store_location.store_location_full_path.clone();
 
     // Update request: list of (columns, values) pairs to insert.
     let mut columns_values = vec![
@@ -490,6 +529,11 @@ pub fn create_update_store_location(
 
     if let Some(store_location_id) = store_location.store_location_id {
         last_insert_update_id = store_location_id;
+
+        // A renamed or moved store location: its descendants' paths change too.
+        if let Some(full_path) = &full_path {
+            update_descendant_full_paths(&db_transaction, store_location_id, full_path)?;
+        }
     } else {
         last_insert_update_id = db_transaction.last_insert_rowid().try_into()?;
     }

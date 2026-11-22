@@ -945,4 +945,38 @@ mod tests {
         assert_eq!(parent, None);
         assert_eq!(full_path.as_deref(), Some("Cold Storage"));
     }
+
+    #[test]
+    fn test_update_store_location_updates_descendant_full_paths() {
+        let mut db = init_test_storelocation();
+        let full_path = |db: &Connection, store_location_id| saved(db, store_location_id).2;
+
+        // Renamed: 1 > 2 > 3 and 1 > 6 > 7.
+        create_update_store_location(&mut db, store_location(1, "Main", None)).unwrap();
+        assert_eq!(full_path(&db, 2).as_deref(), Some("Main/Chemical Storage"));
+        assert_eq!(
+            full_path(&db, 3).as_deref(),
+            Some("Main/Chemical Storage/Flammable Storage")
+        );
+        assert_eq!(
+            full_path(&db, 7).as_deref(),
+            Some("Main/Cold Storage/Refrigerated Storage")
+        );
+
+        // Moved: 6 under 2, with its children 7 and 8.
+        create_update_store_location(&mut db, store_location(6, "Cold Storage", Some(2))).unwrap();
+        assert_eq!(
+            full_path(&db, 6).as_deref(),
+            Some("Main/Chemical Storage/Cold Storage")
+        );
+        assert_eq!(
+            full_path(&db, 8).as_deref(),
+            Some("Main/Chemical Storage/Cold Storage/Freezer Storage")
+        );
+        // Not a descendant: unchanged.
+        assert_eq!(
+            full_path(&db, 3).as_deref(),
+            Some("Main/Chemical Storage/Flammable Storage")
+        );
+    }
 }
