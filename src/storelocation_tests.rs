@@ -862,4 +862,17 @@ mod tests {
         assert!(store_location_has_children(&db, 2).unwrap());
         assert!(!store_location_has_children(&db, 4).unwrap());
     }
+
+    #[test]
+    fn test_store_location_is_ancestor_of() {
+        let db = init_test_storelocation();
+
+        // 1 > 2 > 3: 1 and 2 are ancestors of 3, and 3 is itself.
+        assert!(store_location_is_ancestor_of(&db, 1, 3).unwrap());
+        assert!(store_location_is_ancestor_of(&db, 2, 3).unwrap());
+        assert!(store_location_is_ancestor_of(&db, 3, 3).unwrap());
+        // 3 is a child of 2, not an ancestor; 6 is in another branch.
+        assert!(!store_location_is_ancestor_of(&db, 3, 2).unwrap());
+        assert!(!store_location_is_ancestor_of(&db, 6, 3).unwrap());
+    }
 }

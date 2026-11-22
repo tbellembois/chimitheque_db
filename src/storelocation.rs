@@ -587,6 +587,32 @@ pub fn store_location_references(store_location: &StoreLocationStruct) -> Vec<Re
     references
 }
 
+/// Returns whether `store_location_id` is `parent_id` or one of its
+/// ancestors: setting `parent_id` as its parent would then make a loop.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn store_location_is_ancestor_of(
+    db_connection: &Connection,
+    store_location_id: u64,
+    parent_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    // Walk up from the parent. UNION (not UNION ALL) stops on an existing loop.
+    Ok(db_connection.query_row(
+        "WITH RECURSIVE ancestor(id) AS (
+            SELECT ?2
+            UNION
+            SELECT store_location.store_location FROM store_location
+            JOIN ancestor ON store_location.store_location_id = ancestor.id
+            WHERE store_location.store_location IS NOT NULL
+        )
+        SELECT EXISTS (SELECT 1 FROM ancestor WHERE id = ?1)",
+        [store_location_id, parent_id],
+        |row| row.get(0),
+    )?)
+}
+
 #[cfg(test)]
 #[path = "storelocation_tests.rs"]
 mod storelocation_tests;

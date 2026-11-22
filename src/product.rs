@@ -3028,9 +3028,10 @@ pub fn product_has_storages(
 /// Lists the ids a product save writes, for
 /// [`find_missing_reference`](crate::reference::find_missing_reference).
 ///
-/// An item without an id is created by the save, except symbols, hazard and
-/// precautionary statements, which must have one, as must the producer of a new
-/// producer reference and the supplier of a new supplier reference. The person
+/// An item without an id is created by the save, except pick-list items
+/// (physical state, signal word, symbols, hazard and precautionary statements),
+/// which must have one, as must the producer of a new producer reference and
+/// the supplier of a new supplier reference. The person
 /// and the units are not listed: the person comes from the request headers,
 /// and the units are checked with `Product::validate_unit_types`.
 #[must_use]
@@ -3081,22 +3082,6 @@ pub fn product_references(product: &ProductStruct) -> Vec<Reference> {
         "category",
         product.category.as_ref().and_then(|item| item.category_id),
     );
-    push_id(
-        "physical_state",
-        "physical_state",
-        product
-            .physical_state
-            .as_ref()
-            .and_then(|item| item.physical_state_id),
-    );
-    push_id(
-        "signal_word",
-        "signal_word",
-        product
-            .signal_word
-            .as_ref()
-            .and_then(|item| item.signal_word_id),
-    );
     for item in product.classes_of_compound.iter().flatten() {
         push_id(
             "classes_of_compound",
@@ -3133,6 +3118,20 @@ pub fn product_references(product: &ProductStruct) -> Vec<Reference> {
     }
 
     // Pick lists: never created by a save.
+    if let Some(item) = &product.physical_state {
+        references.push(Reference::new(
+            "physical_state",
+            "physical_state",
+            item.physical_state_id,
+        ));
+    }
+    if let Some(item) = &product.signal_word {
+        references.push(Reference::new(
+            "signal_word",
+            "signal_word",
+            item.signal_word_id,
+        ));
+    }
     for item in product.symbols.iter().flatten() {
         references.push(Reference::new("symbols", "symbol", item.symbol_id));
     }

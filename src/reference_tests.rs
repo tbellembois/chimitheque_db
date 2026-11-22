@@ -10,8 +10,8 @@ mod tests {
     use crate::storelocation::store_location_references;
     use chimitheque_types::{
         category::Category, entity::Entity, permission::Permission, person::Person,
-        producer::Producer, producerref::ProducerRef, product::Product, storage::Storage,
-        storelocation::StoreLocation, symbol::Symbol, tag::Tag,
+        physicalstate::PhysicalState, producer::Producer, producerref::ProducerRef,
+        product::Product, storage::Storage, storelocation::StoreLocation, symbol::Symbol, tag::Tag,
     };
 
     #[test]
@@ -65,7 +65,8 @@ mod tests {
                 },
                 ..Default::default()
             }),
-            // A symbol is never created: listed without an id.
+            // Pick-list items are never created: listed without an id.
+            physical_state: Some(PhysicalState::default()),
             symbols: Some(vec![Symbol::default()]),
             ..Default::default()
         };
@@ -75,6 +76,7 @@ mod tests {
             [
                 Reference::new("category", "category", Some(3)),
                 Reference::new("producer", "producer", Some(2)),
+                Reference::new("physical_state", "physical_state", None),
                 Reference::new("symbols", "symbol", None),
             ]
         );
