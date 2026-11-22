@@ -1931,6 +1931,23 @@ pub fn unarchive_storage(
     Ok(())
 }
 
+/// Returns whether the storage is a history row: an earlier version of
+/// another storage. History rows can not be changed.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn storage_is_history(
+    db_connection: &Connection,
+    storage_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(db_connection.query_row(
+        "SELECT EXISTS (SELECT 1 FROM storage WHERE storage_id = ?1 AND storage IS NOT NULL)",
+        [storage_id],
+        |row| row.get(0),
+    )?)
+}
+
 /// Returns the entity id of the store location of the storage, or `None` for
 /// an unknown storage.
 ///

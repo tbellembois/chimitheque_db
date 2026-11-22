@@ -222,4 +222,18 @@ mod tests {
         create_update_storage(&mut db, storage, 1, false).unwrap();
         assert_eq!(history_link(&db, storage_id), None);
     }
+
+    #[test]
+    fn test_storage_is_history() {
+        let db = init_test_storages();
+        db.execute(
+            "INSERT INTO storage (storage_id, person, product, store_location, storage) VALUES (5000, 1, 656, 200, 2)",
+            [],
+        )
+        .unwrap();
+
+        assert!(storage_is_history(&db, 5000).unwrap());
+        assert!(!storage_is_history(&db, 2).unwrap());
+        assert!(!storage_is_history(&db, 999_999).unwrap());
+    }
 }
