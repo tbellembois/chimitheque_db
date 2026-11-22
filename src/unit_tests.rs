@@ -63,7 +63,7 @@ mod tests {
             [],
         ).unwrap();
         db.execute(
-            "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit) VALUES (11, '°K', 1, 'temperature', 6)",
+            "INSERT INTO unit (unit_id, unit_label, unit_multiplier, unit_type, unit) VALUES (11, 'K', 1, 'temperature', 6)",
             [],
         ).unwrap();
         db.execute(
@@ -123,7 +123,7 @@ mod tests {
             ("mM", UnitType::Concentration, Some(2)),
             ("µM", UnitType::Concentration, Some(2)),
             ("°F", UnitType::Temperature, Some(6)),
-            ("°K", UnitType::Temperature, Some(6)),
+            ("K", UnitType::Temperature, Some(6)),
         ];
 
         for (label, unit_type, parent_id) in &derived_units {
@@ -288,7 +288,7 @@ mod tests {
         let (units, count) = get_units(&db_connection, filter).unwrap();
         assert_eq!(
             count, 3,
-            "Expected 3 Temperature units (°C, °F, °K) in the test fixture"
+            "Expected 3 Temperature units (°C, °F, K) in the test fixture"
         );
         assert_eq!(
             units.len(),
