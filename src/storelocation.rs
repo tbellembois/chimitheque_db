@@ -550,6 +550,27 @@ pub fn store_location_has_storages(
     )?)
 }
 
+/// Returns the entity id of the store location, or `None` for an unknown store
+/// location.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn store_location_entity_id(
+    db_connection: &Connection,
+    store_location_id: u64,
+) -> Result<Option<u64>, Box<dyn std::error::Error + Send + Sync>> {
+    match db_connection.query_row(
+        "SELECT entity FROM store_location WHERE store_location_id = ?1",
+        [store_location_id],
+        |row| row.get(0),
+    ) {
+        Ok(entity_id) => Ok(Some(entity_id)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(err) => Err(Box::new(err)),
+    }
+}
+
 /// Returns whether the store location has child store locations. A store
 /// location with children can not be deleted.
 ///

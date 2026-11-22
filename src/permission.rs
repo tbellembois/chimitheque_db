@@ -55,3 +55,31 @@ impl TryFrom<&Row<'_>> for PermissionWrapper {
         }))
     }
 }
+
+/// Returns whether the person can write the `item` (e.g. `storages` or
+/// `entities`) of the entity: a `w` or `all` permission on the item or on all
+/// items, for the entity or for all entities.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn person_can_write_in_entity(
+    db_connection: &rusqlite::Connection,
+    person_id: u64,
+    item: &PermissionItem,
+    entity_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(db_connection.query_row(
+        "SELECT EXISTS (SELECT 1 FROM permission
+           WHERE person = ?1
+             AND permission_item IN (?2, 'all')
+             AND permission_name IN ('w', 'all')
+             AND (permission_entity = ?3 OR permission_entity IS NULL))",
+        (person_id, item.to_string(), entity_id),
+        |row| row.get(0),
+    )?)
+}
+
+#[cfg(test)]
+#[path = "permission_tests.rs"]
+mod permission_tests;

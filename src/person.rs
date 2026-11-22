@@ -476,17 +476,18 @@ fn create_update_person_permissions(
         permission_entity: None,
     });
 
-    // Appending permissions for the managed entities.
-    if let Some(managed_entities) = &person.managed_entities {
-        for entity in managed_entities {
+    // Appending permissions for the managed entities, as stored: managers are
+    // set on the entities, not from the saved person.
+    if let Some(person_id) = person.person_id {
+        for entity_id in managed_entity_ids(db_transaction, person_id)? {
             new_permissions.push(PermissionStruct {
                 person: PersonStruct {
-                    person_id: person.person_id,
+                    person_id: Some(person_id),
                     ..Default::default()
                 },
                 permission_name: PermissionName::All,
                 permission_item: PermissionItem::All,
-                permission_entity: entity.entity_id,
+                permission_entity: Some(entity_id),
             });
         }
     }
@@ -1001,6 +1002,46 @@ pub fn person_email_exists(
         rusqlite::params![person_email, except_person_id],
         |row| row.get(0),
     )?)
+}
+
+/// Returns the ids of the entities the person manages, sorted.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn managed_entity_ids(
+    db_connection: &Connection,
+    person_id: u64,
+) -> Result<Vec<u64>, Box<dyn std::error::Error + Send + Sync>> {
+    let mut stmt = db_connection.prepare(
+        "SELECT entitypeople_entity_id FROM entitypeople WHERE entitypeople_person_id = ?1 ORDER BY 1",
+    )?;
+    let entity_ids = stmt
+        .query_map([person_id], |row| row.get(0))?
+        .collect::<Result<Vec<u64>, _>>()?;
+    Ok(entity_ids)
+}
+
+/// Returns the stored permissions of the person.
+///
+/// # Errors
+///
+/// Returns an error if the query fails or a stored permission is invalid.
+pub fn person_permissions(
+    db_connection: &Connection,
+    person_id: u64,
+) -> Result<Vec<PermissionStruct>, Box<dyn std::error::Error + Send + Sync>> {
+    let mut stmt = db_connection.prepare(
+        "SELECT person_id, person_email, permission_name, permission_item, permission_entity
+         FROM permission JOIN person ON person.person_id = permission.person
+         WHERE permission.person = ?1",
+    )?;
+    let mut rows = stmt.query([person_id])?;
+    let mut permissions = Vec::new();
+    while let Some(row) = rows.next()? {
+        permissions.push(PermissionWrapper::try_from(row)?.0);
+    }
+    Ok(permissions)
 }
 
 /// Lists the ids a person save writes, for

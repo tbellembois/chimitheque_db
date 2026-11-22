@@ -875,4 +875,12 @@ mod tests {
         assert!(!store_location_is_ancestor_of(&db, 3, 2).unwrap());
         assert!(!store_location_is_ancestor_of(&db, 6, 3).unwrap());
     }
+
+    #[test]
+    fn test_store_location_entity_id() {
+        let db = init_test_storelocation();
+
+        assert_eq!(store_location_entity_id(&db, 3).unwrap(), Some(1));
+        assert_eq!(store_location_entity_id(&db, 999).unwrap(), None);
+    }
 }

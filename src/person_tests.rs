@@ -8,6 +8,7 @@ mod tests {
     )]
 
     use crate::person::*;
+    use chimitheque_types::entity::Entity;
     use rusqlite::Connection;
 
     fn init_test_person() -> Connection {
@@ -521,5 +522,54 @@ mod tests {
         // The person being updated keeps their own email.
         assert!(!person_email_exists(&db_connection, "test2@example.com", Some(101)).unwrap());
         assert!(!person_email_exists(&db_connection, "unknown@example.com", None).unwrap());
+    }
+
+    #[test]
+    fn test_managed_entity_ids() {
+        let db = init_test_person();
+
+        assert_eq!(managed_entity_ids(&db, 100).unwrap(), [100]);
+        assert_eq!(managed_entity_ids(&db, 102).unwrap(), [0u64; 0]);
+    }
+
+    #[test]
+    fn test_person_permissions() {
+        let db = init_test_person();
+
+        let permissions = person_permissions(&db, 102).unwrap();
+        assert_eq!(permissions.len(), 1);
+        assert_eq!(permissions[0].permission_name, PermissionName::Read);
+        assert_eq!(permissions[0].permission_item, PermissionItem::Entities);
+        assert_eq!(permissions[0].permission_entity, Some(100));
+        assert_eq!(person_permissions(&db, 103).unwrap().len(), 0);
+    }
+
+    #[test]
+    fn test_create_update_person_keeps_the_stored_managers() {
+        let mut db = init_test_person();
+        let entity = |entity_id| Entity {
+            entity_id: Some(entity_id),
+            ..Default::default()
+        };
+        let is_manager_permission = |permission: &PermissionStruct, entity_id| {
+            permission.permission_name == PermissionName::All
+                && permission.permission_item == PermissionItem::All
+                && permission.permission_entity == Some(entity_id)
+        };
+
+        // Person 100 manages entity 100; the saved person claims entity 101
+        // instead.
+        let person = PersonStruct {
+            person_id: Some(100),
+            person_email: "test1@example.com".to_string(),
+            managed_entities: Some(vec![entity(101)]),
+            ..Default::default()
+        };
+        create_update_person(&mut db, person).unwrap();
+
+        let permissions = person_permissions(&db, 100).unwrap();
+        assert!(permissions.iter().any(|p| is_manager_permission(p, 100)));
+        assert!(!permissions.iter().any(|p| is_manager_permission(p, 101)));
+        assert_eq!(managed_entity_ids(&db, 100).unwrap(), [100]);
     }
 }
