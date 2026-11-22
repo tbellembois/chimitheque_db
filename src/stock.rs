@@ -48,7 +48,7 @@ impl From<&Row<'_>> for StockWrapper {
 /// one line per base unit, e.g. `1.5 L` for `1 L` and `500 mL`.
 ///
 /// The base unit of a unit is its parent, or itself without parent. Archived
-/// storages are not counted.
+/// storages and history rows are not counted.
 ///
 /// Sample request:
 /// ```sql
@@ -154,6 +154,8 @@ pub fn compute_stock(
         ))
         .and_where(Expr::col((Storage::Table, Storage::Product)).eq(product_id))
         .and_where(Expr::col((Storage::Table, Storage::StorageArchive)).eq(false))
+        // Not the history rows: earlier versions of the storages.
+        .and_where(Expr::col((Storage::Table, Storage::Storage)).is_null())
         .group_by_col((StoreLocation::Table, StoreLocation::StoreLocationId))
         .group_by_col((Alias::new("parent_unit"), Unit::UnitId))
         .order_by_expr(

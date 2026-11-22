@@ -100,6 +100,31 @@ mod tests {
     }
 
     #[test]
+    fn test_compute_stock_without_history() {
+        let mut db = init_test_stock(&[]);
+        let mut storage = chimitheque_types::storage::Storage::default();
+        storage.product.product_id = Some(PRODUCT_ID);
+        storage.person.person_id = Some(1);
+        storage.store_location.store_location_id = Some(200);
+        storage.storage_quantity = Some(1.0);
+        storage.unit_quantity = Some(chimitheque_types::unit::Unit {
+            unit_id: Some(1),
+            ..Default::default()
+        });
+
+        // Created, then updated twice: two history rows.
+        let storage_ids =
+            crate::storage::create_update_storage(&mut db, storage.clone(), 1, false).unwrap();
+        storage.storage_id = Some(storage_ids[0]);
+        for quantity in [2.0, 3.0] {
+            storage.storage_quantity = Some(quantity);
+            crate::storage::create_update_storage(&mut db, storage.clone(), 1, false).unwrap();
+        }
+
+        assert_stock(&stock_lines(&db, 1), &[(Some("L"), 3.0)]);
+    }
+
+    #[test]
     fn test_compute_stock_with_several_matching_permissions() {
         let db = init_test_stock(&[(1.0, Some(1), false), (500.0, Some(2), false)]);
         set_permissions(&db, &[("w", "storages", Some(659)), ("r", "all", None)]);
