@@ -11,10 +11,10 @@ PRODUCTS = 1000
 # Product column -> (item column, number of items after generation).
 LINKS = {
     "productclassesofcompounds_product_id": ("productclassesofcompounds_class_of_compound_id", 1206),
-    "producthazardstatements_product_id": ("producthazardstatements_hazard_statement_id", 86),
+    "producthazardstatements_product_id": ("producthazardstatements_hazard_statement_id", 113),
     "productprecautionarystatements_product_id": (
         "productprecautionarystatements_precautionary_statement_id",
-        117,
+        169,
     ),
     "productsupplierrefs_product_id": ("productsupplierrefs_supplier_ref_id", 1000),
     "productsymbols_product_id": ("productsymbols_symbol_id", 9),
