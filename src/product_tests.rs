@@ -636,4 +636,45 @@ mod tests {
         assert!(product_has_storages(&db_connection, with_storages).unwrap());
         assert!(!product_has_storages(&db_connection, without_storages).unwrap());
     }
+
+    #[test]
+    fn test_update_product_returns_link_errors() {
+        // A failing removal of the old links, for each link table.
+        for link_table in [
+            "productsymbols",
+            "producttags",
+            "productsynonyms",
+            "productsupplierrefs",
+            "producthazardstatements",
+            "productprecautionarystatements",
+            "productclassesofcompounds",
+        ] {
+            let mut db = init_test_products();
+            db.execute_batch(&format!(
+                "CREATE TRIGGER fail_delete BEFORE DELETE ON {link_table}
+                 BEGIN SELECT RAISE(ABORT, 'delete failed'); END;"
+            ))
+            .unwrap();
+
+            // Without links: only the removal of the old links runs.
+            let product = ProductStruct {
+                product_id: Some(1),
+                name: NameStruct {
+                    name_label: "THIS IS A NEW PRODUCT".to_string(),
+                    ..Default::default()
+                },
+                person: PersonStruct {
+                    person_id: Some(1),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+
+            let error = create_update_product(&mut db, product).unwrap_err();
+            assert!(
+                error.to_string().contains("delete failed"),
+                "{link_table}: {error}"
+            );
+        }
+    }
 }

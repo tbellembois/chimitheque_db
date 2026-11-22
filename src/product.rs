@@ -2619,7 +2619,7 @@ fn create_update_product_symbols(
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
-    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
+    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params())?;
 
     // Insert query.
     for name_id in product_symbols_ids {
@@ -2678,7 +2678,7 @@ fn create_update_product_tags(
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
-    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
+    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params())?;
 
     // Insert query.
     for name_id in product_tags_ids {
@@ -2740,7 +2740,7 @@ fn create_update_product_synonyms(
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
-    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
+    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params())?;
 
     // Insert query.
     for name_id in product_synonyms_ids {
@@ -2805,7 +2805,7 @@ fn create_update_product_supplier_refs(
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
-    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
+    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params())?;
 
     // Insert query.
     for class_of_compound_id in product_supplier_refs_ids {
@@ -2870,7 +2870,7 @@ fn create_update_product_hazard_statements(
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
-    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
+    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params())?;
 
     // Insert query.
     for class_of_compound_id in product_hazard_statements_ids {
@@ -2935,7 +2935,7 @@ fn create_update_product_precautionary_statements(
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
-    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
+    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params())?;
 
     // Insert query.
     for class_of_compound_id in product_precautionary_statements_ids {
@@ -3002,7 +3002,7 @@ fn create_update_product_classes_of_compound(
     debug!("sql_query: {}", sql_query.as_str());
     debug!("sql_values: {sql_values:?}");
 
-    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params());
+    _ = db_transaction.execute(sql_query.as_str(), &*sql_values.as_params())?;
 
     // Insert query.
     for class_of_compound_id in product_classes_of_compounds_ids {
