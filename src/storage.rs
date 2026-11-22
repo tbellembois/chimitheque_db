@@ -4,6 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use crate::product::csv_text;
 use crate::reference::Reference;
 use chimitheque_types::sortorder::SortOrder;
 use chimitheque_types::{
@@ -324,6 +325,9 @@ fn populate_history_count(
 }
 
 /// Returns the storages matching the filter that the person can see, as CSV.
+///
+/// Every field is exported, except the QR code image and the history
+/// bookkeeping. Dates are in RFC 3339.
 pub fn export_storages(
     db_connection: &Connection,
     filter: RequestFilter,
@@ -346,17 +350,77 @@ pub fn export_storages(
         "UNIT",
         "SUPPLIER",
         "STORE_LOCATION",
+        "ID",
+        "PRODUCT_ID",
+        "PRODUCT_SPECIFICITY",
+        "STORE_LOCATION_FULL_PATH",
+        "ENTITY",
+        "CONCENTRATION",
+        "CONCENTRATION_UNIT",
+        "NUMBER_OF_BAG",
+        "NUMBER_OF_CARTON",
+        "BATCH_NUMBER",
+        "REFERENCE",
+        "ENTRY_DATE",
+        "EXIT_DATE",
+        "OPENING_DATE",
+        "EXPIRATION_DATE",
+        "CREATION_DATE",
+        "MODIFICATION_DATE",
+        "TO_DESTROY",
+        "ARCHIVE",
+        "BORROWER",
+        "BORROWING_COMMENT",
+        "COMMENT",
+        "PERSON",
     ])?;
 
     for storage in storages {
-        wtr.serialize((
+        let date = |date: Option<DateTime<Utc>>| csv_text(date.map(|date| date.to_rfc3339()));
+        let (borrower, borrowing_comment) = match storage.borrowing {
+            Some(borrowing) => (
+                borrowing.borrower.person_email,
+                csv_text(borrowing.borrowing_comment),
+            ),
+            None => (String::new(), String::new()),
+        };
+
+        wtr.write_record([
             storage.product.name.name_label,
-            storage.storage_barecode,
-            storage.storage_quantity,
-            storage.unit_quantity.unwrap_or_default().unit_label,
-            storage.supplier.unwrap_or_default().supplier_label,
+            csv_text(storage.storage_barecode),
+            csv_text(storage.storage_quantity),
+            csv_text(storage.unit_quantity.map(|unit| unit.unit_label)),
+            csv_text(storage.supplier.map(|supplier| supplier.supplier_label)),
             storage.store_location.store_location_name,
-        ))?;
+            csv_text(storage.storage_id),
+            csv_text(storage.product.product_id),
+            csv_text(storage.product.product_specificity),
+            csv_text(storage.store_location.store_location_full_path),
+            csv_text(
+                storage
+                    .store_location
+                    .entity
+                    .map(|entity| entity.entity_name),
+            ),
+            csv_text(storage.storage_concentration),
+            csv_text(storage.unit_concentration.map(|unit| unit.unit_label)),
+            csv_text(storage.storage_number_of_bag),
+            csv_text(storage.storage_number_of_carton),
+            csv_text(storage.storage_batch_number),
+            csv_text(storage.storage_reference),
+            date(storage.storage_entry_date),
+            date(storage.storage_exit_date),
+            date(storage.storage_opening_date),
+            date(storage.storage_expiration_date),
+            storage.storage_creation_date.to_rfc3339(),
+            storage.storage_modification_date.to_rfc3339(),
+            storage.storage_to_destroy.to_string(),
+            storage.storage_archive.to_string(),
+            borrower,
+            borrowing_comment,
+            csv_text(storage.storage_comment),
+            storage.person.person_email,
+        ])?;
     }
     wtr.flush()?;
 

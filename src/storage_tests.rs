@@ -146,4 +146,49 @@ mod tests {
         let error = barecode_parts(&mut db).unwrap_err();
         assert!(error.contains("storage_barecode"), "{error}");
     }
+
+    #[test]
+    fn test_export_storages() {
+        let db = init_test_storages();
+        // A person sees the borrowings they made: make storage 2's one person 1's.
+        db.execute("UPDATE borrowing SET person = 1 WHERE storage = 2", [])
+            .unwrap();
+        let filter = RequestFilter {
+            id: Some(2),
+            ..Default::default()
+        };
+
+        let csv = export_storages(&db, filter, 1).unwrap();
+        let mut reader = csv::Reader::from_reader(csv.as_bytes());
+        let headers = reader.headers().unwrap().clone();
+        let records: Vec<csv::StringRecord> = reader.records().collect::<Result<_, _>>().unwrap();
+        assert_eq!(headers.len(), 29);
+        assert_eq!(records.len(), 1);
+        let value = |column: &str| {
+            let index = headers.iter().position(|header| header == column).unwrap();
+            records[0][index].to_string()
+        };
+
+        assert_eq!(value("ID"), "2");
+        assert_eq!(value("PRODUCT_ID"), "215");
+        assert_eq!(
+            value("BARECODE"),
+            "1aniTlk3bWjZdPH8eQ1Sdu1isVEkhXNsLXVqRpvX3hr6c"
+        );
+        assert_eq!(value("QUANTITY"), "1.5");
+        assert_eq!(value("UNIT"), "X");
+        assert_eq!(value("CONCENTRATION"), "788162.59");
+        assert_eq!(value("CONCENTRATION_UNIT"), "mg");
+        assert_eq!(
+            value("STORE_LOCATION"),
+            "Innovative modular Local Area Network"
+        );
+        assert_eq!(value("ENTITY"), "ENTITY_N-00685");
+        assert_eq!(value("NUMBER_OF_BAG"), "46274");
+        assert_eq!(value("ENTRY_DATE"), "2022-09-06T11:43:28+00:00");
+        assert_eq!(value("ARCHIVE"), "true");
+        assert_eq!(value("TO_DESTROY"), "true");
+        assert_eq!(value("BORROWER"), "lblair@example.net");
+        assert_eq!(value("PERSON"), "ortizandrew@example.org");
+    }
 }

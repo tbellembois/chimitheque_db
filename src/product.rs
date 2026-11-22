@@ -1143,12 +1143,12 @@ fn populate_tags(
 }
 
 /// A CSV value: an optional value, empty when missing.
-fn csv_text<T: ToString>(value: Option<T>) -> String {
+pub(crate) fn csv_text<T: ToString>(value: Option<T>) -> String {
     value.map(|value| value.to_string()).unwrap_or_default()
 }
 
 /// A CSV value: a list, its items separated by `|`.
-fn csv_list<T>(items: Option<Vec<T>>, label: impl Fn(T) -> String) -> String {
+pub(crate) fn csv_list<T>(items: Option<Vec<T>>, label: impl Fn(T) -> String) -> String {
     items
         .unwrap_or_default()
         .into_iter()
