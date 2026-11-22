@@ -387,17 +387,13 @@ mod tests {
     fn test_casbin() {
         let db_connection = init_test_casbin();
 
-        assert!(get_person_by_id(&db_connection, 1).is_ok());
-        assert!(get_person_by_id(&db_connection, 2).is_ok());
-        assert!(get_person_by_id(&db_connection, 6).is_ok());
-        // Newly created person is not yet enrolled in an entity.
-        assert!(get_person_by_id(&db_connection, 8).is_ok());
-
         assert!(match_person_is_in_entity(&db_connection, 5, 1).unwrap());
         assert!(!match_person_is_in_entity(&db_connection, 5, 2).unwrap());
-
-        assert!(match_person_is_in_store_location_entity(&db_connection, 2, 1).unwrap());
-        assert!(!match_person_is_in_store_location_entity(&db_connection, 6, 4).unwrap());
+        // An admin, or a newly created person not yet enrolled in an entity.
+        assert!(match_person_is_in_entity(&db_connection, 1, 2).unwrap());
+        assert!(match_person_is_in_entity(&db_connection, 8, 2).unwrap());
+        // An unknown person is not an orphan.
+        assert!(match_person_is_in_entity(&db_connection, 999, 2).is_err());
 
         assert!(match_product_has_storages(&db_connection, 1).unwrap());
         assert!(match_product_has_storages(&db_connection, 2).unwrap());
@@ -426,5 +422,10 @@ mod tests {
 
         assert!(match_storage_is_in_entity(&db_connection, 1, 1).unwrap());
         assert!(!match_storage_is_in_entity(&db_connection, 1, 3).unwrap());
+
+        // Unknown ids.
+        assert!(!match_storage_is_in_entity(&db_connection, 999, 1).unwrap());
+        assert!(!match_store_location_is_in_entity(&db_connection, 999, 1).unwrap());
+        assert!(!match_person_is_admin(&db_connection, 999).unwrap());
     }
 }

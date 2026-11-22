@@ -1874,6 +1874,29 @@ pub fn unarchive_storage(
     Ok(())
 }
 
+/// Returns the entity id of the store location of the storage, or `None` for
+/// an unknown storage.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn storage_entity_id(
+    db_connection: &Connection,
+    storage_id: u64,
+) -> Result<Option<u64>, Box<dyn std::error::Error + Send + Sync>> {
+    match db_connection.query_row(
+        "SELECT store_location.entity FROM storage
+         JOIN store_location ON store_location.store_location_id = storage.store_location
+         WHERE storage.storage_id = ?1",
+        [storage_id],
+        |row| row.get(0),
+    ) {
+        Ok(entity_id) => Ok(Some(entity_id)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(err) => Err(Box::new(err)),
+    }
+}
+
 /// Lists the ids a storage save writes, for
 /// [`find_missing_reference`](crate::reference::find_missing_reference).
 ///

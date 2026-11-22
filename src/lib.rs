@@ -10,7 +10,6 @@
 pub mod bookmark;
 /// Storage borrowings.
 pub mod borrowing;
-/// Functions used by the casbin permission matcher.
 pub mod casbin;
 /// CAS numbers.
 pub mod casnumber;
