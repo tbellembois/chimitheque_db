@@ -28,6 +28,7 @@ pub mod productsymbols;
 pub mod productsynonyms;
 pub mod producttags;
 pub mod pubchemproduct;
+pub mod reference;
 pub mod searchable;
 pub mod signalword;
 pub mod stock;

@@ -17,6 +17,7 @@ use crate::{
     entitypeople::{Entitypeople, EntitypeopleWrapper},
     permission::{Permission, PermissionWrapper},
     personentities::{Personentities, PersonentitiesWrapper},
+    reference::Reference,
 };
 
 #[allow(clippy::enum_variant_names)]
@@ -982,6 +983,42 @@ pub fn person_email_exists(
         rusqlite::params![person_email, except_person_id],
         |row| row.get(0),
     )?)
+}
+
+/// Lists the ids a person save writes, for
+/// [`find_missing_reference`](crate::reference::find_missing_reference).
+///
+/// Member and managed entities must have an id: a managed entity without one
+/// would be saved as a permission on all entities. A permission may have no
+/// entity, meaning all entities.
+#[must_use]
+pub fn person_references(person: &PersonStruct) -> Vec<Reference> {
+    let mut references = vec![];
+
+    if person.person_id.is_some() {
+        references.push(Reference::new("person", "person", person.person_id));
+    }
+    for entity in person.entities.iter().flatten() {
+        references.push(Reference::new("entities", "entity", entity.entity_id));
+    }
+    for entity in person.managed_entities.iter().flatten() {
+        references.push(Reference::new(
+            "managed_entities",
+            "entity",
+            entity.entity_id,
+        ));
+    }
+    for permission in person.permissions.iter().flatten() {
+        if permission.permission_entity.is_some() {
+            references.push(Reference::new(
+                "permissions",
+                "entity",
+                permission.permission_entity,
+            ));
+        }
+    }
+
+    references
 }
 
 #[cfg(test)]

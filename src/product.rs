@@ -26,6 +26,7 @@ use crate::{
     productsymbols::{Productsymbols, ProductsymbolsWrapper},
     productsynonyms::{Productsynonyms, ProductsynonymsWrapper},
     producttags::{Producttags, ProducttagsWrapper},
+    reference::Reference,
     searchable,
     signalword::SignalWord,
     storage::Storage,
@@ -3022,6 +3023,135 @@ pub fn product_has_storages(
         [product_id],
         |row| row.get(0),
     )?)
+}
+
+/// Lists the ids a product save writes, for
+/// [`find_missing_reference`](crate::reference::find_missing_reference).
+///
+/// An item without an id is created by the save, except symbols, hazard and
+/// precautionary statements, which must have one, as must the producer of a new
+/// producer reference and the supplier of a new supplier reference. The person
+/// and the units are not listed: the person comes from the request headers,
+/// and the units are checked with `Product::validate_unit_types`.
+#[must_use]
+pub fn product_references(product: &ProductStruct) -> Vec<Reference> {
+    let mut references = vec![];
+    let mut push_id = |field, table, id: Option<u64>| {
+        if id.is_some() {
+            references.push(Reference::new(field, table, id));
+        }
+    };
+
+    push_id("product", "product", product.product_id);
+    push_id("name", "name", product.name.name_id);
+    push_id(
+        "cas_number",
+        "cas_number",
+        product
+            .cas_number
+            .as_ref()
+            .and_then(|item| item.cas_number_id),
+    );
+    push_id(
+        "ce_number",
+        "ce_number",
+        product
+            .ce_number
+            .as_ref()
+            .and_then(|item| item.ce_number_id),
+    );
+    push_id(
+        "empirical_formula",
+        "empirical_formula",
+        product
+            .empirical_formula
+            .as_ref()
+            .and_then(|item| item.empirical_formula_id),
+    );
+    push_id(
+        "linear_formula",
+        "linear_formula",
+        product
+            .linear_formula
+            .as_ref()
+            .and_then(|item| item.linear_formula_id),
+    );
+    push_id(
+        "category",
+        "category",
+        product.category.as_ref().and_then(|item| item.category_id),
+    );
+    push_id(
+        "physical_state",
+        "physical_state",
+        product
+            .physical_state
+            .as_ref()
+            .and_then(|item| item.physical_state_id),
+    );
+    push_id(
+        "signal_word",
+        "signal_word",
+        product
+            .signal_word
+            .as_ref()
+            .and_then(|item| item.signal_word_id),
+    );
+    for item in product.classes_of_compound.iter().flatten() {
+        push_id(
+            "classes_of_compound",
+            "class_of_compound",
+            item.class_of_compound_id,
+        );
+    }
+    for item in product.synonyms.iter().flatten() {
+        push_id("synonyms", "name", item.name_id);
+    }
+    for item in product.tags.iter().flatten() {
+        push_id("tags", "tag", item.tag_id);
+    }
+
+    if let Some(producer_ref) = &product.producer_ref {
+        match producer_ref.producer_ref_id {
+            Some(id) => references.push(Reference::new("producer_ref", "producer_ref", Some(id))),
+            None => references.push(Reference::new(
+                "producer",
+                "producer",
+                producer_ref.producer.producer_id,
+            )),
+        }
+    }
+    for supplier_ref in product.supplier_refs.iter().flatten() {
+        match supplier_ref.supplier_ref_id {
+            Some(id) => references.push(Reference::new("supplier_refs", "supplier_ref", Some(id))),
+            None => references.push(Reference::new(
+                "supplier",
+                "supplier",
+                supplier_ref.supplier.supplier_id,
+            )),
+        }
+    }
+
+    // Pick lists: never created by a save.
+    for item in product.symbols.iter().flatten() {
+        references.push(Reference::new("symbols", "symbol", item.symbol_id));
+    }
+    for item in product.hazard_statements.iter().flatten() {
+        references.push(Reference::new(
+            "hazard_statements",
+            "hazard_statement",
+            item.hazard_statement_id,
+        ));
+    }
+    for item in product.precautionary_statements.iter().flatten() {
+        references.push(Reference::new(
+            "precautionary_statements",
+            "precautionary_statement",
+            item.precautionary_statement_id,
+        ));
+    }
+
+    references
 }
 
 #[cfg(test)]

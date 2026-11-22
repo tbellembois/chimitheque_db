@@ -1,4 +1,4 @@
-use crate::{entity::Entity, permission::Permission, storage::Storage};
+use crate::{entity::Entity, permission::Permission, reference::Reference, storage::Storage};
 use chimitheque_types::sortorder::SortOrder;
 use chimitheque_types::{
     entity::Entity as EntityStruct, requestfilter::RequestFilter,
@@ -550,6 +550,41 @@ pub fn store_location_has_children(
         [store_location_id],
         |row| row.get(0),
     )?)
+}
+
+/// Lists the ids a store location save writes, for
+/// [`find_missing_reference`](crate::reference::find_missing_reference).
+///
+/// A new store location must have an entity; an updated one keeps its entity
+/// when none is given. A given entity or parent store location must have an
+/// id.
+#[must_use]
+pub fn store_location_references(store_location: &StoreLocationStruct) -> Vec<Reference> {
+    let mut references = vec![];
+
+    if store_location.store_location_id.is_some() {
+        references.push(Reference::new(
+            "store_location",
+            "store_location",
+            store_location.store_location_id,
+        ));
+    }
+    match &store_location.entity {
+        Some(entity) => references.push(Reference::new("entity", "entity", entity.entity_id)),
+        None if store_location.store_location_id.is_none() => {
+            references.push(Reference::new("entity", "entity", None));
+        }
+        None => {}
+    }
+    if let Some(parent) = &store_location.store_location {
+        references.push(Reference::new(
+            "store_location",
+            "store_location",
+            parent.store_location_id,
+        ));
+    }
+
+    references
 }
 
 #[cfg(test)]

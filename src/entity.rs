@@ -20,6 +20,7 @@ use crate::{
     permission::Permission,
     person::{Person, set_person_manager},
     personentities::Personentities,
+    reference::Reference,
     storelocation::StoreLocation,
 };
 
@@ -591,6 +592,24 @@ pub fn entity_has_store_locations(
         [entity_id],
         |row| row.get(0),
     )?)
+}
+
+/// Lists the ids an entity save writes, for
+/// [`find_missing_reference`](crate::reference::find_missing_reference).
+///
+/// Managers must have an id.
+#[must_use]
+pub fn entity_references(entity: &EntityStruct) -> Vec<Reference> {
+    let mut references = vec![];
+
+    if entity.entity_id.is_some() {
+        references.push(Reference::new("entity", "entity", entity.entity_id));
+    }
+    for manager in entity.managers.iter().flatten() {
+        references.push(Reference::new("managers", "person", manager.person_id));
+    }
+
+    references
 }
 
 #[cfg(test)]

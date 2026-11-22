@@ -4,6 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use crate::reference::Reference;
 use chimitheque_types::sortorder::SortOrder;
 use chimitheque_types::{
     borrowing::Borrowing as BorrowingStruct, entity::Entity as EntityStruct, error::ParseError,
@@ -1822,6 +1823,42 @@ pub fn unarchive_storage(
     _ = db_connection.execute(&sql_query, &*sql_values.as_params())?;
 
     Ok(())
+}
+
+/// Lists the ids a storage save writes, for
+/// [`find_missing_reference`](crate::reference::find_missing_reference).
+///
+/// The product and the store location must have an id, as must the parent
+/// storage, if any. A supplier without an id is created by the save. The
+/// person and the units are not listed: the person comes from the request
+/// headers, and the units are checked with `Storage::validate_unit_types`.
+#[must_use]
+pub fn storage_references(storage: &StorageStruct) -> Vec<Reference> {
+    let mut references = vec![];
+
+    if storage.storage_id.is_some() {
+        references.push(Reference::new("storage", "storage", storage.storage_id));
+    }
+    references.push(Reference::new(
+        "product",
+        "product",
+        storage.product.product_id,
+    ));
+    references.push(Reference::new(
+        "store_location",
+        "store_location",
+        storage.store_location.store_location_id,
+    ));
+    if let Some(supplier) = &storage.supplier
+        && supplier.supplier_id.is_some()
+    {
+        references.push(Reference::new("supplier", "supplier", supplier.supplier_id));
+    }
+    if let Some(parent) = &storage.storage {
+        references.push(Reference::new("storage", "storage", parent.storage_id));
+    }
+
+    references
 }
 
 #[cfg(test)]
