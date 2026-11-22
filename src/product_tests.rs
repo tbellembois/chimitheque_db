@@ -452,6 +452,47 @@ mod tests {
         let result = export_products(&db, filter, person_id);
         debug!("{result:?}");
         assert!(result.is_ok());
+
+        // Every field of product 1, by column.
+        let filter = chimitheque_types::requestfilter::RequestFilter {
+            id: Some(1),
+            ..Default::default()
+        };
+        let csv = export_products(&db, filter, person_id).unwrap();
+        let mut reader = csv::Reader::from_reader(csv.as_bytes());
+        let headers = reader.headers().unwrap().clone();
+        let records: Vec<csv::StringRecord> = reader.records().collect::<Result<_, _>>().unwrap();
+        assert_eq!(headers.len(), 40);
+        assert_eq!(records.len(), 1);
+        let value = |column: &str| {
+            let index = headers.iter().position(|header| header == column).unwrap();
+            records[0][index].to_string()
+        };
+        let sorted_list = |column: &str| {
+            let mut items: Vec<String> = value(column).split('|').map(String::from).collect();
+            items.sort();
+            items
+        };
+
+        assert_eq!(value("ID"), "1");
+        assert_eq!(value("NAME"), "PRODUCT_NAME-00859");
+        assert_eq!(value("PRODUCT_TYPE"), "chem");
+        assert_eq!(value("CATEGORY"), "CATEGORY-00540");
+        assert_eq!(sorted_list("SYMBOLS"), ["GHS01", "GHS02"]);
+        assert_eq!(sorted_list("HAZARD_STATEMENTS"), ["H200", "H201"]);
+        assert_eq!(sorted_list("TAGS"), ["3D Cell Culture", "Acid"]);
+        assert_eq!(
+            sorted_list("SYNONYMS"),
+            ["PRODUCT_NAME-00001", "PRODUCT_NAME-00002"]
+        );
+        assert_eq!(value("MOLECULAR_WEIGHT"), "879234.4");
+        assert_eq!(value("MOLECULAR_WEIGHT_UNIT"), "L");
+        assert_eq!(value("TEMPERATURE"), "279501.13");
+        assert_eq!(value("TEMPERATURE_UNIT"), "mg");
+        assert_eq!(value("CONCENTRATION"), "806309.52");
+        assert_eq!(value("CONCENTRATION_UNIT"), "nM");
+        assert_eq!(value("RESTRICTED"), "true");
+        assert_eq!(value("PERSON"), "wallacemichael@example.com");
     }
 
     #[test]

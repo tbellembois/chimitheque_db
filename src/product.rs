@@ -1142,7 +1142,25 @@ fn populate_tags(
     Ok(())
 }
 
+/// A CSV value: an optional value, empty when missing.
+fn csv_text<T: ToString>(value: Option<T>) -> String {
+    value.map(|value| value.to_string()).unwrap_or_default()
+}
+
+/// A CSV value: a list, its items separated by `|`.
+fn csv_list<T>(items: Option<Vec<T>>, label: impl Fn(T) -> String) -> String {
+    items
+        .unwrap_or_default()
+        .into_iter()
+        .map(label)
+        .collect::<Vec<String>>()
+        .join("|")
+}
+
 /// Returns the products matching the filter that the person can see, as CSV.
+///
+/// Every field is exported, except those depending on the person (bookmark,
+/// storage counts, barcodes, availability). Lists are separated by `|`.
 pub fn export_products(
     db_connection: &Connection,
     filter: RequestFilter,
@@ -1166,28 +1184,107 @@ pub fn export_products(
         "CE_NUMBER",
         "EMPIRICAL_FORMULA",
         "SYMBOLS",
+        "ID",
+        "SYNONYMS",
+        "LINEAR_FORMULA",
+        "INCHI",
+        "INCHIKEY",
+        "CANONICAL_SMILES",
+        "CATEGORY",
+        "PHYSICAL_STATE",
+        "SIGNAL_WORD",
+        "HAZARD_STATEMENTS",
+        "PRECAUTIONARY_STATEMENTS",
+        "CLASSES_OF_COMPOUND",
+        "PRODUCER",
+        "PRODUCER_REF",
+        "SUPPLIER_REFS",
+        "TAGS",
+        "MOLECULAR_WEIGHT",
+        "MOLECULAR_WEIGHT_UNIT",
+        "TEMPERATURE",
+        "TEMPERATURE_UNIT",
+        "CONCENTRATION",
+        "CONCENTRATION_UNIT",
+        "NUMBER_PER_CARTON",
+        "NUMBER_PER_BAG",
+        "RESTRICTED",
+        "RADIOACTIVE",
+        "MSDS",
+        "SHEET",
+        "TWOD_FORMULA",
+        "THREED_FORMULA",
+        "DISPOSAL_COMMENT",
+        "REMARK",
+        "PERSON",
     ])?;
 
     for product in products {
-        let mut product_symbols: String = String::new();
-        if let Some(symbols) = product.symbols {
-            for symbol in symbols {
-                product_symbols += format!("{} ", symbol.symbol_label).as_str();
-            }
-        }
+        let (producer, producer_ref) = match product.producer_ref {
+            Some(producer_ref) => (
+                producer_ref.producer.producer_label,
+                producer_ref.producer_ref_label,
+            ),
+            None => (String::new(), String::new()),
+        };
 
-        wtr.serialize((
+        wtr.write_record([
             product.name.name_label,
-            product.product_specificity,
-            product.product_type,
-            product.cas_number.unwrap_or_default().cas_number_label,
-            product.ce_number.unwrap_or_default().ce_number_label,
-            product
-                .empirical_formula
-                .unwrap_or_default()
-                .empirical_formula_label,
-            product_symbols,
-        ))?;
+            csv_text(product.product_specificity),
+            product.product_type.to_string(),
+            csv_text(product.cas_number.map(|item| item.cas_number_label)),
+            csv_text(product.ce_number.map(|item| item.ce_number_label)),
+            csv_text(
+                product
+                    .empirical_formula
+                    .map(|item| item.empirical_formula_label),
+            ),
+            csv_list(product.symbols, |item| item.symbol_label),
+            csv_text(product.product_id),
+            csv_list(product.synonyms, |item| item.name_label),
+            csv_text(product.linear_formula.map(|item| item.linear_formula_label)),
+            csv_text(product.product_inchi),
+            csv_text(product.product_inchikey),
+            csv_text(product.product_canonical_smiles),
+            csv_text(product.category.map(|item| item.category_label)),
+            csv_text(product.physical_state.map(|item| item.physical_state_label)),
+            csv_text(product.signal_word.map(|item| item.signal_word_label)),
+            csv_list(product.hazard_statements, |item| {
+                item.hazard_statement_reference
+            }),
+            csv_list(product.precautionary_statements, |item| {
+                item.precautionary_statement_reference
+            }),
+            csv_list(product.classes_of_compound, |item| {
+                item.class_of_compound_label
+            }),
+            producer,
+            producer_ref,
+            csv_list(product.supplier_refs, |item| {
+                format!(
+                    "{}:{}",
+                    item.supplier.supplier_label, item.supplier_ref_label
+                )
+            }),
+            csv_list(product.tags, |item| item.tag_label),
+            csv_text(product.product_molecular_weight),
+            csv_text(product.unit_molecular_weight.map(|item| item.unit_label)),
+            csv_text(product.product_temperature),
+            csv_text(product.unit_temperature.map(|item| item.unit_label)),
+            csv_text(product.product_concentration),
+            csv_text(product.unit_concentration.map(|item| item.unit_label)),
+            csv_text(product.product_number_per_carton),
+            csv_text(product.product_number_per_bag),
+            product.product_restricted.to_string(),
+            product.product_radioactive.to_string(),
+            csv_text(product.product_msds),
+            csv_text(product.product_sheet),
+            csv_text(product.product_twod_formula),
+            csv_text(product.product_threed_formula),
+            csv_text(product.product_disposal_comment),
+            csv_text(product.product_remark),
+            product.person.person_email,
+        ])?;
     }
     wtr.flush()?;
 
