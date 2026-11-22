@@ -10038,7 +10038,7 @@ CREATE TABLE IF NOT EXISTS "physical_state" (
 	"physical_state_label"	TEXT NOT NULL UNIQUE CHECK ("physical_state_label" <> ''),
 	PRIMARY KEY("physical_state_id")
 ) STRICT;
-INSERT INTO physical_state VALUES(1,'gaz');
+INSERT INTO physical_state VALUES(1,'gas');
 INSERT INTO physical_state VALUES(2,'liquid');
 INSERT INTO physical_state VALUES(3,'solid');
 CREATE TABLE IF NOT EXISTS "signal_word" (
