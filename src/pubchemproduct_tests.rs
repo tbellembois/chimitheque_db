@@ -55,6 +55,39 @@ mod tests {
     }
 
     #[test]
+    fn test_resolve_pick_lists_combined_and_suffixed_codes() {
+        let db_connection = init_test_pubchemproduct();
+        let pubchem_product = PubchemProduct {
+            name: Some("acetic acid".to_string()),
+            hs: Some(vec!["H350i".to_string(), "H300+H310+H330".to_string()]),
+            ps: Some(vec![
+                "P301+P330+P331".to_string(),
+                "P370+P380+P375[+P378]".to_string(),
+            ]),
+            ..Default::default()
+        };
+        let mut product = pubchem_product.to_product().unwrap();
+
+        resolve_pick_lists(&db_connection, &mut product).unwrap();
+
+        let hazard_statements = product.hazard_statements.unwrap();
+        assert_eq!(
+            hazard_statements[1].hazard_statement_label,
+            "Fatal if swallowed, in contact with skin or if inhaled"
+        );
+        let precautionary_statements = product.precautionary_statements.unwrap();
+        assert_eq!(
+            precautionary_statements[0].precautionary_statement_label,
+            "IF SWALLOWED: Rinse mouth. Do NOT induce vomiting."
+        );
+        assert!(
+            precautionary_statements
+                .iter()
+                .all(|statement| statement.precautionary_statement_id.is_some())
+        );
+    }
+
+    #[test]
     fn test_resolve_pick_lists() {
         let db_connection = init_test_pubchemproduct();
         let mut product = ethanol().to_product().unwrap();

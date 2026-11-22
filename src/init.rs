@@ -506,6 +506,51 @@ mod tests {
     }
 
     #[test]
+    fn ghs_statements_include_combined_and_suffixed_codes() {
+        init_test();
+        let mut db_connection = connect_test();
+        create_tables(&mut db_connection).unwrap();
+        populate_db_with_base_data(&mut db_connection).unwrap();
+
+        let label = |table: &str, reference: &str| -> String {
+            db_connection
+                .query_row(
+                    &format!("SELECT {table}_label FROM {table} WHERE {table}_reference = ?1"),
+                    [reference],
+                    |row| row.get(0),
+                )
+                .unwrap()
+        };
+        assert_eq!(
+            label("hazard_statement", "H350i"),
+            "May cause cancer by inhalation"
+        );
+        assert_eq!(
+            label("hazard_statement", "H300+H310+H330"),
+            "Fatal if swallowed, in contact with skin or if inhaled"
+        );
+        assert_eq!(
+            label("precautionary_statement", "P301+P330+P331"),
+            "IF SWALLOWED: Rinse mouth. Do NOT induce vomiting."
+        );
+        // Not the label of the deleted P235+P410.
+        assert_eq!(
+            label("precautionary_statement", "P410"),
+            "Protect from sunlight."
+        );
+
+        let count = |table: &str| -> i64 {
+            db_connection
+                .query_row(&format!("SELECT count(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap()
+        };
+        assert_eq!(count("hazard_statement"), 112);
+        assert_eq!(count("precautionary_statement"), 169);
+    }
+
+    #[test]
     fn product_type_check_constraint() {
         init_test();
         let mut db_connection = connect_test();

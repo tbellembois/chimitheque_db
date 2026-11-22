@@ -83,7 +83,6 @@ name = "chimitheque_defines"
 version = "0.1.0"
 dependencies = [
  "lazy-regex",
- "once_cell",
 ]
 
 [[package]]
