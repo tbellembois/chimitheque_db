@@ -191,4 +191,35 @@ mod tests {
         assert_eq!(value("BORROWER"), "lblair@example.net");
         assert_eq!(value("PERSON"), "ortizandrew@example.org");
     }
+
+    #[test]
+    fn test_create_update_storage_ignores_the_history_link() {
+        let mut db = init_test_storages();
+        let history_link = |db: &Connection, storage_id: u64| -> Option<u64> {
+            db.query_row(
+                "SELECT storage FROM storage WHERE storage_id = ?1",
+                [storage_id],
+                |row| row.get(0),
+            )
+            .unwrap()
+        };
+
+        // A storage claiming to be a history row of storage 2.
+        let mut storage = StorageStruct::default();
+        storage.product.product_id = Some(656);
+        storage.person.person_id = Some(1);
+        storage.store_location.store_location_id = Some(200);
+        storage.storage = Some(Box::new(StorageStruct {
+            storage_id: Some(2),
+            ..Default::default()
+        }));
+
+        let storage_id = create_update_storage(&mut db, storage.clone(), 1, false).unwrap()[0];
+        assert_eq!(history_link(&db, storage_id), None);
+
+        // Same on update.
+        storage.storage_id = Some(storage_id);
+        create_update_storage(&mut db, storage, 1, false).unwrap();
+        assert_eq!(history_link(&db, storage_id), None);
+    }
 }

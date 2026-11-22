@@ -1463,7 +1463,8 @@ fn compute_storage_barecode_parts(
 ///
 /// Without barcode, one is generated. With `identical_barecode`, the copies
 /// share it; otherwise each copy gets the next number. An update keeps the
-/// previous version in the history.
+/// previous version in the history. The `storage` field (history link) of the
+/// request is ignored.
 pub fn create_update_storage(
     db_connection: &mut Connection,
     mut storage: StorageStruct,
@@ -1766,16 +1767,8 @@ pub fn create_update_storage(
             columns_values.push((Storage::UnitConcentration, Expr::cust("NULL")));
         }
 
-        if let Some(storage) = storage.storage.clone() {
-            let Some(storage_id) = storage.storage_id else {
-                return Err(Box::new(StorageError::MissingStorageId));
-            };
-
-            columns_values.push((Storage::Storage, SimpleExpr::Value(storage_id.into())));
-
-            columns.push(Storage::Storage);
-            values.push(SimpleExpr::Value(storage_id.into()));
-        }
+        // The history link (`storage` column) is not written from the request:
+        // only `create_storage_history` sets it.
 
         let sql_query: String;
         let sql_values: RusqliteValues = RusqliteValues(vec![]);
