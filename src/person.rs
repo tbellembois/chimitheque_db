@@ -1022,6 +1022,24 @@ pub fn managed_entity_ids(
     Ok(entity_ids)
 }
 
+/// Returns the ids of the entities the person is a member of, sorted.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn member_entity_ids(
+    db_connection: &Connection,
+    person_id: u64,
+) -> Result<Vec<u64>, Box<dyn std::error::Error + Send + Sync>> {
+    let mut stmt = db_connection.prepare(
+        "SELECT personentities_entity_id FROM personentities WHERE personentities_person_id = ?1 ORDER BY 1",
+    )?;
+    let entity_ids = stmt
+        .query_map([person_id], |row| row.get(0))?
+        .collect::<Result<Vec<u64>, _>>()?;
+    Ok(entity_ids)
+}
+
 /// Returns the stored permissions of the person.
 ///
 /// # Errors

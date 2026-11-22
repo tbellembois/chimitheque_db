@@ -533,6 +533,14 @@ mod tests {
     }
 
     #[test]
+    fn test_member_entity_ids() {
+        let db = init_test_person();
+
+        assert_eq!(member_entity_ids(&db, 102).unwrap(), [100]);
+        assert_eq!(member_entity_ids(&db, 103).unwrap(), [0u64; 0]);
+    }
+
+    #[test]
     fn test_person_permissions() {
         let db = init_test_person();
 
