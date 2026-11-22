@@ -128,7 +128,7 @@ H303+H313	May be harmful if swallowed or in contact with skin	Acute toxicity, or
 H303+H333	May be harmful if swallowed or if inhaled	Acute toxicity, oral; acute toxicity, inhalation	Category 5			Warning
 H313+H333	May be harmful in contact with skin or if inhaled	Acute toxicity, dermal; acute toxicity, inhalation	Category 5			Warning
 H303+H313+H333	May be harmful if swallowed, in contact with skin or if inhaled	Acute toxicity, oral; acute toxicity, dermal; acute toxicity, inhalation	Category 5			Warning
-H315+319	Cause skin irritation and serious eys irritation	Skin corrosion/irritation and serious eye damage/eye irritation	Category 2, 2A		GHS07	Warning
+H315+H319	Cause skin irritation and serious eye irritation	Skin corrosion/irritation and serious eye damage/eye irritation	Category 2, 2A		GHS07	Warning
 H315+H320	Cause skin and eye irritation	Skin corrosion/irritation and serious eye damage/eye irritation	Category 2, 2B		GHS07	Warning
 
 P101	If medical advice is needed, have product container or label at hand.

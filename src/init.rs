@@ -546,7 +546,7 @@ mod tests {
                 })
                 .unwrap()
         };
-        assert_eq!(count("hazard_statement"), 112);
+        assert_eq!(count("hazard_statement"), 113);
         assert_eq!(count("precautionary_statement"), 169);
     }
 

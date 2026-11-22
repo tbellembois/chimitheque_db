@@ -5512,7 +5512,7 @@ INSERT INTO category VALUES(2,'Cell Culture Medium & supplement');
 INSERT INTO category VALUES(3,'Drug');
 INSERT INTO category VALUES(4,'Cellular Growth Factor');
 INSERT INTO category VALUES(5,'Matrix / Coating');
-INSERT INTO category VALUES(6,'Comercial Kit');
+INSERT INTO category VALUES(6,'Commercial Kit');
 INSERT INTO category VALUES(7,'Fluorescent Probe');
 INSERT INTO category VALUES(8,'Cellular Viability Reagent');
 INSERT INTO category VALUES(9,'Cleaning Product');
@@ -9857,6 +9857,7 @@ INSERT INTO hazard_statement VALUES(109,'May be harmful if swallowed or if inhal
 INSERT INTO hazard_statement VALUES(110,'May be harmful in contact with skin or if inhaled','H313+H333',NULL);
 INSERT INTO hazard_statement VALUES(111,'May be harmful if swallowed, in contact with skin or if inhaled','H303+H313+H333',NULL);
 INSERT INTO hazard_statement VALUES(112,'Cause skin and eye irritation','H315+H320',NULL);
+INSERT INTO hazard_statement VALUES(113,'Cause skin irritation and serious eye irritation','H315+H319',NULL);
 CREATE TABLE IF NOT EXISTS "precautionary_statement" (
 	"precautionary_statement_id"	INTEGER,
 	"precautionary_statement_label"	TEXT NOT NULL CHECK ("precautionary_statement_label" <> ''),
