@@ -933,4 +933,16 @@ mod tests {
         create_update_store_location(&mut db, cold).unwrap();
         assert_eq!(saved(&db, 6).0, None);
     }
+
+    #[test]
+    fn test_update_store_location_moves_to_the_root() {
+        let mut db = init_test_storelocation();
+        create_update_store_location(&mut db, store_location(6, "Cold Storage", Some(1))).unwrap();
+        assert_eq!(saved(&db, 6).1, Some(1));
+
+        create_update_store_location(&mut db, store_location(6, "Cold Storage", None)).unwrap();
+        let (_, parent, full_path) = saved(&db, 6);
+        assert_eq!(parent, None);
+        assert_eq!(full_path.as_deref(), Some("Cold Storage"));
+    }
 }

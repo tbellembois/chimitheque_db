@@ -461,6 +461,8 @@ pub fn create_update_store_location(
         columns.push(StoreLocation::StoreLocation);
         values.push(SimpleExpr::Value(store_location.store_location_id.into()));
     } else {
+        columns_values.push((StoreLocation::StoreLocation, Expr::cust("NULL")));
+
         columns.push(StoreLocation::StoreLocation);
         values.push(Expr::cust("NULL"));
     }
