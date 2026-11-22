@@ -426,7 +426,7 @@ pub fn export_storages(
 
     let inner_buffer_content = wtr.into_inner()?;
 
-    let csv = String::from_utf8(inner_buffer_content.into_inner()?).unwrap();
+    let csv = String::from_utf8(inner_buffer_content.into_inner()?)?;
 
     debug!("csv:{csv:?}");
 
@@ -1228,18 +1228,6 @@ pub fn get_storages(
             },
             |_| {},
         )
-        // Keyset pagination: Use a cursor-based approach for better performance.
-        // .conditions(
-        //     filter.limit.is_some() && filter.offset.is_some(),
-        //     |q| {
-        //         let last_storage_id = filter.offset.unwrap_or(0);
-        //         q.and_where(
-        //             Expr::col((Storage::Table, Storage::StorageId)).gt(last_storage_id as u64),
-        //         );
-        //         q.limit(filter.limit.unwrap() as u64);
-        //     },
-        //     |_| {},
-        // )
         .build_rusqlite(SqliteQueryBuilder);
 
     debug!("select_sql: {}", select_sql.as_str());
@@ -1274,12 +1262,12 @@ fn create_storage_qrcode(
     db_transaction: &Transaction,
     storage_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let mut qrcode = QrCode::new(storage_id.to_string(), QrCodeEcc::Medium).unwrap();
+    let mut qrcode = QrCode::new(storage_id.to_string(), QrCodeEcc::Medium)?;
 
     qrcode.margin(10);
     qrcode.zoom(10);
 
-    let buffer = qrcode.generate(Color::Grayscale(0, 255)).unwrap();
+    let buffer = qrcode.generate(Color::Grayscale(0, 255))?;
 
     let (update_sql, update_values) = Query::update()
         .table(Storage::Table)
@@ -1299,9 +1287,12 @@ fn create_storage_history(
     db_transaction: &Transaction,
     storage: &StorageStruct,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let Some(storage_id) = storage.storage_id else {
+        return Err(Box::new(StorageError::MissingStorageId));
+    };
+
     db_transaction.execute(
-        &format!(
-            "INSERT into storage (storage_creation_date,
+        "INSERT into storage (storage_creation_date,
 		storage_modification_date,
 		storage_entry_date,
 		storage_exit_date,
@@ -1345,10 +1336,8 @@ fn create_storage_history(
 				unit_quantity,
 				unit_concentration,
 				supplier,
-				{} FROM storage WHERE storage_id = (?1)",
-            storage.storage_id.unwrap(),
-        ),
-        [storage.storage_id.unwrap()],
+				?1 FROM storage WHERE storage_id = (?1)",
+        [storage_id],
     )?;
 
     Ok(())
@@ -1378,7 +1367,11 @@ fn compute_storage_barecode_parts(
         return Err(format!("no store location found for id {store_location_id}").into());
     }
 
-    let store_location = store_locations.first().unwrap();
+    let Some(store_location) = store_locations.first() else {
+        return Err(Box::new(StorageError::StoreLocationNotFoundForId(
+            store_location_id,
+        )));
+    };
     let store_location_full_path = store_location
         .clone()
         .store_location_full_path
@@ -1779,8 +1772,7 @@ pub fn create_update_storage(
                 Storage::StorageModificationDate,
                 SimpleExpr::Value(
                     SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap()
+                        .duration_since(UNIX_EPOCH)?
                         .as_secs()
                         .into(),
                 ),
@@ -1791,25 +1783,6 @@ pub fn create_update_storage(
                 .values(columns_values)
                 .and_where(Expr::col(Storage::StorageId).eq(storage_id))
                 .to_string(SqliteQueryBuilder);
-
-            // columns.push(Storage::StorageId);
-            // values.push(SimpleExpr::Value(storage_id.into()));
-
-            // columns.push(Storage::StorageModificationDate);
-            // values.push(SimpleExpr::Value(
-            //     SystemTime::now()
-            //         .duration_since(UNIX_EPOCH)
-            //         .unwrap()
-            //         .as_secs()
-            //         .into(),
-            // ));
-
-            // sql_query = Query::insert()
-            //     .replace()
-            //     .into_table(Storage::Table)
-            //     .columns(columns)
-            //     .values(values)?
-            //     .to_string(SqliteQueryBuilder);
         } else {
             // Insert query.
             // Storage creation date is set by database default.

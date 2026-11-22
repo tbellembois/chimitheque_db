@@ -164,17 +164,15 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
         let product_type_string: String = row.get_unwrap("product_type");
 
         // Extract unit temperature type if some.
-        let unit_temperature_type: UnitType = if maybe_unit_temperature.is_some() {
-            UnitType::from_str(&maybe_unit_temperature_type_string.unwrap())?
-        } else {
-            UnitType::default()
+        let unit_temperature_type: UnitType = match maybe_unit_temperature_type_string {
+            Some(unit_type) => UnitType::from_str(&unit_type)?,
+            None => UnitType::default(),
         };
 
         // Extract unit molecular weight type if some.
-        let unit_molecular_weight_type: UnitType = if maybe_unit_molecular_weight.is_some() {
-            UnitType::from_str(&maybe_unit_molecular_weight_type_string.unwrap())?
-        } else {
-            UnitType::default()
+        let unit_molecular_weight_type: UnitType = match maybe_unit_molecular_weight_type_string {
+            Some(unit_type) => UnitType::from_str(&unit_type)?,
+            None => UnitType::default(),
         };
 
         // Extract unit concentration type if some.
@@ -281,7 +279,6 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             product_sheet: row.get_unwrap("product_sheet"),
             product_number_per_carton: row.get_unwrap("product_number_per_carton"),
             product_number_per_bag: row.get_unwrap("product_number_per_bag"),
-            // product_sl: row.get_unwrap("product_sl"),
             product_hs_cmr: row.get_unwrap("product_hs_cmr"),
             product_has_bookmark: row.get_unwrap("product_has_bookmark"),
             ..Default::default()
@@ -1290,7 +1287,7 @@ pub fn export_products(
 
     let inner_buffer_content = wtr.into_inner()?;
 
-    let csv = String::from_utf8(inner_buffer_content.into_inner()?).unwrap();
+    let csv = String::from_utf8(inner_buffer_content.into_inner()?)?;
 
     debug!("csv:{csv:?}");
 
@@ -1825,16 +1822,7 @@ pub fn get_products(
                 );
                 q.and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id));
             },
-            |q| {
-                q.join(
-                    // bookmark
-                    JoinType::LeftJoin,
-                    Bookmark::Table,
-                    Expr::col((Bookmark::Table, Bookmark::Product))
-                    .equals((Product::Table, Product::ProductId)),
-                );
-                // q.and_where(Expr::col((Bookmark::Table, Bookmark::Person)).eq(person_id));
-            },)
+            |_| {},)
         .conditions(
             filter.tags.is_some(),
             |q| {
@@ -2037,24 +2025,6 @@ pub fn get_products(
             Expr::col((Alias::new("unit_molecular_weight"), Alias::new("unit_type"))),
             Alias::new("unit_molecular_weight_unit_type"),
         )
-        // Double security here:
-        // storage.storage_barecode can be null -> inner COALESCE
-        // regex_capture can also be null -> outer COALESCE
-        // .expr_as(
-        //     Expr::cust(
-        //         r#"
-        //         COALESCE(
-        //             regex_capture(
-        //                 '(?P<product_sl>[_a-zA-Z]+[0-9]+)\.[0-9]+',
-        //                 COALESCE(GROUP_CONCAT(storage.storage_barecode), ''),
-        //                 'product_sl'
-        //             ),
-        //             ''
-        //         )
-        //         "#,
-        //     ),
-        //     Alias::new("product_sl"),
-        // )
         .expr_as(
             Expr::cust("GROUP_CONCAT(DISTINCT hazard_statement.hazard_statement_cmr)"),
             Alias::new("product_hs_cmr"),

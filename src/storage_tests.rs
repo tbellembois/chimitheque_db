@@ -7,19 +7,13 @@ mod tests {
         clippy::too_many_lines
     )]
 
-    use rusqlite::{Batch, Connection, fallible_iterator::FallibleIterator};
+    use rusqlite::Connection;
 
     use crate::storage::*;
     use chimitheque_types::requestfilter::RequestFilter;
 
     fn init_test_storages() -> Connection {
-        let db = crate::test_utils::init_test();
-        let sql = include_str!("resources/test.sql");
-        let mut batch = Batch::new(&db, sql);
-        while let Ok(Some(mut stmt)) = batch.next() {
-            stmt.execute([]).unwrap();
-        }
-        db
+        crate::test_utils::init_test_with_data()
     }
 
     #[test]

@@ -552,10 +552,11 @@ pub fn delete_store_location(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     debug!("store_location_id: {store_location_id}");
 
-    // Workaroud:
-    // Before the "FOREIGN KEY("storage") REFERENCES "storage"("storage_id") ON DELETE CASCADE," on the storage table
-    // history storage cards where not deleted properly.
-    // We need to delete them before deleting the store location to avoid a foreign key constraint violation.
+    // History rows keep the store location of their version: a storage moved
+    // to another store location leaves history rows here. They would block the
+    // deletion (foreign key), so they are deleted first. The current storages
+    // are checked by the handler: a store location with storages can not be
+    // deleted.
     let (sql_query, sql_values) = Query::delete()
         .from_table(Storage::Table)
         .and_where(Expr::col(Storage::StoreLocation).eq(store_location_id))

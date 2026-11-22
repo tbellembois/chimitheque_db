@@ -3,7 +3,7 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use crate::stock::compute_stock;
-    use rusqlite::{Batch, Connection, fallible_iterator::FallibleIterator};
+    use rusqlite::Connection;
 
     // Product 656 is stored in store location 200, of entity 659.
     const PRODUCT_ID: u64 = 656;
@@ -11,11 +11,7 @@ mod tests {
     // The test data with only the given storages of product 656, as
     // (quantity, unit id, archived) tuples, in store location 200.
     fn init_test_stock(storages: &[(f64, Option<u64>, bool)]) -> Connection {
-        let db = crate::test_utils::init_test();
-        let mut batch = Batch::new(&db, include_str!("resources/test.sql"));
-        while let Ok(Some(mut stmt)) = batch.next() {
-            stmt.execute([]).unwrap();
-        }
+        let db = crate::test_utils::init_test_with_data();
 
         db.execute("DELETE FROM storage WHERE product = ?1", [PRODUCT_ID])
             .unwrap();

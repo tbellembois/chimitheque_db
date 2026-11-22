@@ -28,3 +28,18 @@ pub fn init_test() -> Connection {
 
     db_connection
 }
+
+/// Returns `init_test` with the test data of `resources/test.sql`.
+///
+/// # Panics
+///
+/// Panics if a statement of the test data fails.
+#[cfg(test)]
+#[must_use]
+pub fn init_test_with_data() -> Connection {
+    let db_connection = init_test();
+    db_connection
+        .execute_batch(include_str!("resources/test.sql"))
+        .unwrap();
+    db_connection
+}

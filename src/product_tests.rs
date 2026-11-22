@@ -20,7 +20,7 @@ mod tests {
         supplierref::SupplierRef as SupplierRefStruct, symbol::Symbol as SymbolStruct,
         tag::Tag as TagStruct, unittype::UnitType,
     };
-    use rusqlite::{Batch, Connection, fallible_iterator::FallibleIterator};
+    use rusqlite::Connection;
     use std::io::Write;
 
     fn init_test_products() -> Connection {
@@ -37,14 +37,7 @@ mod tests {
             })
             .try_init();
 
-        let db = crate::test_utils::init_test();
-        let sql = include_str!("resources/test.sql");
-        let mut batch = Batch::new(&db, sql);
-        while let Ok(Some(mut stmt)) = batch.next() {
-            stmt.execute([]).unwrap();
-        }
-
-        db
+        crate::test_utils::init_test_with_data()
     }
 
     /// Labels of the populated items, sorted: the populate queries have no

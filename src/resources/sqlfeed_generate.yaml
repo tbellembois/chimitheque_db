@@ -1,7 +1,9 @@
     # cp chimitheque_base_data.sqlite test.sqlite \
     #&& sqlseed fill --seed 123 --config sqlfeed_generate.yaml \
     #&& sqlite3 test.sqlite .dump > test.sql \
-    #&& sed -i '/^BEGIN TRANSACTION;$/d; /^COMMIT;$/d' test.sql
+    #&& sed -i '/^BEGIN TRANSACTION;$/d; /^COMMIT;$/d; s/^CREATE \(UNIQUE \)\?INDEX idx_/CREATE \1INDEX IF NOT EXISTS idx_/' test.sql
+    # The tests create the tables and indexes first, then load test.sql: its
+    # CREATE statements must be idempotent.
     # Generated data must satisfy the constraints of shema.sql (CHECK, UNIQUE,
     # composite primary keys). Composite uniqueness relies on the "coverage" FK
     # strategy on the first column: each table generates 1000 rows (the default
