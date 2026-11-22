@@ -200,7 +200,6 @@ CREATE TABLE IF NOT EXISTS "product" (
 	"product_twod_formula"	TEXT,
 	"product_disposal_comment"	TEXT,
 	"product_remark"	TEXT,
-	"product_qrcode"	TEXT,
 	"product_sheet"	TEXT,
 	"product_concentration"	REAL CHECK ("product_concentration" >= 0),
 	"product_temperature"	REAL,
@@ -216,6 +215,7 @@ CREATE TABLE IF NOT EXISTS "product" (
 	"producer_ref"	INTEGER,
 	"unit_molecular_weight"	INTEGER,
 	"unit_temperature"	INTEGER,
+	"unit_concentration"	INTEGER,
 	"category"	INTEGER,
 	"product_number_per_carton"	INTEGER CHECK ("product_number_per_carton" > 0),
 	"product_number_per_bag"	INTEGER CHECK ("product_number_per_bag" > 0),
@@ -231,7 +231,8 @@ CREATE TABLE IF NOT EXISTS "product" (
 	FOREIGN KEY("producer_ref") REFERENCES "producer_ref"("producer_ref_id"),
 	FOREIGN KEY("signal_word") REFERENCES "signal_word"("signal_word_id"),
 	FOREIGN KEY("unit_molecular_weight") REFERENCES "unit"("unit_id"),
-	FOREIGN KEY("unit_temperature") REFERENCES "unit"("unit_id")
+	FOREIGN KEY("unit_temperature") REFERENCES "unit"("unit_id"),
+	FOREIGN KEY("unit_concentration") REFERENCES "unit"("unit_id")
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS "store_location" (
@@ -383,6 +384,7 @@ CREATE INDEX IF NOT EXISTS idx_product_producer_ref ON product (producer_ref);
 CREATE INDEX IF NOT EXISTS idx_product_signal_word ON product (signal_word);
 CREATE INDEX IF NOT EXISTS idx_product_unit_temperature ON product (unit_temperature);
 CREATE INDEX IF NOT EXISTS idx_product_unit_molecular_weight ON product (unit_molecular_weight);
+CREATE INDEX IF NOT EXISTS idx_product_unit_concentration ON product (unit_concentration);
 
 -- products one to many: the primary key covers (product, item), these cover (item, product)
 CREATE INDEX IF NOT EXISTS idx_producttags_tag_reverse ON producttags (producttags_tag_id, producttags_product_id);

@@ -677,4 +677,42 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_create_update_product_concentration() {
+        let mut db = init_test_products();
+        let get_product = |db: &Connection| {
+            let filter = chimitheque_types::requestfilter::RequestFilter {
+                id: Some(1),
+                ..Default::default()
+            };
+            get_products(db, filter, 1).unwrap().0.remove(0)
+        };
+
+        // 1.5 mg/L.
+        let mut product = get_product(&db);
+        product.product_concentration = Some(1.5);
+        product.unit_concentration = Some(UnitStruct {
+            unit_id: Some(21),
+            ..Default::default()
+        });
+        create_update_product(&mut db, product).unwrap();
+
+        let product = get_product(&db);
+        assert_eq!(product.product_concentration, Some(1.5));
+        let unit = product.unit_concentration.clone().unwrap();
+        assert_eq!(unit.unit_id, Some(21));
+        assert_eq!(unit.unit_label, "mg/L");
+        assert_eq!(unit.unit_type, UnitType::Concentration);
+
+        // Cleared.
+        let mut product = product;
+        product.product_concentration = None;
+        product.unit_concentration = None;
+        create_update_product(&mut db, product).unwrap();
+
+        let product = get_product(&db);
+        assert_eq!(product.product_concentration, None);
+        assert!(product.unit_concentration.is_none());
+    }
 }

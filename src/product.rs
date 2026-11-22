@@ -101,6 +101,8 @@ pub enum Product {
     ProductRemark,
     /// The `product_temperature` column.
     ProductTemperature,
+    /// The `product_concentration` column.
+    ProductConcentration,
     /// The `product_sheet` column.
     ProductSheet,
     /// The `product_number_per_carton` column.
@@ -127,6 +129,8 @@ pub enum Product {
     UnitMolecularWeight,
     /// The `unit_temperature` column.
     UnitTemperature,
+    /// The `unit_concentration` column.
+    UnitConcentration,
     /// The `producer_ref` column.
     ProducerRef,
 }
@@ -143,6 +147,8 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             row.get_unwrap("unit_temperature_unit_type");
         let maybe_unit_molecular_weight_type_string: Option<String> =
             row.get_unwrap("unit_molecular_weight_unit_type");
+        let maybe_unit_concentration_type_string: Option<String> =
+            row.get_unwrap("unit_concentration_unit_type");
         let maybe_cas_number: Option<u64> = row.get_unwrap("cas_number_id");
         let maybe_ce_number: Option<u64> = row.get_unwrap("ce_number_id");
         let maybe_empirical_formula: Option<u64> = row.get_unwrap("empirical_formula_id");
@@ -154,6 +160,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
         let maybe_unit_temperature: Option<u64> = row.get_unwrap("unit_temperature_unit_id");
         let maybe_unit_molecular_weight: Option<u64> =
             row.get_unwrap("unit_molecular_weight_unit_id");
+        let maybe_unit_concentration: Option<u64> = row.get_unwrap("unit_concentration_unit_id");
         let product_type_string: String = row.get_unwrap("product_type");
 
         // Extract unit temperature type if some.
@@ -168,6 +175,12 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             UnitType::from_str(&maybe_unit_molecular_weight_type_string.unwrap())?
         } else {
             UnitType::default()
+        };
+
+        // Extract unit concentration type if some.
+        let unit_concentration_type: UnitType = match maybe_unit_concentration_type_string {
+            Some(unit_type) => UnitType::from_str(&unit_type)?,
+            None => UnitType::default(),
         };
 
         Ok(Self(ProductStruct {
@@ -242,6 +255,13 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
                 unit_type: unit_molecular_weight_type,
                 unit: Option::default(),
             }),
+            unit_concentration: maybe_unit_concentration.map(|_| UnitStruct {
+                unit_id: row.get_unwrap("unit_concentration_unit_id"),
+                unit_label: row.get_unwrap("unit_concentration_unit_label"),
+                unit_multiplier: row.get_unwrap("unit_concentration_unit_multiplier"),
+                unit_type: unit_concentration_type,
+                unit: Option::default(),
+            }),
 
             product_type: ProductType::from_str(&product_type_string)?,
             product_inchi: row.get_unwrap("product_inchi"),
@@ -257,6 +277,7 @@ impl TryFrom<&Row<'_>> for ProductWrapper {
             product_remark: row.get_unwrap("product_remark"),
             product_molecular_weight: row.get_unwrap("product_molecular_weight"),
             product_temperature: row.get_unwrap("product_temperature"),
+            product_concentration: row.get_unwrap("product_concentration"),
             product_sheet: row.get_unwrap("product_sheet"),
             product_number_per_carton: row.get_unwrap("product_number_per_carton"),
             product_number_per_bag: row.get_unwrap("product_number_per_bag"),
@@ -1400,6 +1421,16 @@ pub fn get_products(
                 .equals((Alias::new("unit_temperature"), Unit::UnitId)),
         )
         //
+        // unit concentration
+        //
+        .join_as(
+            JoinType::LeftJoin,
+            Unit::Table,
+            Alias::new("unit_concentration"),
+            Expr::col((Product::Table, Product::UnitConcentration))
+                .equals((Alias::new("unit_concentration"), Unit::UnitId)),
+        )
+        //
         // unit molecular weight
         //
         .join_as(
@@ -1782,6 +1813,7 @@ pub fn get_products(
             Product::ProductRemark,
             Product::ProductMolecularWeight,
             Product::ProductTemperature,
+            Product::ProductConcentration,
             Product::ProductSheet,
             Product::ProductNumberPerBag,
             Product::ProductNumberPerCarton,
@@ -1866,6 +1898,25 @@ pub fn get_products(
         .expr_as(
             Expr::col((Alias::new("unit_temperature"), Alias::new("unit_type"))),
             Alias::new("unit_temperature_unit_type"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("unit_concentration"), Alias::new("unit_id"))),
+            Alias::new("unit_concentration_unit_id"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("unit_concentration"), Alias::new("unit_label"))),
+            Alias::new("unit_concentration_unit_label"),
+        )
+        .expr_as(
+            Expr::col((
+                Alias::new("unit_concentration"),
+                Alias::new("unit_multiplier"),
+            )),
+            Alias::new("unit_concentration_unit_multiplier"),
+        )
+        .expr_as(
+            Expr::col((Alias::new("unit_concentration"), Alias::new("unit_type"))),
+            Alias::new("unit_concentration_unit_type"),
         )
         .expr_as(
             Expr::col((Alias::new("unit_molecular_weight"), Alias::new("unit_id"))),
@@ -2388,6 +2439,18 @@ pub fn create_update_product(
         columns_values.push((Product::ProductMolecularWeight, Expr::cust("NULL")));
     }
 
+    if let Some(concentration) = &product.product_concentration {
+        columns_values.push((
+            Product::ProductConcentration,
+            concentration.to_owned().into(),
+        ));
+
+        columns.push(Product::ProductConcentration);
+        values.push(SimpleExpr::Value(concentration.to_owned().into()));
+    } else {
+        columns_values.push((Product::ProductConcentration, Expr::cust("NULL")));
+    }
+
     if let Some(temperature) = &product.product_temperature {
         columns_values.push((Product::ProductTemperature, temperature.to_owned().into()));
 
@@ -2513,6 +2576,18 @@ pub fn create_update_product(
         values.push(SimpleExpr::Value(signal_word.signal_word_id.into()));
     } else {
         columns_values.push((Product::SignalWord, Expr::cust("NULL")));
+    }
+
+    if let Some(unit_concentration) = &product.unit_concentration {
+        columns_values.push((
+            Product::UnitConcentration,
+            unit_concentration.unit_id.into(),
+        ));
+
+        columns.push(Product::UnitConcentration);
+        values.push(SimpleExpr::Value(unit_concentration.unit_id.into()));
+    } else {
+        columns_values.push((Product::UnitConcentration, Expr::cust("NULL")));
     }
 
     if let Some(unit_temperature) = &product.unit_temperature {
