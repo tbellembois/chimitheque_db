@@ -4,17 +4,25 @@ use rusqlite::Row;
 use sea_query::Iden;
 use serde::Serialize;
 
+/// Table and column names of the `productsupplierrefs` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Productsupplierrefs {
+    /// The table.
     Table,
+    /// The `productsupplierrefs_product_id` column.
     ProductsupplierrefsProductId,
+    /// The `productsupplierrefs_supplier_ref_id` column.
     ProductsupplierrefsSupplierRefId,
+    /// The `productsupplierrefs_supplier_ref_label` column.
     ProductsupplierrefsSupplierRefLabel,
+    /// The `productsupplierrefs_supplier_id` column.
     ProductsupplierrefsSupplierId,
+    /// The `productsupplierrefs_supplier_label` column.
     ProductsupplierrefsSupplierLabel,
 }
 
+/// A productsupplierrefs read from a database row.
 #[derive(Debug, Serialize, Default)]
 pub struct ProductsupplierrefsWrapper(pub ProductsupplierrefsStruct);
 

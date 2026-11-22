@@ -8,16 +8,23 @@ use sea_query::Iden;
 use serde::Serialize;
 use std::str::FromStr;
 
+/// Table and column names of the `permission` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Permission {
+    /// The table.
     Table,
+    /// The `person` column.
     Person,
+    /// The `permission_entity` column.
     PermissionEntity,
+    /// The `permission_name` column.
     PermissionName,
+    /// The `permission_item` column.
     PermissionItem,
 }
 
+/// A permission read from a database row.
 #[derive(Debug, Serialize, Default)]
 pub struct PermissionWrapper(pub PermissionStruct);
 

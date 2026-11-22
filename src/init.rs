@@ -15,6 +15,9 @@ use std::path::Path;
 
 use crate::searchable::{create_update, get_many};
 
+/// Opens an in-memory database with the regex extension, for the tests.
+///
+/// The extension is read from the `SQLITE_EXTENSION_DIR` directory.
 #[must_use]
 pub fn connect_test() -> Connection {
     let sql_extension_dir = env::var("SQLITE_EXTENSION_DIR")
@@ -31,6 +34,10 @@ pub fn connect_test() -> Connection {
     db_connection
 }
 
+/// Opens or creates the database at `db_path`, loads the regex extension and
+/// sets up the connection (WAL mode, foreign keys).
+///
+/// The extension is read from the `SQLITE_EXTENSION_DIR` directory.
 pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
     let sql_extension_dir = env::var("SQLITE_EXTENSION_DIR")
         .expect("Missing SQLITE_EXTENSION_DIR environment variable.");
@@ -96,6 +103,10 @@ pub fn connect(db_path: &str) -> Result<Connection, rusqlite::Error> {
     Ok(db_connection)
 }
 
+/// Sanitizes and validates the stored CAS numbers, CE numbers, names and
+/// formulas, and saves the sanitized values.
+///
+/// With `skip_errors`, an invalid value is logged and the next one is processed.
 pub fn sanitize(
     db_connection: &mut Connection,
     skip_errors: bool,
@@ -298,6 +309,7 @@ pub fn sanitize(
     Ok(())
 }
 
+/// Creates the tables, if they do not exist.
 pub fn create_tables(
     db_connection: &mut Connection,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -320,6 +332,8 @@ pub fn create_tables(
     Ok(())
 }
 
+/// Inserts the reference data of a new database: tags, categories, units,
+/// symbols, GHS statements, CMR substances... Existing rows are kept.
 pub fn populate_db_with_base_data(
     db_connection: &mut Connection,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

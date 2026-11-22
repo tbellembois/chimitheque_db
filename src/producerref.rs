@@ -13,15 +13,21 @@ use serde::Serialize;
 
 use crate::producer::Producer;
 
+/// Table and column names of the `producer_ref` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum ProducerRef {
+    /// The table.
     Table,
+    /// The `producer_ref_id` column.
     ProducerRefId,
+    /// The `producer_ref_label` column.
     ProducerRefLabel,
+    /// The `producer` column.
     Producer,
 }
 
+/// A producer ref read from a database row.
 #[derive(Debug, Serialize)]
 pub struct ProducerRefWrapper(ProducerRefStruct);
 
@@ -42,6 +48,8 @@ impl From<&Row<'_>> for ProducerRefWrapper {
     }
 }
 
+/// Returns the producer references matching the filter, and their total count
+/// without limit and offset.
 pub fn get_producer_refs(
     db_connection: &Connection,
     filter: &RequestFilter,
@@ -157,6 +165,8 @@ pub fn get_producer_refs(
     Ok((producer_refs, count))
 }
 
+/// Creates the producer reference, or updates it if it has an id. Returns its
+/// id.
 pub fn create_update_producer_ref(
     db_connection: &Connection,
     producer_ref: &ProducerRefStruct,

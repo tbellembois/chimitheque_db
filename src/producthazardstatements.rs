@@ -4,14 +4,19 @@ use rusqlite::Row;
 use sea_query::Iden;
 use serde::Serialize;
 
+/// Table and column names of the `producthazardstatements` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Producthazardstatements {
+    /// The table.
     Table,
+    /// The `producthazardstatements_product_id` column.
     ProducthazardstatementsProductId,
+    /// The `producthazardstatements_hazard_statement_id` column.
     ProducthazardstatementsHazardStatementId,
 }
 
+/// A producthazardstatements read from a database row.
 #[derive(Debug, Serialize, Default)]
 pub struct ProducthazardstatementsWrapper(pub ProducthazardstatementsStruct);
 

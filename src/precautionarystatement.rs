@@ -8,15 +8,21 @@ use sea_query::{Expr, ExprTrait, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
+/// Table and column names of the `precautionary_statement` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum PrecautionaryStatement {
+    /// The table.
     Table,
+    /// The `precautionary_statement_id` column.
     PrecautionaryStatementId,
+    /// The `precautionary_statement_label` column.
     PrecautionaryStatementLabel,
+    /// The `precautionary_statement_reference` column.
     PrecautionaryStatementReference,
 }
 
+/// A precautionary statement read from a database row.
 #[derive(Debug, Serialize, Default)]
 pub struct PrecautionaryStatementWrapper(pub PrecautionaryStatementStruct);
 
@@ -34,6 +40,8 @@ impl From<&Row<'_>> for PrecautionaryStatementWrapper {
     }
 }
 
+/// Returns the precautionary statement with the reference `s`, e.g. `P301+P310`,
+/// or `None`.
 pub fn parse(
     db_connection: &Connection,
     s: &str,
@@ -73,6 +81,8 @@ pub fn parse(
     }
 }
 
+/// Returns the precautionary statements matching the filter, and their total
+/// count without limit and offset. `search` matches the reference.
 pub fn get_precautionary_statements(
     db_connection: &Connection,
     filter: &RequestFilter,

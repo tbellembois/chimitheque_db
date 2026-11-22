@@ -17,10 +17,15 @@ use std::fmt::{Display, Formatter};
 /// A pick-list label of an imported product that is not in the database.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ImportPubchemProductError {
+    /// A symbol not in the database.
     UnknownSymbol(String),
+    /// A hazard statement not in the database.
     UnknownHazardstatement(String),
+    /// A precautionary statement not in the database.
     UnknownPrecautionarystatement(String),
+    /// A signal word not in the database.
     UnknownSignalword(String),
+    /// A molecular weight unit not in the database.
     UnknownMolecularWeightUnit(String),
 }
 

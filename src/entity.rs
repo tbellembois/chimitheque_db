@@ -24,9 +24,12 @@ use crate::{
     storelocation::StoreLocation,
 };
 
+/// Why an entity can not be saved.
 #[derive(Debug, PartialEq, Eq)]
 pub enum EntityError {
+    /// The entity has no id.
     MissingEntityId,
+    /// A manager has no id.
     MissingPersonId,
 }
 
@@ -41,15 +44,21 @@ impl Display for EntityError {
 
 impl std::error::Error for EntityError {}
 
+/// Table and column names of the `entity` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Entity {
+    /// The table.
     Table,
+    /// The `entity_id` column.
     EntityId,
+    /// The `entity_name` column.
     EntityName,
+    /// The `entity_description` column.
     EntityDescription,
 }
 
+/// A entity read from a database row.
 #[derive(Debug, Serialize)]
 pub struct EntityWrapper(pub EntityStruct);
 

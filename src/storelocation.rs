@@ -13,19 +13,29 @@ use sea_query::{
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
+/// Table and column names of the `store_location` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum StoreLocation {
+    /// The table.
     Table,
+    /// The `store_location_id` column.
     StoreLocationId,
+    /// The `store_location_name` column.
     StoreLocationName,
+    /// The `store_location_can_store` column.
     StoreLocationCanStore,
+    /// The `store_location_color` column.
     StoreLocationColor,
+    /// The `store_location_full_path` column.
     StoreLocationFullPath,
+    /// The `entity` column.
     Entity,
+    /// The `store_location` column.
     StoreLocation,
 }
 
+/// A store location read from a database row.
 #[derive(Debug, Serialize)]
 pub struct StoreLocationWrapper(pub StoreLocationStruct);
 
@@ -78,6 +88,8 @@ impl From<&Row<'_>> for StoreLocationWrapper {
     }
 }
 
+/// Returns the store locations matching the filter that the person can see,
+/// and their total count without limit and offset.
 pub fn get_store_locations(
     db_connection: &Connection,
     filter: &RequestFilter,
@@ -374,6 +386,8 @@ fn populate_store_location_full_path(
     Ok(())
 }
 
+/// Creates the store location, or updates it if it has an id, with its full
+/// path. Returns its id.
 pub fn create_update_store_location(
     db_connection: &mut Connection,
     mut store_location: StoreLocationStruct,
@@ -483,6 +497,7 @@ pub fn create_update_store_location(
     Ok(last_insert_update_id)
 }
 
+/// Deletes the store location.
 pub fn delete_store_location(
     db_connection: &Connection,
     store_location_id: u64,

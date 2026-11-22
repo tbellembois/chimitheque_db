@@ -4,14 +4,19 @@ use sea_query::Iden;
 use serde::Serialize;
 
 // Entity managers.
+/// Table and column names of the `entitypeople` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Entitypeople {
+    /// The table.
     Table,
+    /// The `entitypeople_entity_id` column.
     EntitypeopleEntityId,
+    /// The `entitypeople_person_id` column.
     EntitypeoplePersonId,
 }
 
+/// A entitypeople read from a database row.
 #[derive(Debug, Serialize, Default)]
 pub struct EntitypeopleWrapper(pub EntitypeopleStruct);
 

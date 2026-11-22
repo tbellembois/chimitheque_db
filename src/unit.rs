@@ -8,17 +8,25 @@ use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 use std::str::FromStr;
 
+/// Table and column names of the `unit` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Unit {
+    /// The table.
     Table,
+    /// The `unit_id` column.
     UnitId,
+    /// The `unit_label` column.
     UnitLabel,
+    /// The `unit_multiplier` column.
     UnitMultiplier,
+    /// The `unit_type` column.
     UnitType,
+    /// The `unit` column.
     Unit,
 }
 
+/// A unit read from a database row.
 #[derive(Debug, Serialize)]
 pub struct UnitWrapper(pub UnitStruct);
 
@@ -53,6 +61,7 @@ impl TryFrom<&Row<'_>> for UnitWrapper {
     }
 }
 
+/// Returns the unit with the label `s`, e.g. `mL`, or `None`.
 pub fn parse(
     db_connection: &Connection,
     s: &str,
@@ -110,6 +119,8 @@ pub fn parse(
     }
 }
 
+/// Returns the units matching the filter, and their total count without limit
+/// and offset.
 pub fn get_units(
     db_connection: &Connection,
     filter: RequestFilter,

@@ -14,15 +14,24 @@ use crate::{
     storage::get_storages, storelocation::get_store_locations,
 };
 
+/// Why a casbin matcher function can not answer.
 #[derive(Debug, PartialEq, Eq)]
 pub enum CasbinError {
+    /// No person found for the id.
     MissingPerson,
+    /// No entity found for the id.
     MissingEntity,
+    /// An entity has no id.
     MissingEntityId,
+    /// A store location has no id.
     MissingStoreLocationId,
+    /// No store location found for the id.
     MissingStoreLocation,
+    /// No storage found for the id.
     MissingStorage,
+    /// A storage has no id.
     MissingStorageId,
+    /// No product found for the id.
     MissingProduct,
 }
 

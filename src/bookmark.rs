@@ -6,15 +6,21 @@ use sea_query::{Expr, ExprTrait, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
+/// Table and column names of the `bookmark` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Bookmark {
+    /// The table.
     Table,
+    /// The `bookmark_id` column.
     BookmarkId,
+    /// The `person` column.
     Person,
+    /// The `product` column.
     Product,
 }
 
+/// A bookmark read from a database row.
 #[derive(Debug, Serialize, Default)]
 pub struct BookmarkWrapper(pub BookmarkStruct);
 

@@ -11,6 +11,7 @@ use std::sync::Once;
 
 static INIT: Once = Once::new();
 
+/// Returns an in-memory database with the tables, for the tests.
 #[must_use]
 pub fn init_test() -> Connection {
     INIT.call_once(|| {

@@ -56,17 +56,27 @@ use crate::{
     unit::Unit,
 };
 
+/// Why a storage can not be saved.
 #[derive(Debug, PartialEq, Eq)]
 pub enum StorageError {
+    /// The product has no id.
     MissingProductId,
+    /// The person has no id.
     MissingPersonId,
+    /// The store location has no id.
     MissingStoreLocationId,
+    /// The entity of the store location has no id.
     MissingEntityId,
+    /// The store location has no entity.
     MissingEntity,
+    /// A unit has no id.
     MissingUnitId,
+    /// The storage has no id.
     MissingStorageId,
+    /// The supplier has no id.
     MissingSupplierId,
 
+    /// No store location found for the id.
     StoreLocationNotFoundForId(u64),
 }
 
@@ -90,38 +100,66 @@ impl Display for StorageError {
 
 impl std::error::Error for StorageError {}
 
+/// Table and column names of the `storage` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Storage {
+    /// The table.
     Table,
+    /// The `storage_id` column.
     StorageId,
+    /// The `storage_creation_date` column.
     StorageCreationDate,
+    /// The `storage_modification_date` column.
     StorageModificationDate,
+    /// The `storage_entry_date` column.
     StorageEntryDate,
+    /// The `storage_exit_date` column.
     StorageExitDate,
+    /// The `storage_opening_date` column.
     StorageOpeningDate,
+    /// The `storage_expiration_date` column.
     StorageExpirationDate,
+    /// The `storage_quantity` column.
     StorageQuantity,
+    /// The `storage_barecode` column.
     StorageBarecode,
+    /// The `storage_comment` column.
     StorageComment,
+    /// The `storage_reference` column.
     StorageReference,
+    /// The `storage_batch_number` column.
     StorageBatchNumber,
+    /// The `storage_to_destroy` column.
     StorageToDestroy,
+    /// The `storage_archive` column.
     StorageArchive,
+    /// The `storage_qrcode` column.
     StorageQrcode,
+    /// The `storage_concentration` column.
     StorageConcentration,
     // StorageNumberOfUnit,
+    /// The `storage_number_of_bag` column.
     StorageNumberOfBag,
+    /// The `storage_number_of_carton` column.
     StorageNumberOfCarton,
+    /// The `person` column.
     Person,
+    /// The `product` column.
     Product,
+    /// The `store_location` column.
     StoreLocation,
+    /// The `unit_concentration` column.
     UnitConcentration,
+    /// The `unit_quantity` column.
     UnitQuantity,
+    /// The `supplier` column.
     Supplier,
+    /// The `storage` column.
     Storage,
 }
 
+/// A storage read from a database row.
 #[derive(Debug, Serialize)]
 pub struct StorageWrapper(pub StorageStruct);
 
@@ -285,6 +323,7 @@ fn populate_history_count(
     Ok(())
 }
 
+/// Returns the storages matching the filter that the person can see, as CSV.
 pub fn export_storages(
     db_connection: &Connection,
     filter: RequestFilter,
@@ -330,6 +369,8 @@ pub fn export_storages(
     Ok(csv)
 }
 
+/// Returns the storages matching the filter that the person can see, and their
+/// total count without limit and offset.
 pub fn get_storages(
     db_connection: &Connection,
     filter: RequestFilter,
@@ -1353,6 +1394,12 @@ fn compute_storage_barecode_parts(
     Ok((barecode_string, barecode_major, barecode_minor + 1))
 }
 
+/// Creates `nb_items` copies of the storage, or updates it if it has an id.
+/// Returns their ids.
+///
+/// Without barcode, one is generated. With `identical_barecode`, the copies
+/// share it; otherwise each copy gets the next number. An update keeps the
+/// previous version in the history.
 pub fn create_update_storage(
     db_connection: &mut Connection,
     mut storage: StorageStruct,
@@ -1753,6 +1800,7 @@ pub fn create_update_storage(
     Ok(storage_ids)
 }
 
+/// Deletes the storage, and its history.
 pub fn delete_storage(
     db_connection: &mut Connection,
     storage_id: u64,
@@ -1770,6 +1818,7 @@ pub fn delete_storage(
     Ok(())
 }
 
+/// Archives the storage: it is not counted in the stock anymore.
 pub fn archive_storage(
     db_connection: &mut Connection,
     storage_id: u64,
@@ -1797,6 +1846,7 @@ pub fn archive_storage(
     Ok(())
 }
 
+/// Restores an archived storage.
 pub fn unarchive_storage(
     db_connection: &mut Connection,
     storage_id: u64,

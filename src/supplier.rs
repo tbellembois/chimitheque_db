@@ -5,13 +5,18 @@ use sea_query::{Expr, ExprTrait, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
+/// Table and column names of the `supplier` table, for `sea_query`.
 #[derive(Iden)]
 pub enum Supplier {
+    /// The table.
     Table,
+    /// The `supplier_id` column.
     SupplierId,
+    /// The `supplier_label` column.
     SupplierLabel,
 }
 
+/// A supplier read from a database row.
 #[derive(Debug, Serialize)]
 pub struct SupplierWrapper(pub SupplierStruct);
 
@@ -27,6 +32,8 @@ impl From<&Row<'_>> for SupplierWrapper {
     }
 }
 
+/// Returns the suppliers matching the filter, and their total count without
+/// limit and offset.
 pub fn get_suppliers(
     db_connection: &Connection,
     filter: &RequestFilter,

@@ -5,17 +5,25 @@ use sea_query::{Expr, ExprTrait, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
+/// Table and column names of the `borrowing` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Borrowing {
+    /// The table.
     Table,
+    /// The `borrowing_id` column.
     BorrowingId,
+    /// The `borrowing_comment` column.
     BorrowingComment,
+    /// The `person` column.
     Person,
+    /// The `storage` column.
     Storage,
+    /// The `borrower` column.
     Borrower,
 }
 
+/// A borrowing read from a database row.
 #[derive(Debug, Serialize, Default)]
 pub struct BorrowingWrapper(pub BorrowingStruct);
 
@@ -37,25 +45,25 @@ impl From<&Row<'_>> for BorrowingWrapper {
     }
 }
 
-// Toggles a storage borrowing for a given person in the database.
-//
-// This function implements a toggle operation that will:
-// - Remove an existing borrowing if one exists for the specified person, storage, and borrower
-// - Add a new borrowing if none exists for the specified person, storage, and borrower
-//
-// The operation is performed atomically using a database transaction to ensure
-// data consistency. If any operation fails, the transaction will be rolled back.
-//
-// # Arguments
-// * `db_connection` - Mutable reference to an active SQLite database connection
-// * `person_id` - The ID of the person who owns the storage being borrowed
-// * `storage_id` - The ID of the storage being borrowed
-// * `borrower_id` - The ID of the person borrowing the storage
-// * `borrowing_comment` - Optional comment about the borrowing
-//
-// # Returns
-// * `Result<(), Box<dyn std::error::Error + Send + Sync>>` - Ok(()) on success,
-//   or an error if any operation fails
+/// Toggles a storage borrowing for a given person in the database.
+///
+/// This function implements a toggle operation that will:
+/// - Remove an existing borrowing if one exists for the specified person, storage, and borrower
+/// - Add a new borrowing if none exists for the specified person, storage, and borrower
+///
+/// The operation is performed atomically using a database transaction to ensure
+/// data consistency. If any operation fails, the transaction will be rolled back.
+///
+/// # Arguments
+/// * `db_connection` - Mutable reference to an active SQLite database connection
+/// * `person_id` - The ID of the person who owns the storage being borrowed
+/// * `storage_id` - The ID of the storage being borrowed
+/// * `borrower_id` - The ID of the person borrowing the storage
+/// * `borrowing_comment` - Optional comment about the borrowing
+///
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error + Send + Sync>>` - Ok(()) on success,
+///   or an error if any operation fails
 pub fn toggle_storage_borrowing(
     db_connection: &mut Connection,
     person_id: u64,

@@ -3,14 +3,19 @@ use rusqlite::Row;
 use sea_query::Iden;
 use serde::Serialize;
 
+/// Table and column names of the `productsynonyms` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Productsynonyms {
+    /// The table.
     Table,
+    /// The `productsynonyms_product_id` column.
     ProductsynonymsProductId,
+    /// The `productsynonyms_name_id` column.
     ProductsynonymsNameId,
 }
 
+/// A productsynonyms read from a database row.
 #[derive(Debug, Serialize, Default)]
 pub struct ProductsynonymsWrapper(pub ProductsynonymsStruct);
 

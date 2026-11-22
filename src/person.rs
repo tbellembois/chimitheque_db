@@ -20,14 +20,19 @@ use crate::{
     reference::Reference,
 };
 
+/// Table and column names of the `person` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Person {
+    /// The table.
     Table,
+    /// The `person_id` column.
     PersonId,
+    /// The `person_email` column.
     PersonEmail,
 }
 
+/// A person read from a database row.
 #[derive(Debug, Serialize)]
 pub struct PersonWrapper(pub PersonStruct);
 
@@ -238,6 +243,8 @@ fn populate_permissions(
     Ok(())
 }
 
+/// Returns the people matching the filter that the person `person_id` can see,
+/// and their total count without limit and offset.
 pub fn get_people(
     db_connection: &Connection,
     filter: &RequestFilter,
@@ -581,6 +588,8 @@ fn create_update_person_membership(
     Ok(())
 }
 
+/// Creates the person, or updates it if it has an id, with its permissions and
+/// entities. Returns its id.
 pub fn create_update_person(
     db_connection: &mut Connection,
     mut person: PersonStruct,
@@ -642,6 +651,7 @@ pub fn create_update_person(
     Ok(last_insert_update_id)
 }
 
+/// Removes the person from the managers of the entity.
 pub fn unset_person_manager(
     db_transaction: &Transaction,
     person_id: u64,
@@ -672,6 +682,7 @@ pub fn unset_person_manager(
     Ok(())
 }
 
+/// Makes the person a manager of the entity, and a member if not already.
 pub fn set_person_manager(
     db_transaction: &Transaction,
     person_id: u64,
@@ -755,6 +766,7 @@ pub fn set_person_manager(
     Ok(())
 }
 
+/// Returns the administrators.
 pub fn get_admins(
     db_connection: &Connection,
 ) -> Result<Vec<PersonStruct>, Box<dyn std::error::Error + Send + Sync>> {
@@ -802,6 +814,7 @@ pub fn get_admins(
     Ok(people)
 }
 
+/// Makes the person an administrator.
 pub fn set_person_admin(
     db_connection: &mut Connection,
     person_id: u64,
@@ -840,6 +853,7 @@ pub fn set_person_admin(
     Ok(())
 }
 
+/// Removes the administrator permission of the person.
 pub fn unset_person_admin(
     db_connection: &mut Connection,
     person_id: u64,
@@ -859,6 +873,7 @@ pub fn unset_person_admin(
     Ok(())
 }
 
+/// Returns whether the person is an administrator.
 pub fn is_person_admin(
     db_connection: &Connection,
     person_id: u64,
@@ -890,6 +905,7 @@ pub fn is_person_admin(
     Ok(count > 0)
 }
 
+/// Returns whether the person manages the entity.
 pub fn is_person_manager(
     db_connection: &Connection,
     person_id: u64,
@@ -920,6 +936,7 @@ pub fn is_person_manager(
     Ok(count > 0)
 }
 
+/// Returns whether the person is a member of the entity.
 pub fn is_person_member_of(
     db_connection: &Connection,
     person_id: u64,
@@ -950,6 +967,7 @@ pub fn is_person_member_of(
     Ok(count > 0)
 }
 
+/// Deletes the person.
 pub fn delete_person(
     db_connection: &mut Connection,
     person_id: u64,

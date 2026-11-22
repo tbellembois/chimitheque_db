@@ -6,6 +6,7 @@ use serde::Serialize;
 use std::fmt::Debug;
 use std::fmt::Write as _; // import without risk of name clashing
 
+/// Returns the item whose text is `s`, ignoring the case, or `None`.
 pub fn parse(
     item: &(impl Searchable + Debug + Default + Serialize),
     db_connection: &Connection,
@@ -47,10 +48,11 @@ pub fn parse(
     Ok(Some(new_item))
 }
 
-// Return Searchable items.
-// The filter is either 'search' or 'id' or None.
-// 'search' will search by the get_text_field_name() item.
-// 'id' will search by the get_id_field_name() item. This should return only one item by not enforced by this function.
+/// Returns the items matching the filter, and their total count without limit
+/// and offset.
+///
+/// `search` matches the texts containing it; an item whose text is exactly
+/// `search` is flagged with `set_exact_search`. Otherwise `id` matches the id.
 pub fn get_many<Var: Searchable + Debug + Default + Serialize>(
     item: &Var,
     db_connection: &Connection,
@@ -192,6 +194,8 @@ pub fn get_many<Var: Searchable + Debug + Default + Serialize>(
     Ok((items, count))
 }
 
+/// Updates the text of the item `item_id`, or without id creates an item with
+/// the text, reusing an existing item with the same text. Returns its id.
 pub fn create_update(
     item: &impl Searchable,
     item_id: Option<u64>,
@@ -233,6 +237,7 @@ pub fn create_update(
     Ok(last_insert_id)
 }
 
+/// Tests shared by the searchable types.
 #[cfg(test)]
 pub mod tests {
 
@@ -249,6 +254,7 @@ pub mod tests {
         let _ = env_logger::builder().is_test(true).try_init();
     }
 
+    /// Tests the search, parse and create functions of a searchable type.
     pub fn test_searchable(
         searchable: &(impl Searchable + Debug + Default + Serialize),
         fake_searchables: &[&str],

@@ -63,42 +63,75 @@ use sea_query_rusqlite::{RusqliteBinder, RusqliteValues};
 use serde::Serialize;
 use std::{collections::HashSet, io::BufWriter, str::FromStr};
 
+/// Table and column names of the `product` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Product {
+    /// The table.
     Table,
+    /// The `person` column.
     Person,
+    /// The `product_id` column.
     ProductId,
+    /// The `product_type` column.
     ProductType,
+    /// The `product_inchi` column.
     ProductInchi,
+    /// The `product_inchikey` column.
     ProductInchikey,
+    /// The `product_canonical_smiles` column.
     ProductCanonicalSmiles,
+    /// The `product_molecular_weight` column.
     ProductMolecularWeight,
+    /// The `product_specificity` column.
     ProductSpecificity,
+    /// The `product_msds` column.
     ProductMsds,
+    /// The `product_restricted` column.
     ProductRestricted,
+    /// The `product_radioactive` column.
     ProductRadioactive,
+    /// The `product_twod_formula` column.
     ProductTwodFormula,
+    /// The `product_threed_formula` column.
     ProductThreedFormula,
+    /// The `product_disposal_comment` column.
     ProductDisposalComment,
+    /// The `product_remark` column.
     ProductRemark,
+    /// The `product_temperature` column.
     ProductTemperature,
+    /// The `product_sheet` column.
     ProductSheet,
+    /// The `product_number_per_carton` column.
     ProductNumberPerCarton,
+    /// The `product_number_per_bag` column.
     ProductNumberPerBag,
+    /// The `empirical_formula` column.
     EmpiricalFormula,
+    /// The `linear_formula` column.
     LinearFormula,
+    /// The `physical_state` column.
     PhysicalState,
+    /// The `signal_word` column.
     SignalWord,
+    /// The `category` column.
     Category,
+    /// The `name` column.
     Name,
+    /// The `cas_number` column.
     CasNumber,
+    /// The `ce_number` column.
     CeNumber,
+    /// The `unit_molecular_weight` column.
     UnitMolecularWeight,
+    /// The `unit_temperature` column.
     UnitTemperature,
+    /// The `producer_ref` column.
     ProducerRef,
 }
 
+/// A product read from a database row.
 #[derive(Debug, Serialize)]
 pub struct ProductWrapper(pub ProductStruct);
 
@@ -1088,6 +1121,7 @@ fn populate_tags(
     Ok(())
 }
 
+/// Returns the products matching the filter that the person can see, as CSV.
 pub fn export_products(
     db_connection: &Connection,
     filter: RequestFilter,
@@ -1145,6 +1179,11 @@ pub fn export_products(
     Ok(csv)
 }
 
+/// Returns the products matching the filter that the person can see, and their
+/// total count without limit and offset.
+///
+/// Restricted products are returned only to a person with a permission on
+/// them.
 pub fn get_products(
     db_connection: &Connection,
     filter: RequestFilter,
@@ -1933,6 +1972,8 @@ pub fn get_products(
     Ok((products, count))
 }
 
+/// Creates the product, or updates it if it has an id, with its related items.
+/// New names, CAS numbers, tags... are created. Returns its id.
 pub fn create_update_product(
     db_connection: &mut Connection,
     mut product: ProductStruct,
@@ -2992,6 +3033,7 @@ fn create_update_product_classes_of_compound(
     Ok(())
 }
 
+/// Deletes the product.
 pub fn delete_product(
     db_connection: &mut Connection,
     product_id: u64,

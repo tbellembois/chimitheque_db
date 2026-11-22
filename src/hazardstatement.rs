@@ -7,16 +7,23 @@ use sea_query::{Expr, ExprTrait, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Serialize;
 
+/// Table and column names of the `hazard_statement` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum HazardStatement {
+    /// The table.
     Table,
+    /// The `hazard_statement_id` column.
     HazardStatementId,
+    /// The `hazard_statement_label` column.
     HazardStatementLabel,
+    /// The `hazard_statement_reference` column.
     HazardStatementReference,
+    /// The `hazard_statement_cmr` column.
     HazardStatementCmr,
 }
 
+/// A hazard statement read from a database row.
 #[derive(Debug, Serialize, Default)]
 pub struct HazardStatementWrapper(pub HazardStatementStruct);
 
@@ -34,6 +41,8 @@ impl From<&Row<'_>> for HazardStatementWrapper {
     }
 }
 
+/// Returns the hazard statement with the reference `s`, e.g. `H350i`, or
+/// `None`.
 pub fn parse(
     db_connection: &Connection,
     s: &str,
@@ -75,6 +84,8 @@ pub fn parse(
     }
 }
 
+/// Returns the hazard statements matching the filter, and their total count
+/// without limit and offset. `search` matches the reference.
 pub fn get_hazard_statements(
     db_connection: &Connection,
     filter: &RequestFilter,

@@ -13,15 +13,21 @@ use serde::Serialize;
 
 use crate::supplier::Supplier;
 
+/// Table and column names of the `supplier_ref` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum SupplierRef {
+    /// The table.
     Table,
+    /// The `supplier_ref_id` column.
     SupplierRefId,
+    /// The `supplier_ref_label` column.
     SupplierRefLabel,
+    /// The `supplier` column.
     Supplier,
 }
 
+/// A supplier ref read from a database row.
 #[derive(Debug, Serialize)]
 pub struct SupplierRefWrapper(pub SupplierRefStruct);
 
@@ -42,6 +48,8 @@ impl From<&Row<'_>> for SupplierRefWrapper {
     }
 }
 
+/// Returns the supplier references matching the filter, and their total count
+/// without limit and offset.
 pub fn get_supplier_refs(
     db_connection: &Connection,
     filter: &RequestFilter,
@@ -157,6 +165,8 @@ pub fn get_supplier_refs(
     Ok((supplier_refs, count))
 }
 
+/// Creates the supplier reference, or updates it if it has an id. Returns its
+/// id.
 pub fn create_update_supplier_ref(
     db_connection: &Connection,
     supplier_ref: &SupplierRefStruct,

@@ -3,14 +3,19 @@ use rusqlite::Row;
 use sea_query::Iden;
 use serde::Serialize;
 
+/// Table and column names of the `producttags` table, for `sea_query`.
 #[allow(clippy::enum_variant_names)]
 #[derive(Iden)]
 pub enum Producttags {
+    /// The table.
     Table,
+    /// The `producttags_product_id` column.
     ProducttagsProductId,
+    /// The `producttags_tag_id` column.
     ProducttagsTagId,
 }
 
+/// A producttags read from a database row.
 #[derive(Debug, Serialize, Default)]
 pub struct ProducttagsWrapper(pub ProducttagsStruct);
 
