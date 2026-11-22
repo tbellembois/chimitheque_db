@@ -15,6 +15,7 @@ use crate::{
     unit::Unit,
 };
 
+/// A stock line read from the database.
 #[derive(Debug, Serialize)]
 pub struct StockWrapper(pub Stock);
 
@@ -43,13 +44,25 @@ impl From<&Row<'_>> for StockWrapper {
     }
 }
 
-// sample request:
-// SELECT storelocation_id,storelocation_fullpath, SUM(storage_quantity * self_unit.unit_multiplier) AS quantity, parent_unit.unit_id, parent_unit.unit_label FROM storage
-// LEFT JOIN storelocation ON storage.storelocation = storelocation.storelocation_id
-// LEFT JOIN unit self_unit ON storage.unit_quantity = self_unit.unit_id
-// LEFT JOIN unit parent_unit on parent_unit.unit_id = self_unit.unit
-// WHERE storage.product = 6144
-// GROUP BY self_unit.unit
+/// Returns the stock of a product for each store location the person can see,
+/// one line per base unit, e.g. `1.5 L` for `1 L` and `500 mL`.
+///
+/// The base unit of a unit is its parent, or itself without parent. Archived
+/// storages are not counted.
+///
+/// Sample request:
+/// ```sql
+/// SELECT store_location_id, store_location_full_path,
+///   SUM(storage_quantity * self_unit.unit_multiplier) AS quantity,
+///   parent_unit.unit_id, parent_unit.unit_label
+/// FROM storage
+/// JOIN store_location ON storage.store_location = store_location.store_location_id
+/// LEFT JOIN unit self_unit ON storage.unit_quantity = self_unit.unit_id
+/// LEFT JOIN unit parent_unit
+///   ON parent_unit.unit_id = COALESCE(self_unit.unit, self_unit.unit_id)
+/// WHERE storage.product = 6144 AND EXISTS (SELECT ... FROM permission ...)
+/// GROUP BY store_location_id, parent_unit.unit_id
+/// ```
 pub fn compute_stock(
     db_connection: &Connection,
     product_id: u64,
@@ -71,14 +84,6 @@ pub fn compute_stock(
         .expr_as(
             Expr::col((Alias::new("parent_unit"), Unit::UnitLabel)),
             Alias::new("parent_unit_label"),
-        )
-        .expr_as(
-            Expr::col((Alias::new("self_unit"), Unit::UnitId)),
-            Alias::new("self_unit_id"),
-        )
-        .expr_as(
-            Expr::col((Alias::new("self_unit"), Unit::UnitLabel)),
-            Alias::new("self_unit_label"),
         )
         .expr_as(
             Func::sum(
@@ -108,51 +113,49 @@ pub fn compute_stock(
             Expr::col((Alias::new("self_unit"), Unit::UnitId))
                 .equals((Storage::Table, Storage::UnitQuantity)),
         )
+        // The base unit: the parent unit, or the unit itself without parent.
         .join_as(
             JoinType::LeftJoin,
             Unit::Table,
             Alias::new("parent_unit"),
-            Expr::col((Alias::new("self_unit"), Unit::Unit))
-                .equals((Alias::new("parent_unit"), Unit::UnitId)),
+            Expr::col((Alias::new("parent_unit"), Unit::UnitId)).eq(Func::coalesce([
+                Expr::col((Alias::new("self_unit"), Unit::Unit)),
+                Expr::col((Alias::new("self_unit"), Unit::UnitId)),
+            ])),
         )
-        //
-        // entity -> permissions
-        //
         .join(
-            // entity
             JoinType::InnerJoin,
             Entity::Table,
             Expr::col((StoreLocation::Table, StoreLocation::Entity))
                 .equals((Entity::Table, Entity::EntityId)),
         )
-        .join_as(
-            JoinType::InnerJoin,
-            Permission::Table,
-            Alias::new("perm"),
-            Expr::col((Alias::new("perm"), Alias::new("person")))
-                .eq(person_id)
-                .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_item")))
+        // A permission to read the storages of the entity. `EXISTS`, not a
+        // join: a person with several matching permissions would count each
+        // storage several times.
+        .and_where(Expr::exists(
+            Query::select()
+                .expr(Expr::val(1))
+                .from(Permission::Table)
+                .and_where(Expr::col((Permission::Table, Permission::Person)).eq(person_id))
+                .and_where(
+                    Expr::col((Permission::Table, Permission::PermissionItem))
                         .is_in(["all", "storages"]),
                 )
-                .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_name")))
+                .and_where(
+                    Expr::col((Permission::Table, Permission::PermissionName))
                         .is_in(["r", "w", "all"]),
                 )
-                .and(
-                    Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-                        .equals(Entity::EntityId)
-                        .or(Expr::col(Entity::EntityId).is_null()) // products with no storages for non admins
-                        .or(
-                            Expr::col((Alias::new("perm"), Alias::new("permission_entity")))
-                                .is_null(),
-                        ),
-                ),
-        )
+                .and_where(
+                    Expr::col((Permission::Table, Permission::PermissionEntity))
+                        .equals((Entity::Table, Entity::EntityId))
+                        .or(Expr::col((Permission::Table, Permission::PermissionEntity)).is_null()),
+                )
+                .take(),
+        ))
         .and_where(Expr::col((Storage::Table, Storage::Product)).eq(product_id))
         .and_where(Expr::col((Storage::Table, Storage::StorageArchive)).eq(false))
-        .group_by_col(StoreLocation::StoreLocationId)
-        .group_by_col((Alias::new("self_unit"), Unit::Unit))
+        .group_by_col((StoreLocation::Table, StoreLocation::StoreLocationId))
+        .group_by_col((Alias::new("parent_unit"), Unit::UnitId))
         .order_by_expr(
             Expr::cust_with_expr(
                 "? COLLATE NOCASE",
@@ -183,3 +186,7 @@ pub fn compute_stock(
 
     Ok(stocks)
 }
+
+#[cfg(test)]
+#[path = "stock_tests.rs"]
+mod stock_tests;
