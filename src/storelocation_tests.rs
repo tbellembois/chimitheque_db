@@ -883,4 +883,54 @@ mod tests {
         assert_eq!(store_location_entity_id(&db, 3).unwrap(), Some(1));
         assert_eq!(store_location_entity_id(&db, 999).unwrap(), None);
     }
+
+    // The color, parent and full path of a stored store location.
+    fn saved(
+        db: &Connection,
+        store_location_id: u64,
+    ) -> (Option<String>, Option<u64>, Option<String>) {
+        db.query_row(
+            "SELECT store_location_color, store_location, store_location_full_path FROM store_location WHERE store_location_id = ?1",
+            [store_location_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .unwrap()
+    }
+
+    // Store location `store_location_id` of entity 1, named `name`, under
+    // `parent_id`.
+    fn store_location(
+        store_location_id: u64,
+        name: &str,
+        parent_id: Option<u64>,
+    ) -> chimitheque_types::storelocation::StoreLocation {
+        chimitheque_types::storelocation::StoreLocation {
+            store_location_id: Some(store_location_id),
+            store_location_name: name.to_string(),
+            entity: Some(chimitheque_types::entity::Entity {
+                entity_id: Some(1),
+                ..Default::default()
+            }),
+            store_location: parent_id.map(|parent_id| {
+                Box::new(chimitheque_types::storelocation::StoreLocation {
+                    store_location_id: Some(parent_id),
+                    ..Default::default()
+                })
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn test_update_store_location_clears_the_color() {
+        let mut db = init_test_storelocation();
+        let mut cold = store_location(6, "Cold Storage", Some(1));
+        cold.store_location_color = Some("blue".to_string());
+        create_update_store_location(&mut db, cold.clone()).unwrap();
+        assert_eq!(saved(&db, 6).0.as_deref(), Some("blue"));
+
+        cold.store_location_color = None;
+        create_update_store_location(&mut db, cold).unwrap();
+        assert_eq!(saved(&db, 6).0, None);
+    }
 }

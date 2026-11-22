@@ -429,6 +429,8 @@ pub fn create_update_store_location(
         columns.push(StoreLocation::StoreLocationColor);
         values.push(SimpleExpr::Value(color.into()));
     } else {
+        columns_values.push((StoreLocation::StoreLocationColor, Expr::cust("NULL")));
+
         columns.push(StoreLocation::StoreLocationColor);
         values.push(Expr::cust("NULL"));
     }
