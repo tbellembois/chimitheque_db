@@ -1307,43 +1307,9 @@ pub fn get_products(
     debug!("filter:{filter:?}");
     debug!("person_id:{person_id:?}");
 
-    // Does the person has the permission to access the restricted products?
-    // We do not use the person::get_people function to retrieve the person as this function
-    // retrieves a lot of information.
-    let (exist_sql, exist_values) = Query::select()
-        .expr(
-            Expr::case(
-                Expr::exists(
-                    Query::select()
-                        .expr(Expr::col((Permission::Table, Permission::PermissionItem)))
-                        .from(Permission::Table)
-                        .and_where(
-                            Expr::col((Permission::Table, Permission::PermissionItem))
-                                .is_in(["rproducts", "all"]),
-                        )
-                        .and_where(Expr::col((Permission::Table, Permission::Person)).eq(person_id))
-                        .and_where(
-                            Expr::col((Permission::Table, Permission::PermissionName)).ne("n"),
-                        )
-                        .take(),
-                ),
-                Expr::val(true),
-            )
-            .finally(Expr::val(false)),
-        )
-        .build_rusqlite(SqliteQueryBuilder);
-
-    debug!("exist_sql: {}", exist_sql.as_str());
-    debug!("exist_values: {exist_values:?}");
-
-    // Perform exist query.
-    let mut stmt = db_connection.prepare(exist_sql.as_str())?;
-    let mut rows = stmt.query(&*exist_values.as_params())?;
-    let has_rproducts_permission: bool = if let Some(row) = rows.next()? {
-        row.get_unwrap(0)
-    } else {
-        false
-    };
+    // Can the person read the restricted products?
+    let has_rproducts_permission =
+        crate::permission::person_can_read_restricted_products(db_connection, person_id)?;
 
     // Order_by and Order.
     let order_by: ColumnRef = if let Some(order_by_string) = filter.order_by {

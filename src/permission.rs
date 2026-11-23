@@ -80,6 +80,28 @@ pub fn person_can_write_in_entity(
     )?)
 }
 
+/// Returns whether the person can read the restricted products. The minimal
+/// permission is `r` on `rproducts`; people who can write the products (`w` or
+/// `all` on `products` or `rproducts`), managers and admins (`all` item) can
+/// read them too. The entity does not matter: products do not belong to one.
+///
+/// # Errors
+///
+/// Returns an error if the query fails.
+pub fn person_can_read_restricted_products(
+    db_connection: &rusqlite::Connection,
+    person_id: u64,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(db_connection.query_row(
+        "SELECT EXISTS (SELECT 1 FROM permission
+           WHERE person = ?1
+             AND ((permission_item IN ('rproducts', 'all') AND permission_name IN ('r', 'w', 'all'))
+               OR (permission_item = 'products' AND permission_name IN ('w', 'all'))))",
+        [person_id],
+        |row| row.get(0),
+    )?)
+}
+
 #[cfg(test)]
 #[path = "permission_tests.rs"]
 mod permission_tests;

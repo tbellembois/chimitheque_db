@@ -2,7 +2,7 @@
 mod tests {
     #![allow(clippy::unwrap_used)]
 
-    use crate::permission::person_can_write_in_entity;
+    use crate::permission::{person_can_read_restricted_products, person_can_write_in_entity};
     use chimitheque_types::permission::PermissionItem;
     use rusqlite::Connection;
 
@@ -53,5 +53,29 @@ mod tests {
         ]);
         assert!(!can_write_storages(&db, 1));
         assert!(person_can_write_in_entity(&db, 1, &PermissionItem::Entities, 1).unwrap());
+    }
+
+    #[test]
+    fn test_person_can_read_restricted_products() {
+        let can_read = |permissions: &[(&str, &str, Option<u64>)]| {
+            let db = init_test_permissions(permissions);
+            person_can_read_restricted_products(&db, 1).unwrap()
+        };
+
+        // The minimal permission, writing the (restricted) products, managers
+        // and admins.
+        assert!(can_read(&[("r", "rproducts", None)]));
+        assert!(can_read(&[("w", "products", None)]));
+        assert!(can_read(&[("w", "rproducts", None)]));
+        assert!(can_read(&[("all", "all", Some(2))]));
+        assert!(can_read(&[("all", "all", None)]));
+        assert!(can_read(&[("r", "all", None)]));
+
+        // Reading the products, other items, no or unused permission names.
+        assert!(!can_read(&[]));
+        assert!(!can_read(&[("r", "products", None)]));
+        assert!(!can_read(&[("w", "storages", Some(1))]));
+        assert!(!can_read(&[("n", "rproducts", None)]));
+        assert!(!can_read(&[("b", "rproducts", None)]));
     }
 }
