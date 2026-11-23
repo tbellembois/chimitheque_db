@@ -6,18 +6,18 @@ mod tests {
     use chimitheque_types::permission::PermissionItem;
     use rusqlite::Connection;
 
-    // Person 1 has the given permissions, as (name, item, entity) tuples.
+    // The fixture, where new.user (person 6) has only the given permissions,
+    // as (name, item, entity) tuples.
+    const PERSON_ID: u64 = 6;
+
     fn init_test_permissions(permissions: &[(&str, &str, Option<u64>)]) -> Connection {
-        let db = crate::test_utils::init_test();
-        db.execute_batch(
-            "INSERT INTO person (person_id, person_email) VALUES (1, 'test@example.com');
-             INSERT INTO entity (entity_id, entity_name) VALUES (1, 'entity 1'), (2, 'entity 2');",
-        )
-        .unwrap();
+        let db = crate::test_utils::init_test_with_fixture();
+        db.execute("DELETE FROM permission WHERE person = ?1", [PERSON_ID])
+            .unwrap();
         for (name, item, entity) in permissions {
             db.execute(
-                "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (1, ?1, ?2, ?3)",
-                (name, item, entity),
+                "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (?1, ?2, ?3, ?4)",
+                (PERSON_ID, name, item, entity),
             )
             .unwrap();
         }
@@ -25,7 +25,7 @@ mod tests {
     }
 
     fn can_write_storages(db: &Connection, entity_id: u64) -> bool {
-        person_can_write_in_entity(db, 1, &PermissionItem::Storages, entity_id).unwrap()
+        person_can_write_in_entity(db, PERSON_ID, &PermissionItem::Storages, entity_id).unwrap()
     }
 
     #[test]
@@ -52,14 +52,14 @@ mod tests {
             ("w", "entities", Some(1)),
         ]);
         assert!(!can_write_storages(&db, 1));
-        assert!(person_can_write_in_entity(&db, 1, &PermissionItem::Entities, 1).unwrap());
+        assert!(person_can_write_in_entity(&db, PERSON_ID, &PermissionItem::Entities, 1).unwrap());
     }
 
     #[test]
     fn test_person_can_read_restricted_products() {
         let can_read = |permissions: &[(&str, &str, Option<u64>)]| {
             let db = init_test_permissions(permissions);
-            person_can_read_restricted_products(&db, 1).unwrap()
+            person_can_read_restricted_products(&db, PERSON_ID).unwrap()
         };
 
         // The minimal permission, writing the (restricted) products, managers

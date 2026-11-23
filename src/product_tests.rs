@@ -1,11 +1,6 @@
 #[cfg(test)]
 mod tests {
-    #![allow(
-        clippy::unwrap_used,
-        clippy::expect_used,
-        clippy::panic,
-        clippy::too_many_lines
-    )]
+    #![allow(clippy::unwrap_used)]
 
     use crate::product::*;
     use chimitheque_types::{
@@ -15,29 +10,47 @@ mod tests {
         hazardstatement::HazardStatement as HazardStatementStruct, name::Name as NameStruct,
         person::Person as PersonStruct,
         precautionarystatement::PrecautionaryStatement as PrecautionaryStatementStruct,
-        product::Product as ProductStruct, producttype::ProductType,
+        product::Product as ProductStruct, producttype::ProductType, requestfilter::RequestFilter,
         signalword::SignalWord as SignalWordStruct, supplier::Supplier as SupplierStruct,
         supplierref::SupplierRef as SupplierRefStruct, symbol::Symbol as SymbolStruct,
         tag::Tag as TagStruct, unittype::UnitType,
     };
     use rusqlite::Connection;
-    use std::io::Write;
 
-    fn init_test_products() -> Connection {
-        let _ = env_logger::Builder::from_default_env()
-            .format(|buf, record| {
-                writeln!(
-                    buf,
-                    "[{}:{}] {} - {}",
-                    record.file().unwrap_or("unknown"),
-                    record.line().unwrap_or(0),
-                    record.level(),
-                    record.args()
-                )
-            })
-            .try_init();
+    // See the fixture description in resources/test_fixture.sql: 1 Water,
+    // 2 Ethanol (with all the fields and links), 3 Sodium chloride (no
+    // storage), 4 Acetone (restricted), 5 Bovine serum albumin (bio), 6 Pipette
+    // tips (consumable, no storage).
+    const ETHANOL: u64 = 2;
 
-        crate::test_utils::init_test_with_data()
+    // The id of a base data row by its label.
+    fn id_of(db: &Connection, table: &str, column: &str, label: &str) -> u64 {
+        db.query_row(
+            &format!("SELECT {table}_id FROM {table} WHERE {column} = ?1"),
+            [label],
+            |row| row.get(0),
+        )
+        .unwrap()
+    }
+
+    // The sorted ids of the products the person gets with the filter.
+    fn product_ids(db: &Connection, filter: RequestFilter, person_id: u64) -> Vec<u64> {
+        let (products, count) = get_products(db, filter, person_id).unwrap();
+        assert_eq!(count, products.len());
+        let mut ids: Vec<u64> = products
+            .iter()
+            .filter_map(|product| product.product_id)
+            .collect();
+        ids.sort_unstable();
+        ids
+    }
+
+    fn get_product(db: &Connection, product_id: u64) -> ProductStruct {
+        let filter = RequestFilter {
+            id: Some(product_id),
+            ..Default::default()
+        };
+        get_products(db, filter, 1).unwrap().0.remove(0)
     }
 
     /// Labels of the populated items, sorted: the populate queries have no
@@ -50,415 +63,431 @@ mod tests {
 
     #[test]
     fn test_get_products() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            ..Default::default()
-        };
-        let person_id = 1;
+        let db = crate::test_utils::init_test_with_fixture();
 
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
+        assert_eq!(
+            product_ids(&db, RequestFilter::default(), 1),
+            [1, 2, 3, 4, 5, 6]
+        );
+    }
 
-        let (products, count) = result.unwrap();
-        assert_eq!(count, 1000);
-        assert_eq!(products.len(), 1000);
+    #[test]
+    fn test_get_products_restricted() {
+        let db = crate::test_utils::init_test_with_fixture();
+
+        // Acetone (4) is restricted: read by the managers and biology.user
+        // (rproducts), not by chemistry.user and new.user.
+        for (person_id, sees_acetone) in [(2, true), (3, false), (4, true), (5, true), (6, false)] {
+            let ids = product_ids(&db, RequestFilter::default(), person_id);
+            assert_eq!(ids.contains(&4), sees_acetone, "{person_id}");
+            assert_eq!(ids.len(), if sees_acetone { 6 } else { 5 }, "{person_id}");
+        }
     }
 
     #[test]
     fn test_get_products_with_name_filter() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            name: Some(408),
-            ..Default::default()
-        };
-        let person_id = 1;
+        let db = crate::test_utils::init_test_with_fixture();
 
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
-
-        let (products, count) = result.unwrap();
-        // 5 products named PRODUCT_NAME-00408, and 2 having it as synonym.
-        assert_eq!(count, 7);
-        assert_eq!(products.len(), 7);
-        assert_eq!(
-            products
-                .iter()
-                .filter(|product| product.name.name_label == "PRODUCT_NAME-00408")
-                .count(),
-            5
-        );
+        // By name, or by synonym: ETHYL ALCOHOL (7) is a synonym of Ethanol.
+        for name_id in [2, 7] {
+            let filter = RequestFilter {
+                name: Some(name_id),
+                ..Default::default()
+            };
+            assert_eq!(product_ids(&db, filter, 1), [ETHANOL], "{name_id}");
+        }
     }
 
     #[test]
     fn test_get_products_with_type_filter() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            show_chem: true,
-            ..Default::default()
-        };
-        let person_id = 1;
+        let db = crate::test_utils::init_test_with_fixture();
 
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
-
-        let (products, count) = result.unwrap();
-        assert_eq!(count, 327);
-        assert_eq!(products.len(), 327);
-        assert_eq!(products[0].product_type, ProductType::Chem);
+        for (filter, expected) in [
+            (
+                RequestFilter {
+                    show_chem: true,
+                    ..Default::default()
+                },
+                vec![1, 2, 3, 4],
+            ),
+            (
+                RequestFilter {
+                    show_bio: true,
+                    ..Default::default()
+                },
+                vec![5],
+            ),
+            (
+                RequestFilter {
+                    show_consu: true,
+                    ..Default::default()
+                },
+                vec![6],
+            ),
+        ] {
+            assert_eq!(product_ids(&db, filter, 1), expected);
+        }
     }
 
     #[test]
-    fn test_get_products_with_category_filter() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            category: Some(3),
+    fn test_get_products_with_field_filters() {
+        let db = crate::test_utils::init_test_with_fixture();
+
+        let filter = RequestFilter {
+            category: Some(id_of(&db, "category", "category_label", "Antibody")),
             ..Default::default()
         };
-        let person_id = 1;
+        assert_eq!(product_ids(&db, filter, 1), [5]);
 
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
+        let filter = RequestFilter {
+            signal_word: Some(id_of(&db, "signal_word", "signal_word_label", "danger")),
+            ..Default::default()
+        };
+        assert_eq!(product_ids(&db, filter, 1), [2, 4]);
 
-        let (products, count) = result.unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(products.len(), 1);
-        assert_eq!(products[0].clone().category.unwrap().category_label, "Drug");
+        let filter = RequestFilter {
+            producer_ref: Some(1),
+            ..Default::default()
+        };
+        assert_eq!(product_ids(&db, filter, 1), [ETHANOL]);
+
+        let filter = RequestFilter {
+            cas_number: Some(id_of(&db, "cas_number", "cas_number_label", "7732-18-5")),
+            ..Default::default()
+        };
+        assert_eq!(product_ids(&db, filter, 1), [1]);
     }
 
     #[test]
-    fn test_get_products_with_signal_word_filter() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            signal_word: Some(1),
-            ..Default::default()
-        };
-        let person_id = 1;
-
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
-
-        let (products, count) = result.unwrap();
-        assert_eq!(count, 489);
-        assert_eq!(products.len(), 489);
-        assert_eq!(
-            products[0].clone().signal_word.unwrap().signal_word_label,
-            "danger"
+    fn test_get_products_with_link_filters() {
+        let db = crate::test_utils::init_test_with_fixture();
+        let h225 = id_of(
+            &db,
+            "hazard_statement",
+            "hazard_statement_reference",
+            "H225",
         );
-    }
+        let h319 = id_of(
+            &db,
+            "hazard_statement",
+            "hazard_statement_reference",
+            "H319",
+        );
+        let p210 = id_of(
+            &db,
+            "precautionary_statement",
+            "precautionary_statement_reference",
+            "P210",
+        );
+        let ghs02 = id_of(&db, "symbol", "symbol_label", "GHS02");
+        let ghs07 = id_of(&db, "symbol", "symbol_label", "GHS07");
+        let solvent = id_of(&db, "tag", "tag_label", "Solvent");
 
-    #[test]
-    fn test_get_products_with_hazard_statement_filter() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            hazard_statements: Some(vec![1]),
-            ..Default::default()
-        };
-        let person_id = 1;
-
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
-
-        let (products, count) = result.unwrap();
-        assert_eq!(count, 23);
-        assert_eq!(products.len(), 23);
-    }
-
-    #[test]
-    fn test_get_products_with_precautionary_statement_filter() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            precautionary_statements: Some(vec![1]),
-            ..Default::default()
-        };
-        let person_id = 1;
-
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
-
-        let (products, count) = result.unwrap();
-        assert_eq!(count, 17);
-        assert_eq!(products.len(), 17);
-    }
-
-    #[test]
-    fn test_get_products_with_tag_filter() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            tags: Some(vec![6]),
-            ..Default::default()
-        };
-        let person_id = 1;
-
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
-
-        let (products, count) = result.unwrap();
-        assert_eq!(count, 2);
-        assert_eq!(products.len(), 2);
-    }
-
-    #[test]
-    fn test_get_products_with_symbol_filter() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            symbols: Some(vec![1]),
-            ..Default::default()
-        };
-        let person_id = 1;
-
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
-
-        let (products, count) = result.unwrap();
-        assert_eq!(count, 223);
-        assert_eq!(products.len(), 223);
-    }
-
-    #[test]
-    fn test_get_products_with_producer_ref_filter() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            producer_ref: Some(46),
-            ..Default::default()
-        };
-        let person_id = 1;
-
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
-
-        let (products, count) = result.unwrap();
-        assert_eq!(count, 5);
-        assert_eq!(products.len(), 5);
+        for (filter, expected) in [
+            (
+                RequestFilter {
+                    hazard_statements: Some(vec![h225]),
+                    ..Default::default()
+                },
+                vec![2, 4],
+            ),
+            (
+                RequestFilter {
+                    hazard_statements: Some(vec![h319]),
+                    ..Default::default()
+                },
+                vec![2],
+            ),
+            (
+                RequestFilter {
+                    precautionary_statements: Some(vec![p210]),
+                    ..Default::default()
+                },
+                vec![2],
+            ),
+            (
+                RequestFilter {
+                    symbols: Some(vec![ghs02]),
+                    ..Default::default()
+                },
+                vec![2, 4],
+            ),
+            (
+                RequestFilter {
+                    symbols: Some(vec![ghs07]),
+                    ..Default::default()
+                },
+                vec![2],
+            ),
+            (
+                RequestFilter {
+                    tags: Some(vec![solvent]),
+                    ..Default::default()
+                },
+                vec![2],
+            ),
+        ] {
+            assert_eq!(product_ids(&db, filter.clone(), 1), expected, "{filter:?}");
+        }
     }
 
     #[test]
     fn test_get_products_with_bookmark_filter() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
+        let db = crate::test_utils::init_test_with_fixture();
+        let filter = RequestFilter {
             bookmark: true,
             ..Default::default()
         };
-        let person_id = 1;
 
-        let result = get_products(&db, filter, person_id);
-        assert!(result.is_ok());
+        // chemistry.user bookmarked Ethanol, the admin nothing.
+        assert_eq!(product_ids(&db, filter.clone(), 3), [ETHANOL]);
+        assert_eq!(product_ids(&db, filter, 1), [0u64; 0]);
+    }
 
-        let (products, count) = result.unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(products.len(), 1);
+    #[test]
+    fn test_get_products_with_product_specificity_filter() {
+        let db = crate::test_utils::init_test_with_fixture();
+
+        // LIKE is case-insensitive for ASCII.
+        for (specificity, expected) in [("ABS", vec![2]), ("distilled", vec![1]), ("none", vec![])]
+        {
+            let filter = RequestFilter {
+                product_specificity: Some(specificity.to_string()),
+                ..Default::default()
+            };
+            assert_eq!(product_ids(&db, filter, 1), expected, "{specificity}");
+        }
+    }
+
+    #[test]
+    fn test_get_products_loads_the_product() {
+        let db = crate::test_utils::init_test_with_fixture();
+
+        let product = get_product(&db, ETHANOL);
+
+        assert_eq!(product.name.name_label, "ETHANOL");
+        assert_eq!(product.product_type, ProductType::Chem);
+        assert_eq!(product.cas_number.unwrap().cas_number_label, "64-17-5");
+        assert_eq!(product.ce_number.unwrap().ce_number_label, "200-578-6");
+        assert_eq!(
+            product.linear_formula.unwrap().linear_formula_label,
+            "CH3CH2OH"
+        );
+        assert_eq!(
+            product.physical_state.unwrap().physical_state_label,
+            "liquid"
+        );
+        assert_eq!(product.product_molecular_weight, Some(46.07));
+        assert_eq!(product.unit_molecular_weight.unwrap().unit_label, "g/mol");
+        assert_eq!(product.unit_temperature.unwrap().unit_label, "°C");
+        assert_eq!(
+            product.unit_concentration.unwrap().unit_type,
+            UnitType::Concentration
+        );
+        assert_eq!(
+            product.producer_ref.unwrap().producer.producer_label,
+            "Acros Organics"
+        );
+        assert_eq!(product.person.person_email, "chemistry.manager@example.com");
+        // Storages: 2 in Chemistry and 7 in Biology; 3 (Chemistry) is archived
+        // and the history row 4 does not count.
+        assert_eq!(product.product_tsc, Some(2));
+        assert_eq!(product.product_asc, Some(1));
     }
 
     #[test]
     fn test_create_product() {
-        let mut db = init_test_products();
+        let mut db = crate::test_utils::init_test_with_fixture();
+        let acros = id_of(&db, "supplier", "supplier_label", "Acros Organics");
         let product = ProductStruct {
-            product_id: None,
             name: NameStruct {
-                name_id: None,
-                name_label: "THIS IS A NEW PRODUCT".to_string(),
+                name_label: "ISOPROPANOL".to_string(),
                 ..Default::default()
             },
             person: PersonStruct {
-                person_id: Some(1),
+                person_id: Some(2),
                 ..Default::default()
             },
             product_type: ProductType::Chem,
-            product_inchi: Some("InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3".to_string()),
-            product_inchikey: Some("LFQSCWFLJHTTHZ-UHFFFAOYSA-N".to_string()),
-            product_canonical_smiles: Some("CCO".to_string()),
-            product_specificity: Some("High purity".to_string()),
-            product_msds: Some("MSDS003".to_string()),
-            product_restricted: false,
-            product_radioactive: false,
-            product_twod_formula: Some("C2H5OH".to_string()),
-            product_threed_formula: Some("3D_ETH".to_string()),
-            product_disposal_comment: Some("Dispose properly".to_string()),
-            product_remark: Some("High quality".to_string()),
-            product_molecular_weight: Some(46.07),
-            product_temperature: Some(22.0),
-            product_sheet: Some("Sheet003".to_string()),
-            product_number_per_carton: Some(15),
-            product_number_per_bag: Some(8),
+            product_inchi: Some("InChI=1S/C3H8O/c1-3(2)4/h3-4H,1-2H3".to_string()),
+            product_inchikey: Some("KFZMGEQAYNKOFK-UHFFFAOYSA-N".to_string()),
+            product_canonical_smiles: Some("CC(C)O".to_string()),
+            product_specificity: Some("anhydrous".to_string()),
+            product_molecular_weight: Some(60.1),
+            product_temperature: Some(25.0),
+            product_number_per_carton: Some(6),
             cas_number: Some(CasNumberStruct {
-                cas_number_id: Some(3),
-                cas_number_label: "64-17-5".to_string(),
+                cas_number_label: "67-63-0".to_string(),
                 ..Default::default()
             }),
-            ce_number: None,
             empirical_formula: Some(EmpiricalFormulaStruct {
-                empirical_formula_id: Some(3),
-                empirical_formula_label: "C2H6O".to_string(),
+                empirical_formula_label: "C3H8O".to_string(),
                 ..Default::default()
             }),
-            linear_formula: None,
-            physical_state: None,
             signal_word: Some(SignalWordStruct {
-                signal_word_id: Some(1),
-                signal_word_label: "Danger".to_string(),
+                signal_word_id: Some(id_of(&db, "signal_word", "signal_word_label", "danger")),
                 ..Default::default()
             }),
             category: Some(CategoryStruct {
-                category_id: Some(1),
-                category_label: "Chemical".to_string(),
+                category_id: Some(id_of(&db, "category", "category_label", "Drug")),
                 ..Default::default()
             }),
             producer_ref: Some(ProducerRefStruct {
-                producer_ref_id: Some(1),
-                producer_ref_label: "PROD001".to_string(),
+                producer_ref_id: Some(3),
                 ..Default::default()
             }),
             synonyms: Some(vec![NameStruct {
-                name_id: None,
-                name_label: "Ethyl alcohol".to_string(),
+                name_label: "ISOPROPYL ALCOHOL".to_string(),
                 ..Default::default()
             }]),
             classes_of_compound: Some(vec![ClassOfCompoundStruct {
-                class_of_compound_id: None,
-                class_of_compound_label: "Alcohol".to_string(),
+                class_of_compound_label: "alcohol".to_string(),
                 ..Default::default()
             }]),
             symbols: Some(vec![SymbolStruct {
-                symbol_id: Some(2),
-                symbol_label: "GHS02".to_string(),
+                symbol_id: Some(id_of(&db, "symbol", "symbol_label", "GHS02")),
                 ..Default::default()
             }]),
             tags: Some(vec![TagStruct {
-                tag_id: None,
-                tag_label: "Organic".to_string(),
+                tag_label: "Solvent".to_string(),
                 ..Default::default()
             }]),
             hazard_statements: Some(vec![HazardStatementStruct {
-                hazard_statement_id: Some(18),
-                hazard_statement_label: "Highly Flammable liquid and vapor".to_string(),
-                hazard_statement_reference: "H225".to_string(),
+                hazard_statement_id: Some(id_of(
+                    &db,
+                    "hazard_statement",
+                    "hazard_statement_reference",
+                    "H225",
+                )),
                 ..Default::default()
             }]),
             precautionary_statements: Some(vec![PrecautionaryStatementStruct {
-                precautionary_statement_id: Some(7),
-                precautionary_statement_label: "Keep away from heat, hot surface, sparks, open flames and other ignition sources. No smoking.".to_string(),
-                precautionary_statement_reference: "P210".to_string(),
+                precautionary_statement_id: Some(id_of(
+                    &db,
+                    "precautionary_statement",
+                    "precautionary_statement_reference",
+                    "P210",
+                )),
                 ..Default::default()
             }]),
             supplier_refs: Some(vec![SupplierRefStruct {
-                supplier_ref_id: None,
-                supplier_ref_label: "REF001".to_string(),
+                supplier_ref_label: "A-4242".to_string(),
                 supplier: SupplierStruct {
-                    supplier_id: Some(1),
-                    supplier_label: "Abcam".to_owned(),
+                    supplier_id: Some(acros),
                     ..Default::default()
                 },
                 ..Default::default()
             }]),
             unit_temperature: Some(UnitStruct {
-                unit_id: Some(1),
-                unit_label: "Celsius".to_string(),
-                unit_multiplier: 1.0,
-                unit_type: UnitType::Temperature,
-                unit: None,
+                unit_id: Some(id_of(&db, "unit", "unit_label", "°C")),
+                ..Default::default()
             }),
             unit_molecular_weight: Some(UnitStruct {
-                unit_id: Some(3),
-                unit_label: "g/mol".to_string(),
-                unit_multiplier: 1.0,
-                unit_type: UnitType::MolecularWeight,
-                unit: None,
+                unit_id: Some(id_of(&db, "unit", "unit_label", "g/mol")),
+                ..Default::default()
             }),
             ..Default::default()
         };
 
-        let result = create_update_product(&mut db, product);
-        assert!(result.is_ok());
+        let product_id = create_update_product(&mut db, product).unwrap();
+        assert_eq!(product_id, 7);
 
-        let product_id = result.unwrap();
-        assert!(product_id > 0);
-
-        // Verify the product was created
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            id: Some(product_id),
-            ..Default::default()
-        };
-        let (products, _) = get_products(&db, filter, 1).unwrap();
-        assert_eq!(products.len(), 1);
-        assert_eq!(products[0].name.name_label, "THIS IS A NEW PRODUCT");
+        let product = get_product(&db, 7);
+        assert_eq!(product.name.name_label, "ISOPROPANOL");
+        assert_eq!(product.cas_number.unwrap().cas_number_label, "67-63-0");
+        assert_eq!(
+            product.empirical_formula.unwrap().empirical_formula_label,
+            "C3H8O"
+        );
+        assert_eq!(product.category.unwrap().category_label, "Drug");
+        assert_eq!(
+            product.producer_ref.unwrap().producer_ref_label,
+            "ACS reagent"
+        );
+        assert_eq!(product.unit_temperature.unwrap().unit_label, "°C");
+        assert_eq!(
+            sorted_labels(&product.synonyms.unwrap(), |item| &item.name_label),
+            ["ISOPROPYL ALCOHOL"]
+        );
+        assert_eq!(
+            sorted_labels(&product.symbols.unwrap(), |item| &item.symbol_label),
+            ["GHS02"]
+        );
+        assert_eq!(
+            sorted_labels(&product.tags.unwrap(), |item| &item.tag_label),
+            ["Solvent"]
+        );
+        assert_eq!(
+            sorted_labels(&product.supplier_refs.unwrap(), |item| &item
+                .supplier_ref_label),
+            ["A-4242"]
+        );
+        // The existing class of compound and tag are reused.
+        let count = |sql: &str| -> i64 { db.query_row(sql, [], |row| row.get(0)).unwrap() };
+        assert_eq!(
+            count(
+                "SELECT COUNT(*) FROM class_of_compound WHERE class_of_compound_label = 'alcohol'"
+            ),
+            1
+        );
+        assert_eq!(
+            count("SELECT COUNT(*) FROM tag WHERE tag_label = 'Solvent'"),
+            1
+        );
     }
 
     #[test]
     fn test_update_product() {
-        let mut db = init_test_products();
-        let product = ProductStruct {
-            product_id: Some(1),
-            name: NameStruct {
-                name_id: None,
-                name_label: "THIS IS A NEW PRODUCT".to_string(),
-                ..Default::default()
-            },
-            person: PersonStruct {
-                person_id: Some(1),
-                ..Default::default()
-            },
+        let mut db = crate::test_utils::init_test_with_fixture();
+
+        // Water (1) renamed, with a new name.
+        let mut product = get_product(&db, 1);
+        product.name = NameStruct {
+            name_label: "DEMINERALIZED WATER".to_string(),
             ..Default::default()
         };
+        product.product_specificity = None;
+        assert_eq!(create_update_product(&mut db, product).unwrap(), 1);
 
-        let result = create_update_product(&mut db, product);
-        assert!(result.is_ok());
-
-        let product_id = result.unwrap();
-        assert_eq!(product_id, 1);
-
-        // Verify the product was updated
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            id: Some(1),
-            ..Default::default()
-        };
-        let (products, _) = get_products(&db, filter, 1).unwrap();
-        assert_eq!(products.len(), 1);
-        assert_eq!(products[0].name.name_label, "THIS IS A NEW PRODUCT");
+        let product = get_product(&db, 1);
+        assert_eq!(product.name.name_label, "DEMINERALIZED WATER");
+        assert_eq!(product.product_specificity, None);
+        assert_eq!(product.cas_number.unwrap().cas_number_label, "7732-18-5");
     }
 
     #[test]
     fn test_delete_product() {
-        let mut db = init_test_products();
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        // Product 1 has storages: the database refuses, the handler checks it
+        // Ethanol has storages: the database refuses, the handler checks it
         // first with `product_has_storages`.
-        assert!(product_has_storages(&db, 1).unwrap());
-        assert!(delete_product(&mut db, 1).is_err());
+        assert!(product_has_storages(&db, ETHANOL).unwrap());
+        assert!(delete_product(&mut db, ETHANOL).is_err());
 
-        // Product 2 has none.
-        assert!(!product_has_storages(&db, 2).unwrap());
-        let result = delete_product(&mut db, 2);
-        assert!(result.is_ok());
-
-        // Verify the product was deleted
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            id: Some(2),
+        // Sodium chloride (3) has none.
+        assert!(!product_has_storages(&db, 3).unwrap());
+        delete_product(&mut db, 3).unwrap();
+        let filter = RequestFilter {
+            id: Some(3),
             ..Default::default()
         };
-        let result = get_products(&db, filter, 1);
-        assert!(result.is_ok());
-
-        let (products, _) = result.unwrap();
-        assert_eq!(products.len(), 0);
+        assert_eq!(product_ids(&db, filter, 1), [0u64; 0]);
     }
 
     #[test]
     fn test_export_products() {
-        let db = init_test_products();
-        let filter = chimitheque_types::requestfilter::RequestFilter {
+        let db = crate::test_utils::init_test_with_fixture();
+
+        // All the products the admin reads.
+        let csv = export_products(&db, RequestFilter::default(), 1).unwrap();
+        assert_eq!(csv.lines().count(), 7);
+
+        // Every field of Ethanol, by column.
+        let filter = RequestFilter {
+            id: Some(ETHANOL),
             ..Default::default()
         };
-        let person_id = 1;
-
-        let result = export_products(&db, filter, person_id);
-        debug!("{result:?}");
-        assert!(result.is_ok());
-
-        // Every field of product 1, by column.
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            id: Some(1),
-            ..Default::default()
-        };
-        let csv = export_products(&db, filter, person_id).unwrap();
+        let csv = export_products(&db, filter, 1).unwrap();
         let mut reader = csv::Reader::from_reader(csv.as_bytes());
         let headers = reader.headers().unwrap().clone();
         let records: Vec<csv::StringRecord> = reader.records().collect::<Result<_, _>>().unwrap();
@@ -474,208 +503,121 @@ mod tests {
             items
         };
 
-        assert_eq!(value("ID"), "1");
-        assert_eq!(value("NAME"), "PRODUCT_NAME-00859");
-        assert_eq!(value("PRODUCT_TYPE"), "chem");
-        assert_eq!(value("CATEGORY"), "CATEGORY-00540");
-        assert_eq!(sorted_list("SYMBOLS"), ["GHS01", "GHS02"]);
-        assert_eq!(sorted_list("HAZARD_STATEMENTS"), ["H200", "H201"]);
-        assert_eq!(sorted_list("TAGS"), ["3D Cell Culture", "Acid"]);
-        assert_eq!(
-            sorted_list("SYNONYMS"),
-            ["PRODUCT_NAME-00001", "PRODUCT_NAME-00002"]
-        );
-        assert_eq!(value("MOLECULAR_WEIGHT"), "879234.4");
-        assert_eq!(value("MOLECULAR_WEIGHT_UNIT"), "L");
-        assert_eq!(value("TEMPERATURE"), "279501.13");
-        assert_eq!(value("TEMPERATURE_UNIT"), "mg");
-        assert_eq!(value("CONCENTRATION"), "806309.52");
-        assert_eq!(value("CONCENTRATION_UNIT"), "nM");
-        assert_eq!(value("RESTRICTED"), "true");
-        assert_eq!(value("PERSON"), "wallacemichael@example.com");
+        for (column, expected) in [
+            ("ID", "2"),
+            ("NAME", "ETHANOL"),
+            ("PRODUCT_SPECIFICITY", "absolute"),
+            ("PRODUCT_TYPE", "chem"),
+            ("CAS_NUMBER", "64-17-5"),
+            ("CE_NUMBER", "200-578-6"),
+            ("EMPIRICAL_FORMULA", "C2H6O"),
+            ("SYNONYMS", "ETHYL ALCOHOL"),
+            ("LINEAR_FORMULA", "CH3CH2OH"),
+            ("PHYSICAL_STATE", "liquid"),
+            ("SIGNAL_WORD", "danger"),
+            ("PRECAUTIONARY_STATEMENTS", "P210"),
+            ("CLASSES_OF_COMPOUND", "alcohol"),
+            ("PRODUCER", "Acros Organics"),
+            ("PRODUCER_REF", "ETOH-96"),
+            ("SUPPLIER_REFS", "Acros Organics:A-1234"),
+            ("TAGS", "Solvent"),
+            ("MOLECULAR_WEIGHT", "46.07"),
+            ("MOLECULAR_WEIGHT_UNIT", "g/mol"),
+            ("TEMPERATURE", "20"),
+            ("TEMPERATURE_UNIT", "°C"),
+            ("CONCENTRATION", "96"),
+            ("CONCENTRATION_UNIT", "%"),
+            ("RESTRICTED", "false"),
+            ("PERSON", "chemistry.manager@example.com"),
+        ] {
+            assert_eq!(value(column), expected, "{column}");
+        }
+        assert_eq!(sorted_list("SYMBOLS"), ["GHS02", "GHS07"]);
+        assert_eq!(sorted_list("HAZARD_STATEMENTS"), ["H225", "H319"]);
+    }
+
+    // Ethanol, to populate.
+    fn ethanol() -> Vec<ProductStruct> {
+        vec![ProductStruct {
+            product_id: Some(ETHANOL),
+            ..Default::default()
+        }]
     }
 
     #[test]
-    fn test_populate_synonyms() {
-        let db = init_test_products();
-        let mut products = vec![ProductStruct {
-            product_id: Some(1),
-            ..Default::default()
-        }];
+    fn test_populate_links() {
+        let db = crate::test_utils::init_test_with_fixture();
 
-        let result = populate_synonyms(&db, &mut products);
-        assert!(result.is_ok());
+        let mut products = ethanol();
+        populate_synonyms(&db, &mut products).unwrap();
+        populate_classes_of_compound(&db, &mut products).unwrap();
+        populate_symbols(&db, &mut products).unwrap();
+        populate_hazard_statements(&db, &mut products).unwrap();
+        populate_precautionary_statements(&db, &mut products).unwrap();
+        populate_supplier_refs(&db, &mut products).unwrap();
+        populate_tags(&db, &mut products).unwrap();
+        let product = products.remove(0);
 
         assert_eq!(
-            sorted_labels(products[0].synonyms.as_ref().unwrap(), |item| &item
-                .name_label),
-            ["PRODUCT_NAME-00001", "PRODUCT_NAME-00002"]
+            sorted_labels(&product.synonyms.unwrap(), |item| &item.name_label),
+            ["ETHYL ALCOHOL"]
         );
-    }
-
-    #[test]
-    fn test_populate_classes_of_compound() {
-        let db = init_test_products();
-        let mut products = vec![ProductStruct {
-            product_id: Some(1),
-            ..Default::default()
-        }];
-
-        let result = populate_classes_of_compound(&db, &mut products);
-        assert!(result.is_ok());
-
         assert_eq!(
-            sorted_labels(products[0].classes_of_compound.as_ref().unwrap(), |item| {
-                &item.class_of_compound_label
+            sorted_labels(&product.classes_of_compound.unwrap(), |item| &item
+                .class_of_compound_label),
+            ["alcohol"]
+        );
+        assert_eq!(
+            sorted_labels(&product.symbols.unwrap(), |item| &item.symbol_label),
+            ["GHS02", "GHS07"]
+        );
+        assert_eq!(
+            sorted_labels(&product.hazard_statements.unwrap(), |item| &item
+                .hazard_statement_reference),
+            ["H225", "H319"]
+        );
+        assert_eq!(
+            sorted_labels(&product.precautionary_statements.unwrap(), |item| {
+                &item.precautionary_statement_reference
             }),
-            ["acetal", "acetophenone"]
+            ["P210"]
         );
-    }
-
-    #[test]
-    fn test_populate_symbols_non_existing() {
-        let db = init_test_products();
-        let product = ProductStruct {
-            product_id: Some(1001),
-            ..Default::default()
-        };
-
-        let result = populate_symbols(&db, &mut [product]);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_populate_symbols_existing() {
-        let db = init_test_products();
-        let mut products = vec![ProductStruct {
-            product_id: Some(1),
-            ..Default::default()
-        }];
-
-        let result = populate_symbols(&db, &mut products);
-        assert!(result.is_ok());
-
         assert_eq!(
-            sorted_labels(products[0].symbols.as_ref().unwrap(), |item| &item
-                .symbol_label),
-            ["GHS01", "GHS02"]
-        );
-    }
-
-    #[test]
-    fn test_populate_hazard_statements() {
-        let db = init_test_products();
-        let mut products = vec![ProductStruct {
-            product_id: Some(1),
-            ..Default::default()
-        }];
-
-        let result = populate_hazard_statements(&db, &mut products);
-        assert!(result.is_ok());
-
-        assert_eq!(
-            sorted_labels(products[0].hazard_statements.as_ref().unwrap(), |item| {
-                &item.hazard_statement_reference
-            }),
-            ["H200", "H201"]
-        );
-    }
-
-    #[test]
-    fn test_populate_precautionary_statements() {
-        let db = init_test_products();
-        let mut products = vec![ProductStruct {
-            product_id: Some(1),
-            ..Default::default()
-        }];
-
-        let result = populate_precautionary_statements(&db, &mut products);
-        assert!(result.is_ok());
-
-        assert_eq!(
-            sorted_labels(
-                products[0].precautionary_statements.as_ref().unwrap(),
-                |item| &item.precautionary_statement_reference
-            ),
-            ["P101", "P102"]
-        );
-    }
-
-    #[test]
-    fn test_populate_supplier_refs() {
-        let db = init_test_products();
-        let mut products = vec![ProductStruct {
-            product_id: Some(1),
-            ..Default::default()
-        }];
-
-        let result = populate_supplier_refs(&db, &mut products);
-        assert!(result.is_ok());
-
-        assert_eq!(
-            sorted_labels(products[0].supplier_refs.as_ref().unwrap(), |item| &item
+            sorted_labels(&product.supplier_refs.unwrap(), |item| &item
                 .supplier_ref_label),
-            ["Il0IneWQ", "gurRQFua3lWiaO5nflsqcL39H8"]
+            ["A-1234"]
         );
-    }
-
-    #[test]
-    fn test_populate_tags() {
-        let db = init_test_products();
-        let mut products = vec![ProductStruct {
-            product_id: Some(1),
-            ..Default::default()
-        }];
-
-        let result = populate_tags(&db, &mut products);
-        assert!(result.is_ok());
-
         assert_eq!(
-            sorted_labels(products[0].tags.as_ref().unwrap(), |item| &item.tag_label),
-            ["3D Cell Culture", "Acid"]
+            sorted_labels(&product.tags.unwrap(), |item| &item.tag_label),
+            ["Solvent"]
         );
     }
 
     #[test]
-    fn test_get_products_with_product_specificity_filter() {
-        let db = init_test_products();
+    fn test_populate_links_of_a_product_without_links() {
+        let db = crate::test_utils::init_test_with_fixture();
 
-        // Specificity contains "ab" (LIKE is case-insensitive for ASCII).
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            product_specificity: Some("ab".to_string()),
-            ..Default::default()
-        };
-        let (products, count) = get_products(&db, filter, 1).unwrap();
-        assert_eq!(count, 23);
-        assert!(products.iter().all(|product| {
-            product
-                .product_specificity
-                .as_deref()
-                .is_some_and(|specificity| specificity.to_lowercase().contains("ab"))
-        }));
-
-        // The full specificity of product 1.
-        let filter = chimitheque_types::requestfilter::RequestFilter {
-            product_specificity: Some("Sdu1isVEkhXNsLXVqRpvX3hr6cS55M2".to_string()),
-            ..Default::default()
-        };
-        let (products, count) = get_products(&db, filter, 1).unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(products[0].product_id, Some(1));
+        // Water (1) has none, product 999 does not exist.
+        for product_id in [1, 999] {
+            let mut products = vec![ProductStruct {
+                product_id: Some(product_id),
+                ..Default::default()
+            }];
+            populate_symbols(&db, &mut products).unwrap();
+            populate_tags(&db, &mut products).unwrap();
+            assert!(products[0].symbols.is_none(), "{product_id}");
+            assert!(products[0].tags.is_none(), "{product_id}");
+        }
     }
 
     #[test]
     fn test_product_has_storages() {
-        let db_connection = init_test_products();
-        let product_id =
-            |sql: &str| -> u64 { db_connection.query_row(sql, [], |row| row.get(0)).unwrap() };
-        let with_storages = product_id("SELECT product FROM storage LIMIT 1");
-        let without_storages = product_id(
-            "SELECT product_id FROM product WHERE product_id NOT IN (SELECT product FROM storage) LIMIT 1",
-        );
+        let db = crate::test_utils::init_test_with_fixture();
 
-        assert!(product_has_storages(&db_connection, with_storages).unwrap());
-        assert!(!product_has_storages(&db_connection, without_storages).unwrap());
+        assert!(product_has_storages(&db, ETHANOL).unwrap());
+        assert!(product_has_storages(&db, 4).unwrap());
+        assert!(!product_has_storages(&db, 3).unwrap());
+        assert!(!product_has_storages(&db, 6).unwrap());
     }
 
     #[test]
@@ -690,18 +632,20 @@ mod tests {
             "productprecautionarystatements",
             "productclassesofcompounds",
         ] {
-            let mut db = init_test_products();
+            let mut db = crate::test_utils::init_test_with_fixture();
             db.execute_batch(&format!(
                 "CREATE TRIGGER fail_delete BEFORE DELETE ON {link_table}
                  BEGIN SELECT RAISE(ABORT, 'delete failed'); END;"
             ))
             .unwrap();
 
-            // Without links: only the removal of the old links runs.
+            // Ethanol saved without links: only the removal of the old links
+            // runs.
             let product = ProductStruct {
-                product_id: Some(1),
+                product_id: Some(ETHANOL),
                 name: NameStruct {
-                    name_label: "THIS IS A NEW PRODUCT".to_string(),
+                    name_id: Some(2),
+                    name_label: "ETHANOL".to_string(),
                     ..Default::default()
                 },
                 person: PersonStruct {
@@ -721,28 +665,21 @@ mod tests {
 
     #[test]
     fn test_create_update_product_concentration() {
-        let mut db = init_test_products();
-        let get_product = |db: &Connection| {
-            let filter = chimitheque_types::requestfilter::RequestFilter {
-                id: Some(1),
-                ..Default::default()
-            };
-            get_products(db, filter, 1).unwrap().0.remove(0)
-        };
+        let mut db = crate::test_utils::init_test_with_fixture();
+        let mg_per_l = id_of(&db, "unit", "unit_label", "mg/L");
 
-        // 1.5 mg/L.
-        let mut product = get_product(&db);
+        // Water (1): 1.5 mg/L.
+        let mut product = get_product(&db, 1);
         product.product_concentration = Some(1.5);
         product.unit_concentration = Some(UnitStruct {
-            unit_id: Some(21),
+            unit_id: Some(mg_per_l),
             ..Default::default()
         });
         create_update_product(&mut db, product).unwrap();
 
-        let product = get_product(&db);
+        let product = get_product(&db, 1);
         assert_eq!(product.product_concentration, Some(1.5));
         let unit = product.unit_concentration.clone().unwrap();
-        assert_eq!(unit.unit_id, Some(21));
         assert_eq!(unit.unit_label, "mg/L");
         assert_eq!(unit.unit_type, UnitType::Concentration);
 
@@ -752,7 +689,7 @@ mod tests {
         product.unit_concentration = None;
         create_update_product(&mut db, product).unwrap();
 
-        let product = get_product(&db);
+        let product = get_product(&db, 1);
         assert_eq!(product.product_concentration, None);
         assert!(product.unit_concentration.is_none());
     }

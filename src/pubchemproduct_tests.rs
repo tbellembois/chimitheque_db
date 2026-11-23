@@ -8,7 +8,6 @@ mod tests {
     )]
 
     use crate::{
-        init::populate_db_with_base_data,
         product::{create_update_product, get_products},
         pubchemproduct::*,
     };
@@ -17,9 +16,7 @@ mod tests {
     };
 
     fn init_test_pubchemproduct() -> Connection {
-        let mut db = crate::test_utils::init_test();
-        populate_db_with_base_data(&mut db).unwrap();
-        db
+        crate::test_utils::init_test_with_fixture()
     }
 
     fn ethanol() -> PubchemProduct {
@@ -215,16 +212,11 @@ mod tests {
 
     #[test]
     fn test_reimport_replaces_product_and_keeps_bookmarks() {
+        // Ethanol (product 2) of the fixture, bookmarked by chemistry.user.
         let mut db_connection = init_test_pubchemproduct();
-        let product_id = import(&mut db_connection, &ethanol(), None);
-        db_connection
-            .execute(
-                "INSERT INTO bookmark (person, product) VALUES (1, ?1)",
-                [product_id],
-            )
-            .unwrap();
+        let product_id = 2;
 
-        // Re-import with fewer data onto the same product.
+        // Re-import with fewer data onto the product.
         let reimported = PubchemProduct {
             name: Some("ethanol".to_string()),
             symbols: Some(vec!["GHS02".to_string()]),

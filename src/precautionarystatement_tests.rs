@@ -7,13 +7,12 @@ mod tests {
         clippy::too_many_lines
     )]
 
-    use crate::{init::populate_db_with_base_data, precautionarystatement::*};
+    use crate::precautionarystatement::*;
     use chimitheque_types::requestfilter::RequestFilter;
 
     #[test]
     fn test_parse_precautionary_statement() {
-        let mut db_connection = crate::test_utils::init_test();
-        populate_db_with_base_data(&mut db_connection).unwrap();
+        let db_connection = crate::test_utils::init_test_with_fixture();
 
         assert!(parse(&db_connection, "P243").is_ok_and(|u| u.is_some()));
         assert!(parse(&db_connection, "not exist").is_ok_and(|u| u.is_none()));
@@ -21,8 +20,7 @@ mod tests {
 
     #[test]
     fn test_get_precautionary_statements() {
-        let mut db_connection = crate::test_utils::init_test();
-        populate_db_with_base_data(&mut db_connection).unwrap();
+        let db_connection = crate::test_utils::init_test_with_fixture();
 
         let filter = RequestFilter {
             ..Default::default()

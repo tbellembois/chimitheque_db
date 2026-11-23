@@ -1,583 +1,265 @@
 #[cfg(test)]
 mod tests {
-    #![allow(
-        clippy::unwrap_used,
-        clippy::expect_used,
-        clippy::panic,
-        clippy::too_many_lines
-    )]
+    #![allow(clippy::unwrap_used)]
 
     use crate::person::*;
     use chimitheque_types::entity::Entity;
     use rusqlite::Connection;
 
-    fn init_test_person() -> Connection {
-        let mut db = crate::test_utils::init_test();
+    // See the fixture description in resources/test_fixture.sql: admin (1),
+    // chemistry.manager (2), chemistry.user (3), biology.manager (4),
+    // biology.user (5), new.user (6) with no entity; Chemistry (1), Biology (2).
 
-        db.execute("PRAGMA synchronous = OFF", []).unwrap();
-        db.execute("PRAGMA foreign_keys = ON", []).unwrap();
+    fn count(db: &Connection, sql: &str, params: impl rusqlite::Params) -> i64 {
+        db.query_row(sql, params, |row| row.get(0)).unwrap()
+    }
 
-        // Insert a few persons
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (100, 'test1@example.com')",
-            [],
-        )
-        .unwrap();
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (101, 'test2@example.com')",
-            [],
-        )
-        .unwrap();
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (102, 'test3@example.com')",
-            [],
-        )
-        .unwrap();
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (103, 'test4@example.com')",
-            [],
-        )
-        .unwrap();
+    fn is_manager_row(db: &Connection, person_id: u64, entity_id: u64) -> bool {
+        count(
+            db,
+            "SELECT COUNT(*) FROM entitypeople WHERE entitypeople_person_id = ?1 AND entitypeople_entity_id = ?2",
+            [person_id, entity_id],
+        ) == 1
+    }
 
-        // Insert a few entities
-        db.execute("INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (100, 'Test Entity 1', 'Desc 1')", []).unwrap();
-        db.execute("INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (101, 'Test Entity 2', 'Desc 2')", []).unwrap();
+    fn has_manager_permission(db: &Connection, person_id: u64, entity_id: u64) -> bool {
+        count(
+            db,
+            "SELECT COUNT(*) FROM permission WHERE person = ?1 AND permission_name = 'all' AND permission_item = 'all' AND permission_entity = ?2",
+            [person_id, entity_id],
+        ) == 1
+    }
 
-        // Set person 100 as manager of entity 100
-        {
-            let tx = db.transaction().unwrap();
-            set_person_manager(&tx, 100, 100).unwrap();
-            tx.commit().unwrap();
-        }
+    // The ids of the people the person can see, sorted.
+    fn visible_people(db: &Connection, person_id: u64) -> Vec<u64> {
+        let (people, _) = get_people(db, &RequestFilter::default(), person_id).unwrap();
+        let mut ids: Vec<u64> = people
+            .iter()
+            .filter_map(|person| person.person_id)
+            .collect();
+        ids.sort_unstable();
+        ids
+    }
 
-        // Set person 101 as manager of entity 101
-        {
-            let tx = db.transaction().unwrap();
-            set_person_manager(&tx, 101, 101).unwrap();
-            tx.commit().unwrap();
-        }
-
-        // Set person 102 as member of entity 100 (not a manager)
-        {
-            let tx = db.transaction().unwrap();
-            tx.execute(
-                "INSERT INTO personentities (personentities_person_id, personentities_entity_id) VALUES (?, ?)",
-                (102, 100),
-            )
-            .unwrap();
-            tx.execute(
-                "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (?, ?, ?, ?)",
-                (102, "r", "entities", 100),
-            )
-            .unwrap();
-            tx.commit().unwrap();
-        }
-
-        // Person 103 belongs to no entity (just a regular person)
-
-        db
+    fn admin_ids(db: &Connection) -> Vec<u64> {
+        let mut ids: Vec<u64> = get_admins(db)
+            .unwrap()
+            .iter()
+            .filter_map(|person| person.person_id)
+            .collect();
+        ids.sort_unstable();
+        ids
     }
 
     #[test]
     fn test_set_person_manager() {
-        let mut db_connection = init_test_person();
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        // We use a transaction because set_person_manager usually takes &Transaction or &Connection
-        let tx = db_connection.transaction().unwrap();
-
-        let person_id = 100;
-        let entity_id = 100;
-
-        set_person_manager(&tx, person_id, entity_id).expect("Should successfully set manager");
+        // chemistry.user becomes a manager of Chemistry.
+        let tx = db.transaction().unwrap();
+        set_person_manager(&tx, 3, 1).unwrap();
         tx.commit().unwrap();
 
-        // 1. Verify the manager link exists in entitypeople
-        let mut stmt = db_connection
-            .prepare("SELECT count(*) FROM entitypeople WHERE entitypeople_person_id = ? AND entitypeople_entity_id = ?")
-            .unwrap();
-        let count: i32 = stmt
-            .query_row([person_id, entity_id], |row| row.get(0))
-            .unwrap();
-        assert_eq!(
-            count, 1,
-            "A manager link should have been created in entitypeople"
-        );
-
-        // 2. Verify the permissions were granted
-        let mut stmt = db_connection
-            .prepare("SELECT count(*) FROM permission WHERE person = ? AND permission_item = 'all' AND permission_name = 'all' AND permission_entity = ?")
-            .unwrap();
-        let perm_count: i32 = stmt
-            .query_row([person_id, entity_id], |row| row.get(0))
-            .unwrap();
-
-        assert_eq!(
-            perm_count, 1,
-            "Manager should have been granted 'all' permissions for the entity"
-        );
+        assert!(is_manager_row(&db, 3, 1));
+        assert!(has_manager_permission(&db, 3, 1));
     }
 
     #[test]
     fn test_unset_person_manager() {
-        let mut db_connection = init_test_person();
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        let person_id = 100;
-        let entity_id = 100;
+        // chemistry.manager is no longer a manager of Chemistry.
+        let tx = db.transaction().unwrap();
+        unset_person_manager(&tx, 2, 1).unwrap();
+        tx.commit().unwrap();
 
-        // Setup: First, make the person a manager
-        {
-            let tx = db_connection.transaction().unwrap();
-            set_person_manager(&tx, person_id, entity_id).unwrap();
-            tx.commit().unwrap();
-        }
-
-        // Verify setup was successful
-        {
-            let mut stmt = db_connection.prepare("SELECT count(*) FROM entitypeople WHERE entitypeople_person_id = ? AND entitypeople_entity_id = ?").unwrap();
-            assert_eq!(
-                stmt.query_row([person_id, entity_id], |row| row.get::<_, i32>(0))
-                    .unwrap(),
-                1
-            );
-        }
-
-        // Now, unset the manager
-        {
-            let tx = db_connection.transaction().unwrap();
-            unset_person_manager(&tx, person_id, entity_id)
-                .expect("Should successfully unset manager");
-            tx.commit().unwrap();
-        }
-
-        // 1. Verify the manager link is gone from entitypeople
-        let mut stmt = db_connection
-            .prepare("SELECT count(*) FROM entitypeople WHERE entitypeople_person_id = ? AND entitypeople_entity_id = ?")
-            .unwrap();
-        let count: i32 = stmt
-            .query_row([person_id, entity_id], |row| row.get(0))
-            .unwrap();
-        assert_eq!(
-            count, 0,
-            "The manager link should have been removed from entitypeople"
-        );
-
-        // 2. Verify the manager permissions are gone
-        // We look for the 'all'/'all' permission specifically for that entity
-        let mut stmt = db_connection
-            .prepare("SELECT count(*) FROM permission WHERE person = ? AND permission_item = 'all' AND permission_name = 'all' AND permission_entity = ?")
-            .unwrap();
-        let perm_count: i32 = stmt
-            .query_row([person_id, entity_id], |row| row.get(0))
-            .unwrap();
-
-        assert_eq!(
-            perm_count, 0,
-            "The manager permissions for the entity should have been removed"
-        );
+        assert!(!is_manager_row(&db, 2, 1));
+        assert!(!has_manager_permission(&db, 2, 1));
+        // They are still a member.
+        assert!(is_person_member_of(&db, 2, 1).unwrap());
     }
 
     #[test]
-    fn test_set_person_admin() {
-        let mut conn = init_test_person();
+    fn test_set_and_unset_person_admin() {
+        let mut db = crate::test_utils::init_test_with_fixture();
+        assert_eq!(admin_ids(&db), [1]);
 
-        // Verify the person is not initially an admin
-        let admins = get_admins(&conn).unwrap();
-        assert!(admins.is_empty(), "No admins should exist initially");
-
-        // Set the person as admin
-        set_person_admin(&mut conn, 100).unwrap();
-
-        // Verify the person is now an admin
-        let admins = get_admins(&conn).unwrap();
-        assert_eq!(admins.len(), 1, "Should have exactly one admin");
-        assert_eq!(admins[0].person_id, Some(100));
-        assert_eq!(admins[0].person_email, "test1@example.com");
-
-        // Check if the person appears in get_people with is_admin flag
-        let (people, _) = get_people(
-            &conn,
-            &chimitheque_types::requestfilter::RequestFilter::default(),
-            100,
-        )
-        .unwrap();
-
-        let admin_person = people.iter().find(|p| p.person_id == Some(100)).unwrap();
-        assert!(admin_person.is_admin, "Person should be marked as admin");
-    }
-
-    #[test]
-    fn test_unset_person_admin() {
-        let mut conn = init_test_person();
-
-        // Set the person as admin first
-        set_person_admin(&mut conn, 100).unwrap();
-
-        // Verify the person is now an admin
-        let admins = get_admins(&conn).unwrap();
-        assert_eq!(admins.len(), 1, "Person should be an admin after setup");
-        assert_eq!(admins[0].person_id, Some(100));
-
-        // Remove admin privileges
-        unset_person_admin(&mut conn, 100).unwrap();
-
-        // Verify the person is no longer an admin
-        let admins = get_admins(&conn).unwrap();
-        assert!(admins.is_empty(), "No admins should exist after unset");
-
-        // Verify the permission record was removed
-        let count: i32 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM permission WHERE permission_item = 'all' AND permission_name = 'all' AND permission_entity IS NULL AND person = ?1",
-                [100],
-                |row| row.get(0),
-            )
+        set_person_admin(&mut db, 3).unwrap();
+        assert_eq!(admin_ids(&db), [1, 3]);
+        assert!(is_person_admin(&db, 3).unwrap());
+        let (people, _) = get_people(&db, &RequestFilter::default(), 3).unwrap();
+        let person = people
+            .iter()
+            .find(|person| person.person_id == Some(3))
             .unwrap();
-        assert_eq!(count, 0, "Admin permission record should be removed");
+        assert!(person.is_admin);
+
+        unset_person_admin(&mut db, 3).unwrap();
+        assert_eq!(admin_ids(&db), [1]);
+        assert!(!is_person_admin(&db, 3).unwrap());
+        assert_eq!(
+            count(
+                &db,
+                "SELECT COUNT(*) FROM permission WHERE person = 3 AND permission_name = 'all' AND permission_item = 'all' AND permission_entity IS NULL",
+                []
+            ),
+            0
+        );
     }
 
     #[test]
     fn test_delete_person() {
-        let mut db_connection = init_test_person();
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        // First, create a person to delete
-        let person_id = 100;
+        // chemistry.user has storages, a borrowing, a bookmark, a membership
+        // and permissions.
+        delete_person(&mut db, 3).unwrap();
 
-        // Verify the person exists before deletion
-        {
-            let mut stmt = db_connection
-                .prepare("SELECT count(*) FROM person WHERE person_id = ?")
-                .unwrap();
-            let count: i32 = stmt.query_row([person_id], |row| row.get(0)).unwrap();
-            assert_eq!(count, 1, "Person should exist before deletion");
+        assert_eq!(
+            count(&db, "SELECT COUNT(*) FROM person WHERE person_id = 3", []),
+            0
+        );
+        for table_and_column in [
+            "permission WHERE person",
+            "personentities WHERE personentities_person_id",
+            "bookmark WHERE person",
+            "borrowing WHERE borrower",
+            "storage WHERE person",
+        ] {
+            assert_eq!(
+                count(
+                    &db,
+                    &format!("SELECT COUNT(*) FROM {table_and_column} = 3"),
+                    []
+                ),
+                0,
+                "{table_and_column}"
+            );
         }
-
-        // Now delete the person
-        {
-            // let tx = db_connection.transaction().unwrap();
-            delete_person(&mut db_connection, person_id)
-                .expect("Should successfully delete person");
-            // tx.commit().unwrap();
-        }
-
-        // Verify the person is gone
-        {
-            let mut stmt = db_connection
-                .prepare("SELECT count(*) FROM person WHERE person_id = ?")
-                .unwrap();
-            let count: i32 = stmt.query_row([person_id], |row| row.get(0)).unwrap();
-            assert_eq!(count, 0, "Person should be deleted");
-        }
-
-        // Also verify that any related records in entitypeople are gone
-        {
-            let mut stmt = db_connection
-                .prepare("SELECT count(*) FROM entitypeople WHERE entitypeople_person_id = ?")
-                .unwrap();
-            let count: i32 = stmt.query_row([person_id], |row| row.get(0)).unwrap();
-            assert_eq!(count, 0, "Related entitypeople records should be deleted");
-        }
-
-        // Also verify that any related permission records are gone
-        {
-            let mut stmt = db_connection
-                .prepare("SELECT count(*) FROM permission WHERE person = ?")
-                .unwrap();
-            let count: i32 = stmt.query_row([person_id], |row| row.get(0)).unwrap();
-            assert_eq!(count, 0, "Related permission records should be deleted");
-        }
+        // Their storages are kept, saved by the admin.
+        assert_eq!(
+            count(
+                &db,
+                "SELECT COUNT(*) FROM storage WHERE storage_id IN (1, 2, 3, 4) AND person = 1",
+                []
+            ),
+            4
+        );
     }
 
     #[test]
     fn test_manager_cannot_get_people_from_other_entities() {
-        let db_connection = init_test_person();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        // Person 100 is manager of entity 100
-        // Person 101 is manager of entity 101
-        // Person 102 is member of entity 100
-        // Person 103 belongs to no entity
-
-        // Test that person 100 (manager of entity 100) can't get people from entity 101
-        let (people, _) = get_people(
-            &db_connection,
-            &chimitheque_types::requestfilter::RequestFilter::default(),
-            100,
-        )
-        .unwrap();
-
-        // Should only see people from entity 100 (themselves) and possibly 102
-        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
-        assert!(
-            people_ids.contains(&Some(100)) || people_ids.contains(&Some(102)),
-            "Manager 100 should only see people from their own entity"
-        );
-        assert!(
-            !people_ids.contains(&Some(101)),
-            "Manager 100 should not see person 101 from other entity"
-        );
-        assert!(
-            people_ids.contains(&Some(103)),
-            "Manager 100 should see person 103 from no entity"
-        );
-
-        // Test that person 101 (manager of entity 101) can't get people from entity 100
-        let (people, _) = get_people(
-            &db_connection,
-            &chimitheque_types::requestfilter::RequestFilter::default(),
-            101,
-        )
-        .unwrap();
-
-        // Should only see people from entity 101 (themselves)
-        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
-        assert!(
-            people_ids.contains(&Some(101)),
-            "Manager 101 should see themselves"
-        );
-        assert!(
-            !people_ids.contains(&Some(100)),
-            "Manager 101 should not see person 100 from other entity"
-        );
-        assert!(
-            !people_ids.contains(&Some(102)),
-            "Manager 101 should not see person 102 from other entity"
-        );
-        assert!(
-            people_ids.contains(&Some(103)),
-            "Manager 101 should see person 103 from no entity"
-        );
-    }
-
-    #[test]
-    fn test_manager_can_get_people_with_no_entities() {
-        let mut db_connection = init_test_person();
-
-        // Create a new person with no entity
-        db_connection
-            .execute(
-                "INSERT INTO person (person_id, person_email) VALUES (104, 'test5@example.com')",
-                [],
-            )
-            .unwrap();
-
-        // Set person 100 as manager of entity 100
-        {
-            let tx = db_connection.transaction().unwrap();
-            set_person_manager(&tx, 100, 100).unwrap();
-            tx.commit().unwrap();
-        }
-
-        // Test that person 100 (manager of entity 100) can get people with no entities
-        let (people, _) = get_people(
-            &db_connection,
-            &chimitheque_types::requestfilter::RequestFilter::default(),
-            100,
-        )
-        .unwrap();
-
-        // Should see people from their own entity (100) and people with no entities (103, 104)
-        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
-        assert!(
-            people_ids.contains(&Some(100)),
-            "Manager 100 should see themselves"
-        );
-        assert!(
-            people_ids.contains(&Some(103)),
-            "Manager 100 should see person 103 with no entity"
-        );
-        assert!(
-            people_ids.contains(&Some(104)),
-            "Manager 100 should see person 104 with no entity"
-        );
-        assert!(
-            !people_ids.contains(&Some(101)),
-            "Manager 100 should not see person 101 from other entity"
-        );
-        assert!(
-            people_ids.contains(&Some(102)),
-            "Manager 100 should see person 102 from his entity"
-        );
+        // A manager sees the people of their entity, and the people with no
+        // entity: the admin and new.user.
+        assert_eq!(visible_people(&db, 2), [1, 2, 3, 6]);
+        assert_eq!(visible_people(&db, 4), [1, 4, 5, 6]);
     }
 
     #[test]
     fn test_member_cannot_get_people_from_other_entities() {
-        let db_connection = init_test_person();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        // Person 102 is member of entity 100
-        // Test that person 102 can't get people from entity 101
-        let (people, _) = get_people(
-            &db_connection,
-            &chimitheque_types::requestfilter::RequestFilter::default(),
-            102,
-        )
-        .unwrap();
-
-        // Should only see people from entity 100 (themselves and 100)
-        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
-        assert!(
-            people_ids.contains(&Some(100)) || people_ids.contains(&Some(102)),
-            "Member 102 should see people from their own entity"
-        );
-        assert!(
-            !people_ids.contains(&Some(101)),
-            "Member 102 should not see person 101 from other entity"
-        );
-        assert!(
-            people_ids.contains(&Some(103)),
-            "Member 102 should see person 103 from no entity"
-        );
+        // chemistry.user reads the people of Chemistry.
+        assert_eq!(visible_people(&db, 3), [1, 2, 3, 6]);
     }
 
     #[test]
     fn test_person_with_no_entity_can_only_get_people_with_no_membership() {
-        let db_connection = init_test_person();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        // Person 103 belongs to no entity
-        // Test that person 103 can get people with no entity memberships
-        let (people, _) = get_people(
-            &db_connection,
-            &chimitheque_types::requestfilter::RequestFilter::default(),
-            103,
-        )
-        .unwrap();
+        assert_eq!(visible_people(&db, 6), [1, 6]);
+    }
 
-        // Should see people with no entity memberships (103)
-        let people_ids: Vec<_> = people.iter().map(|p| p.person_id).collect();
-        assert!(
-            people_ids.contains(&Some(103)),
-            "Person with no entity should see themselves"
-        );
+    #[test]
+    fn test_admin_gets_all_the_people() {
+        let db = crate::test_utils::init_test_with_fixture();
+
+        assert_eq!(visible_people(&db, 1), [1, 2, 3, 4, 5, 6]);
     }
 
     #[test]
     fn test_is_person_manager() {
-        let db_connection = init_test_person();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        // Test person 100 is manager of entity 100 (set in init_test_person)
-        assert!(is_person_manager(&db_connection, 100, 100).unwrap());
-
-        // Test person 101 is manager of entity 101 (set in init_test_person)
-        assert!(is_person_manager(&db_connection, 101, 101).unwrap());
-
-        // Test person 102 is not manager of entity 100 (member but not manager)
-        assert!(!is_person_manager(&db_connection, 102, 100).unwrap());
-
-        // Test person 103 (no entity) is not manager of any entity
-        assert!(!is_person_manager(&db_connection, 103, 100).unwrap());
-        assert!(!is_person_manager(&db_connection, 103, 101).unwrap());
-
-        // Test person 100 is not manager of entity 101
-        assert!(!is_person_manager(&db_connection, 100, 101).unwrap());
-    }
-
-    #[test]
-    fn test_is_admin() {
-        let mut db_connection = init_test_person();
-
-        // Test person 100 is not admin initially
-        assert!(!is_person_admin(&db_connection, 100).unwrap());
-
-        // Set person 100 as admin
-        set_person_admin(&mut db_connection, 100).unwrap();
-
-        // Test person 100 is now admin
-        assert!(is_person_admin(&db_connection, 100).unwrap());
-
-        // Test person 101 is not admin
-        assert!(!is_person_admin(&db_connection, 101).unwrap());
-
-        // Unset person 100 as admin
-        unset_person_admin(&mut db_connection, 100).unwrap();
-
-        // Test person 100 is no longer admin
-        assert!(!is_person_admin(&db_connection, 100).unwrap());
+        assert!(is_person_manager(&db, 2, 1).unwrap());
+        assert!(is_person_manager(&db, 4, 2).unwrap());
+        // A member, a person with no entity, a manager of another entity.
+        assert!(!is_person_manager(&db, 3, 1).unwrap());
+        assert!(!is_person_manager(&db, 6, 1).unwrap());
+        assert!(!is_person_manager(&db, 2, 2).unwrap());
     }
 
     #[test]
     fn test_is_person_member_of() {
-        let db_connection = init_test_person();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        // Test person 100 is member of entity 100 (set in init_test_person)
-        assert!(is_person_member_of(&db_connection, 100, 100).unwrap());
-
-        // Test person 101 is member of entity 101 (set in init_test_person)
-        assert!(is_person_member_of(&db_connection, 101, 101).unwrap());
-
-        // Test person 102 is member of entity 100 (set in init_test_person)
-        assert!(is_person_member_of(&db_connection, 102, 100).unwrap());
-
-        // Test person 103 is not member of any entity (no entity membership)
-        assert!(!is_person_member_of(&db_connection, 103, 100).unwrap());
-        assert!(!is_person_member_of(&db_connection, 103, 101).unwrap());
-
-        // Test person 100 is not member of entity 101
-        assert!(!is_person_member_of(&db_connection, 100, 101).unwrap());
+        for (person_id, entity_id) in [(2, 1), (3, 1), (4, 2), (5, 2)] {
+            assert!(is_person_member_of(&db, person_id, entity_id).unwrap());
+        }
+        assert!(!is_person_member_of(&db, 3, 2).unwrap());
+        assert!(!is_person_member_of(&db, 6, 1).unwrap());
     }
 
     #[test]
     fn test_person_email_exists() {
-        let db_connection = init_test_person();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        assert!(person_email_exists(&db_connection, "test2@example.com", None).unwrap());
-        assert!(person_email_exists(&db_connection, "test2@example.com", Some(100)).unwrap());
+        assert!(person_email_exists(&db, "chemistry.user@example.com", None).unwrap());
+        assert!(person_email_exists(&db, "chemistry.user@example.com", Some(2)).unwrap());
         // The person being updated keeps their own email.
-        assert!(!person_email_exists(&db_connection, "test2@example.com", Some(101)).unwrap());
-        assert!(!person_email_exists(&db_connection, "unknown@example.com", None).unwrap());
+        assert!(!person_email_exists(&db, "chemistry.user@example.com", Some(3)).unwrap());
+        assert!(!person_email_exists(&db, "unknown@example.com", None).unwrap());
     }
 
     #[test]
-    fn test_managed_entity_ids() {
-        let db = init_test_person();
+    fn test_managed_and_member_entity_ids() {
+        let db = crate::test_utils::init_test_with_fixture();
 
-        assert_eq!(managed_entity_ids(&db, 100).unwrap(), [100]);
-        assert_eq!(managed_entity_ids(&db, 102).unwrap(), [0u64; 0]);
-    }
-
-    #[test]
-    fn test_member_entity_ids() {
-        let db = init_test_person();
-
-        assert_eq!(member_entity_ids(&db, 102).unwrap(), [100]);
-        assert_eq!(member_entity_ids(&db, 103).unwrap(), [0u64; 0]);
+        assert_eq!(managed_entity_ids(&db, 2).unwrap(), [1]);
+        assert_eq!(managed_entity_ids(&db, 3).unwrap(), [0u64; 0]);
+        assert_eq!(member_entity_ids(&db, 3).unwrap(), [1]);
+        assert_eq!(member_entity_ids(&db, 6).unwrap(), [0u64; 0]);
     }
 
     #[test]
     fn test_person_permissions() {
-        let db = init_test_person();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        let permissions = person_permissions(&db, 102).unwrap();
+        // new.user only reads the products.
+        let permissions = person_permissions(&db, 6).unwrap();
         assert_eq!(permissions.len(), 1);
         assert_eq!(permissions[0].permission_name, PermissionName::Read);
-        assert_eq!(permissions[0].permission_item, PermissionItem::Entities);
-        assert_eq!(permissions[0].permission_entity, Some(100));
-        assert_eq!(person_permissions(&db, 103).unwrap().len(), 0);
+        assert_eq!(permissions[0].permission_item, PermissionItem::Products);
+        assert_eq!(permissions[0].permission_entity, None);
+
+        assert_eq!(person_permissions(&db, 3).unwrap().len(), 3);
     }
 
     #[test]
     fn test_create_update_person_keeps_the_stored_managers() {
-        let mut db = init_test_person();
-        let entity = |entity_id| Entity {
-            entity_id: Some(entity_id),
-            ..Default::default()
-        };
-        let is_manager_permission = |permission: &PermissionStruct, entity_id| {
-            permission.permission_name == PermissionName::All
-                && permission.permission_item == PermissionItem::All
-                && permission.permission_entity == Some(entity_id)
-        };
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        // Person 100 manages entity 100; the saved person claims entity 101
-        // instead.
+        // chemistry.manager manages Chemistry (1); the saved person claims
+        // Biology (2) instead.
         let person = PersonStruct {
-            person_id: Some(100),
-            person_email: "test1@example.com".to_string(),
-            managed_entities: Some(vec![entity(101)]),
+            person_id: Some(2),
+            person_email: "chemistry.manager@example.com".to_string(),
+            entities: Some(vec![Entity {
+                entity_id: Some(1),
+                ..Default::default()
+            }]),
+            managed_entities: Some(vec![Entity {
+                entity_id: Some(2),
+                ..Default::default()
+            }]),
             ..Default::default()
         };
         create_update_person(&mut db, person).unwrap();
 
-        let permissions = person_permissions(&db, 100).unwrap();
-        assert!(permissions.iter().any(|p| is_manager_permission(p, 100)));
-        assert!(!permissions.iter().any(|p| is_manager_permission(p, 101)));
-        assert_eq!(managed_entity_ids(&db, 100).unwrap(), [100]);
+        assert!(has_manager_permission(&db, 2, 1));
+        assert!(!has_manager_permission(&db, 2, 2));
+        assert_eq!(managed_entity_ids(&db, 2).unwrap(), [1]);
     }
 }

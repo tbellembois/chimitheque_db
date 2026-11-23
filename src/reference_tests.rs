@@ -16,13 +16,8 @@ mod tests {
 
     #[test]
     fn test_find_missing_reference() {
-        let db_connection = crate::test_utils::init_test();
-        db_connection
-            .execute(
-                "INSERT INTO category (category_id, category_label) VALUES (1, 'solvents')",
-                [],
-            )
-            .unwrap();
+        // Category 1 is in the base data.
+        let db_connection = crate::test_utils::init_test_with_fixture();
 
         let existing = Reference::new("category", "category", Some(1));
         assert_eq!(find_missing_reference(&db_connection, &[]).unwrap(), None);

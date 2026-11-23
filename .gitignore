@@ -15,7 +15,6 @@ target
 .aider*
 
 # Tests
-test.sqlite*
 
 # Code coverage
 tarpaulin-report.html

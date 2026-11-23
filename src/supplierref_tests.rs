@@ -1,195 +1,124 @@
 #[cfg(test)]
 mod tests {
-    #![allow(
-        clippy::unwrap_used,
-        clippy::expect_used,
-        clippy::panic,
-        clippy::too_many_lines
-    )]
+    #![allow(clippy::unwrap_used)]
 
     use crate::supplierref::*;
     use chimitheque_types::requestfilter::RequestFilter;
-    use log::info;
     use rusqlite::Connection;
 
-    const TOTAL_SUPPLIERS: usize = 5;
-    const TOTAL_SUPPLIER_REFS: usize = 13;
+    // The fixture supplier references, in the order of the list: 1-3 of Acros
+    // Organics, 4 of Merck / Sigma.
+    const SUPPLIER_REFS: [&str; 4] = ["A-1234", "A-5678", "A-9999", "Suprapur® grade"];
 
-    // Helper function to verify a supplier reference in the database
-    fn verify_supplier_ref(
-        conn: &Connection,
-        ref_id: u64,
-        expected_supplier_id: u64,
-        expected_label: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut stmt = conn.prepare("SELECT supplier_ref_id, supplier_ref_label, supplier FROM supplier_ref WHERE supplier_ref_id = ?")?;
-        let row = stmt.query_row([ref_id], |row| {
-            Ok((
-                row.get_unwrap::<_, i64>(0),
-                row.get_unwrap::<_, String>(1),
-                row.get_unwrap::<_, i64>(2),
-            ))
-        })?;
-
-        let (id, label, supplier) = row;
-        assert_eq!(id, i64::try_from(ref_id).unwrap());
-        assert_eq!(label, expected_label);
-        assert_eq!(supplier, i64::try_from(expected_supplier_id).unwrap());
-
-        Ok(())
+    fn supplier_id(db: &Connection, label: &str) -> u64 {
+        db.query_row(
+            "SELECT supplier_id FROM supplier WHERE supplier_label = ?1",
+            [label],
+            |row| row.get(0),
+        )
+        .unwrap()
     }
 
-    // Helper function to create a supplier reference in the database
-    fn insert_supplier_ref(
-        conn: &Connection,
-        label: &str,
-        supplier_id: u64,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        conn.execute(
-            "INSERT INTO supplier_ref (supplier_ref_label, supplier) VALUES (?, ?)",
-            [label, supplier_id.to_string().as_str()],
-        )?;
-        Ok(())
+    // The label and supplier id of a stored supplier reference.
+    fn stored(db: &Connection, supplier_ref_id: u64) -> (String, u64) {
+        db.query_row(
+            "SELECT supplier_ref_label, supplier FROM supplier_ref WHERE supplier_ref_id = ?1",
+            [supplier_ref_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap()
     }
 
-    fn init_test_supplierrefs() -> Connection {
-        let db = crate::test_utils::init_test();
+    fn labels(supplier_refs: &[SupplierRefStruct]) -> Vec<&str> {
+        supplier_refs
+            .iter()
+            .map(|supplier_ref| supplier_ref.supplier_ref_label.as_str())
+            .collect()
+    }
 
-        // Disable synchronous operations and foreign key constraints for faster test execution
-        db.execute("PRAGMA synchronous = OFF", []).unwrap();
-        db.execute("PRAGMA foreign_keys = OFF", []).unwrap();
-
-        // Clear existing data
-        db.execute("DELETE FROM supplier_ref", []).unwrap();
-        db.execute("DELETE FROM supplier", []).unwrap();
-
-        // Insert sample suppliers
-        for i in 1..=TOTAL_SUPPLIERS {
-            db.execute(
-                "INSERT INTO supplier (supplier_id, supplier_label) VALUES (?, ?)",
-                [i.to_string(), format!("Supplier {i}")],
-            )
-            .unwrap();
+    fn new_supplier_ref(label: &str, supplier_id: u64) -> SupplierRefStruct {
+        SupplierRefStruct {
+            supplier_ref_label: label.to_string(),
+            supplier: SupplierStruct {
+                supplier_id: Some(supplier_id),
+                ..Default::default()
+            },
+            ..Default::default()
         }
-
-        // Insert sample supplier references
-        // Supplier 1
-        insert_supplier_ref(&db, "Supplier 1 Ref 1", 1).unwrap();
-        insert_supplier_ref(&db, "Supplier 1 Ref 2", 1).unwrap();
-        insert_supplier_ref(&db, "Supplier 1 Ref 3", 1).unwrap();
-        insert_supplier_ref(&db, "Supplier 1 Ref 4", 1).unwrap();
-        insert_supplier_ref(&db, "Supplier 1 Ref 5", 1).unwrap();
-
-        // Supplier 2
-        insert_supplier_ref(&db, "Supplier 2 Ref 1", 2).unwrap();
-        insert_supplier_ref(&db, "Supplier 2 Ref 2", 2).unwrap();
-        insert_supplier_ref(&db, "Supplier 2 Ref 3", 2).unwrap();
-
-        // Supplier 3
-        insert_supplier_ref(&db, "Supplier 3 Ref 1", 3).unwrap();
-        insert_supplier_ref(&db, "Supplier 3 Ref 2", 3).unwrap();
-
-        // Supplier 4
-        insert_supplier_ref(&db, "Supplier 4 Ref 1", 4).unwrap();
-
-        // Supplier 5
-        insert_supplier_ref(&db, "Supplier 5 Ref 1", 5).unwrap();
-
-        // Special ref for exact match testing
-        insert_supplier_ref(&db, "Suprapur® grade", 1).unwrap();
-
-        // Enable foreign key constraints back
-        db.execute("PRAGMA foreign_keys = ON", []).unwrap();
-
-        db
     }
 
     #[test]
-    fn test_get_supplier_refs_with_not_filter() {
-        let db = init_test_supplierrefs();
+    fn test_get_supplier_refs_with_no_filter() {
+        let db = crate::test_utils::init_test_with_fixture();
 
-        info!("testing total result");
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        let (supplier_refs, count) = get_supplier_refs(&db, &filter).unwrap();
+        let (supplier_refs, count) = get_supplier_refs(&db, &RequestFilter::default()).unwrap();
 
-        // expected number of results.
-        assert_eq!(count, TOTAL_SUPPLIER_REFS);
-        assert_eq!(supplier_refs.len(), TOTAL_SUPPLIER_REFS);
-        assert_eq!(supplier_refs[0].supplier_ref_label, "Supplier 1 Ref 1"); // Because it's at the beginning
+        assert_eq!(count, SUPPLIER_REFS.len());
+        assert_eq!(labels(&supplier_refs), SUPPLIER_REFS);
+        assert_eq!(supplier_refs[0].supplier.supplier_label, "Acros Organics");
     }
 
     #[test]
     fn test_get_supplier_refs_with_search_filter() {
-        let db = init_test_supplierrefs();
+        let db = crate::test_utils::init_test_with_fixture();
 
         let filter = RequestFilter {
-            search: Some(String::from("Supplier 1 Ref")),
+            search: Some(String::from("a-")),
             ..Default::default()
         };
         let (supplier_refs, count) = get_supplier_refs(&db, &filter).unwrap();
 
-        // expected number of results.
-        assert_eq!(count, 5);
-        // The function should only return 5 records with limit set to 5
-        assert_eq!(supplier_refs.len(), 5);
+        assert_eq!(count, 3);
+        assert_eq!(labels(&supplier_refs), ["A-1234", "A-5678", "A-9999"]);
+        assert!(!supplier_refs[0].match_exact_search);
     }
 
     #[test]
     fn test_get_supplier_refs_with_supplier_filter() {
-        let db = init_test_supplierrefs();
+        let db = crate::test_utils::init_test_with_fixture();
+        let acros = supplier_id(&db, "Acros Organics");
 
         let filter = RequestFilter {
-            supplier: Some(1),
+            supplier: Some(acros),
             ..Default::default()
         };
         let (supplier_refs, count) = get_supplier_refs(&db, &filter).unwrap();
 
-        // expected number of results.
-        assert_eq!(count, 6);
-        assert_eq!(supplier_refs.len(), 6);
+        assert_eq!(count, 3);
+        assert_eq!(labels(&supplier_refs), ["A-1234", "A-5678", "A-9999"]);
         assert!(
             supplier_refs
                 .iter()
-                .all(|s| s.supplier.supplier_id == Some(1))
+                .all(|supplier_ref| supplier_ref.supplier.supplier_id == Some(acros))
         );
     }
 
     #[test]
-    fn test_get_supplier_refs_with_limit() {
-        let db = init_test_supplierrefs();
-
-        let filter = RequestFilter {
-            limit: Some(5),
-            ..Default::default()
-        };
-        let (supplier_refs, count) = get_supplier_refs(&db, &filter).unwrap();
-
-        // expected number of results.
-        assert_eq!(count, TOTAL_SUPPLIER_REFS);
-        assert_eq!(supplier_refs.len(), 5);
-    }
-
-    #[test]
     fn test_get_supplier_refs_with_limit_and_offset() {
-        let db = init_test_supplierrefs();
+        let db = crate::test_utils::init_test_with_fixture();
 
         let filter = RequestFilter {
-            offset: Some(5),
-            limit: Some(5),
+            limit: Some(2),
             ..Default::default()
         };
         let (supplier_refs, count) = get_supplier_refs(&db, &filter).unwrap();
+        // The count ignores the limit and offset.
+        assert_eq!(count, SUPPLIER_REFS.len());
+        assert_eq!(labels(&supplier_refs), SUPPLIER_REFS[..2]);
 
-        // expected number of results.
-        assert_eq!(count, TOTAL_SUPPLIER_REFS);
-        assert_eq!(supplier_refs.len(), 5);
+        let filter = RequestFilter {
+            limit: Some(2),
+            offset: Some(2),
+            ..Default::default()
+        };
+        let (supplier_refs, count) = get_supplier_refs(&db, &filter).unwrap();
+        assert_eq!(count, SUPPLIER_REFS.len());
+        assert_eq!(labels(&supplier_refs), SUPPLIER_REFS[2..]);
     }
 
     #[test]
     fn test_get_supplier_refs_with_exact_search_match() {
-        let db = init_test_supplierrefs();
+        let db = crate::test_utils::init_test_with_fixture();
 
         let filter = RequestFilter {
             search: Some(String::from("Suprapur® grade")),
@@ -198,129 +127,86 @@ mod tests {
         let (supplier_refs, count) = get_supplier_refs(&db, &filter).unwrap();
 
         assert_eq!(count, 1);
-        assert_eq!(supplier_refs.len(), 1);
         assert!(supplier_refs[0].match_exact_search);
         assert_eq!(supplier_refs[0].supplier_ref_label, "Suprapur® grade");
+        assert_eq!(supplier_refs[0].supplier.supplier_label, "Merck / Sigma");
     }
 
     #[test]
-    fn test_create_update_supplier_ref_create_success() {
-        let conn = init_test_supplierrefs();
+    fn test_create_update_supplier_ref_create() {
+        let db = crate::test_utils::init_test_with_fixture();
+        let acros = supplier_id(&db, "Acros Organics");
 
-        let supplier = SupplierStruct {
-            match_exact_search: false,
-            supplier_id: Some(1),
-            supplier_label: String::default(),
-        };
+        let supplier_ref_id =
+            create_update_supplier_ref(&db, &new_supplier_ref("A-7070", acros)).unwrap();
 
-        // Insert a supplier reference
-        let ref1 = SupplierRefStruct {
-            match_exact_search: false,
-            supplier_ref_id: None,
-            supplier_ref_label: String::from("My new supplier reference"),
-            supplier: supplier.clone(),
-        };
-
-        let ref_id1 = create_update_supplier_ref(&conn, &ref1).unwrap();
-        assert!(ref_id1 > 0);
-        verify_supplier_ref(&conn, ref_id1, 1, "My new supplier reference").unwrap();
+        assert!(supplier_ref_id > 4);
+        assert_eq!(stored(&db, supplier_ref_id), ("A-7070".to_string(), acros));
     }
 
     #[test]
-    fn test_create_update_supplier_ref_update_success() {
-        let conn = init_test_supplierrefs();
+    fn test_create_update_supplier_ref_update() {
+        let db = crate::test_utils::init_test_with_fixture();
+        let merck = supplier_id(&db, "Merck / Sigma");
 
-        // Test updating an existing supplier reference
-        let ref2 = SupplierRefStruct {
-            match_exact_search: false,
-            supplier_ref_id: Some(1),
-            supplier_ref_label: String::from("Supplier 1 Ref 1"),
-            supplier: SupplierStruct {
-                match_exact_search: false,
-                supplier_id: Some(2),
-                supplier_label: String::default(),
-            },
-        };
+        // Reference 1 (A-1234 of Acros Organics) moved to Merck / Sigma.
+        let mut supplier_ref = new_supplier_ref("A-1234", merck);
+        supplier_ref.supplier_ref_id = Some(1);
+        let supplier_ref_id = create_update_supplier_ref(&db, &supplier_ref).unwrap();
 
-        let ref_id2 = create_update_supplier_ref(&conn, &ref2).unwrap();
-        assert_eq!(ref_id2, 1);
-        verify_supplier_ref(&conn, ref_id2, 2, "Supplier 1 Ref 1").unwrap();
+        assert_eq!(supplier_ref_id, 1);
+        assert_eq!(stored(&db, 1), ("A-1234".to_string(), merck));
     }
 
     #[test]
     fn test_create_update_supplier_ref_unicode_chars() {
-        let conn = init_test_supplierrefs();
+        let db = crate::test_utils::init_test_with_fixture();
+        let merck = supplier_id(&db, "Merck / Sigma");
 
-        // Test inserting a reference with Unicode characters
-        let unicode_ref = SupplierRefStruct {
-            match_exact_search: false,
-            supplier_ref_id: None,
-            supplier_ref_label: String::from("テストSupplier®"),
-            supplier: SupplierStruct {
-                match_exact_search: false,
-                supplier_id: Some(2),
-                supplier_label: String::default(),
-            },
-        };
+        let supplier_ref_id =
+            create_update_supplier_ref(&db, &new_supplier_ref("テストSupplier®", merck)).unwrap();
 
-        let unicode_ref_id = create_update_supplier_ref(&conn, &unicode_ref).unwrap();
-        verify_supplier_ref(&conn, unicode_ref_id, 2, "テストSupplier®").unwrap();
+        assert_eq!(
+            stored(&db, supplier_ref_id),
+            ("テストSupplier®".to_string(), merck)
+        );
     }
 
     #[test]
     fn test_clean_supplier_ref_label() {
-        let conn = init_test_supplierrefs();
+        let db = crate::test_utils::init_test_with_fixture();
+        let acros = supplier_id(&db, "Acros Organics");
 
-        // Reference with special leading/trailing characters
-        let ref1 = SupplierRefStruct {
-            match_exact_search: false,
-            supplier_ref_id: None,
-            supplier_ref_label: "  ^Once$Upon^   aTime@  ".to_string(),
-            supplier: SupplierStruct {
-                match_exact_search: false,
-                supplier_id: Some(1),
-                supplier_label: String::from("Supplier 1"),
-            },
-        };
+        // Surrounding spaces are trimmed and inner spaces collapsed.
+        let supplier_ref_id =
+            create_update_supplier_ref(&db, &new_supplier_ref("  ^Once$Upon^   aTime@  ", acros))
+                .unwrap();
 
-        // The clean function should remove the leading/trailing special characters
-        let expected_label = "^Once$Upon^ aTime@";
-
-        let ref_id1 = create_update_supplier_ref(&conn, &ref1).unwrap();
-        verify_supplier_ref(&conn, ref_id1, 1, expected_label).unwrap();
+        assert_eq!(
+            stored(&db, supplier_ref_id),
+            ("^Once$Upon^ aTime@".to_string(), acros)
+        );
     }
 
     #[test]
     fn test_create_update_supplier_ref_reuses_existing() {
-        let conn = init_test_supplierrefs();
-        let count = |conn: &rusqlite::Connection| -> i64 {
-            conn.query_row("SELECT COUNT(*) FROM supplier_ref", [], |row| row.get(0))
+        let db = crate::test_utils::init_test_with_fixture();
+        let acros = supplier_id(&db, "Acros Organics");
+        let merck = supplier_id(&db, "Merck / Sigma");
+        let count = |db: &Connection| -> i64 {
+            db.query_row("SELECT COUNT(*) FROM supplier_ref", [], |row| row.get(0))
                 .unwrap()
         };
 
-        let new_ref = |supplier_id: u64| SupplierRefStruct {
-            match_exact_search: false,
-            supplier_ref_id: None,
-            supplier_ref_label: String::from("Shared reference"),
-            supplier: SupplierStruct {
-                match_exact_search: false,
-                supplier_id: Some(supplier_id),
-                supplier_label: String::default(),
-            },
-        };
-
-        let first_id = create_update_supplier_ref(&conn, &new_ref(1)).unwrap();
-        let rows = count(&conn);
-
-        // The same label for the same supplier, sent without an id, is reused.
-        let second_id = create_update_supplier_ref(&conn, &new_ref(1)).unwrap();
-        assert_eq!(second_id, first_id);
-        assert_eq!(count(&conn), rows);
-        verify_supplier_ref(&conn, second_id, 1, "Shared reference").unwrap();
+        // An existing label of the same supplier, sent without an id, is reused.
+        let reused_id =
+            create_update_supplier_ref(&db, &new_supplier_ref("A-1234", acros)).unwrap();
+        assert_eq!(reused_id, 1);
+        assert_eq!(count(&db), 4);
 
         // The same label for another supplier is a different reference.
-        let other_id = create_update_supplier_ref(&conn, &new_ref(2)).unwrap();
-        assert_ne!(other_id, first_id);
-        assert_eq!(count(&conn), rows + 1);
+        let other_id = create_update_supplier_ref(&db, &new_supplier_ref("A-1234", merck)).unwrap();
+        assert_ne!(other_id, 1);
+        assert_eq!(count(&db), 5);
     }
 }

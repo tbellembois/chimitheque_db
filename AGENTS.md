@@ -9,7 +9,7 @@ This `rust` crate is the SQLite database layer of the [`Chimithèque`](https://g
 - The unit tests of a module are in its _tests.rs file, e.g. storage_tests.rs for storage.rs.
 - The data is validated by the chimitheque_types crate, triggered by the chimitheque_back handlers, before reaching this crate. This crate assumes correct data; the database schema (src/resources/shema.sql) is the last safety net.
 - A database error means a check is missing in the Rust code: add the check instead of handling the error.
-- src/resources/chimitheque_base_data.sqlite and src/resources/test.sql are the base and test data. Keep them consistent with chimitheque_defines.
+- The base data comes from chimitheque_defines (populate_db_with_base_data). The test data is src/resources/test_fixture.sql, loaded on top of the base data by test_utils::init_test_with_fixture, with the foreign keys on: every test starts from it. Add the data a new test needs to the fixture, and keep its description, at the top of the file, up to date.
 - Queries are built with sea-query. Table and column names written into SQL with format! must be fixed identifiers, never user input.
 
 ## File protection

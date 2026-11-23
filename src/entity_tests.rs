@@ -1,571 +1,355 @@
 #[cfg(test)]
 mod tests {
-    #![allow(
-        clippy::unwrap_used,
-        clippy::expect_used,
-        clippy::panic,
-        clippy::too_many_lines
-    )]
+    #![allow(clippy::unwrap_used)]
 
     use crate::entity::*;
+    use chimitheque_types::{person::Person, sortorder::SortOrder};
     use rusqlite::Connection;
-    use std::collections::HashMap;
 
-    fn init_test_entity() -> Connection {
-        let db = crate::test_utils::init_test();
+    // See the fixture description in resources/test_fixture.sql: Chemistry
+    // (1, managed by 2), Biology (2, managed by 4), Physics (3, empty).
 
-        // Disable synchronous operations and foreign key constraints for faster test execution
-        db.execute("PRAGMA synchronous = OFF", []).unwrap();
-        db.execute("PRAGMA foreign_keys = OFF", []).unwrap();
+    fn count(db: &Connection, sql: &str) -> i64 {
+        db.query_row(sql, [], |row| row.get(0)).unwrap()
+    }
 
-        // Enable foreign key constraints back
-        db.execute("PRAGMA foreign_keys = ON", []).unwrap();
+    fn names(entities: &[EntityStruct]) -> Vec<&str> {
+        entities
+            .iter()
+            .map(|entity| entity.entity_name.as_str())
+            .collect()
+    }
 
-        // Insert example data into the person table
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (1, 'person1@example.com')",
-            [],
-        )
-        .unwrap();
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (2, 'person2@example.com')",
-            [],
-        )
-        .unwrap();
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (3, 'person3@example.com')",
-            [],
-        )
-        .unwrap();
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (4, 'person4@example.com')",
-            [],
-        )
-        .unwrap();
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (5, 'person5@example.com')",
-            [],
-        )
-        .unwrap();
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (6, 'person6@example.com')",
-            [],
-        )
-        .unwrap();
-        db.execute(
-            "INSERT INTO person (person_id, person_email) VALUES (7, 'person7@example.com')",
-            [],
-        )
-        .unwrap();
-
-        // Insert example data into the entity table
-        db.execute(
-            "INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (1, 'Chemistry Department', 'Department of Chemistry')"
-            , []).unwrap();
-        db.execute(
-            "INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (2, 'Physics Department', 'Department of Physics')"
-            , []).unwrap();
-        db.execute(
-            "INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (3, 'Biology Department', 'Department of Biology')"
-            , []).unwrap();
-        db.execute(
-            "INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (4, 'Main Laboratory', 'Main research laboratory')"
-            , []).unwrap();
-        db.execute(
-            "INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (5, 'Analytical Lab', 'Lab for analytical chemistry')"
-            , []).unwrap();
-        db.execute(
-            "INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (6, 'Organic Chemistry Lab', 'Lab for organic chemistry research')"
-            , []).unwrap();
-        db.execute(
-            "INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (7, 'Inorganic Chemistry Lab', 'Lab for inorganic chemistry research')"
-            , []).unwrap();
-        db.execute(
-            "INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (8, 'Physical Chemistry Lab', 'Lab for physical chemistry research')"
-            , []).unwrap();
-        db.execute(
-            "INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (9, 'Storage Facility', 'Main storage facility for chemicals')"
-            , []).unwrap();
-        db.execute(
-            "INSERT INTO entity (entity_id, entity_name, entity_description) VALUES (10, 'Safety Office', 'Office responsible for safety and compliance')"
-            , []).unwrap();
-
-        db.execute("INSERT INTO entitypeople VALUES (1, 2),(2, 3),(3, 4)", [])
+    fn manager_ids(db: &Connection, entity_id: u64) -> Vec<u64> {
+        let mut stmt = db
+            .prepare("SELECT entitypeople_person_id FROM entitypeople WHERE entitypeople_entity_id = ?1 ORDER BY 1")
             .unwrap();
-        db.execute(
-            "INSERT INTO personentities VALUES
-        (2,1),
-        (3,2),
-        (4,3),
-        (5,1),
-        (6,2),
-        (7,3)",
-            [],
-        )
-        .unwrap();
-        db.execute(
-            "INSERT INTO permission VALUES (1,'all','all',NULL),
-            (2,'all','all',1),
-            (3,'all','all',2),
-            (4,'all','all',3),
-            (5,'n','rproducts',NULL),
-            (5,'n','storages',1),
-            (5,'r','products',NULL),
-            (5,'r','entities',1),
-            (6,'w','products',NULL),
-            (6,'r','rproducts',NULL),
-            (6,'r','storages',2),
-            (6,'r','products',NULL),
-            (6,'r','entities',2),
-            (7,'w','products',NULL),
-            (7,'r','rproducts',NULL),
-            (7,'w','storages',3),
-            (7,'r','products',NULL),
-            (7,'r','entities',3)",
-            [],
-        )
-        .unwrap();
+        stmt.query_map([entity_id], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<Vec<u64>, _>>()
+            .unwrap()
+    }
 
-        // Enable foreign key constraints back
-        db.execute("PRAGMA foreign_keys = ON", []).unwrap();
+    fn person(person_id: u64) -> Person {
+        Person {
+            person_id: Some(person_id),
+            ..Default::default()
+        }
+    }
 
-        db
+    // new.user (6) becomes the manager, and so a member, of Physics (3).
+    fn manage_physics(db: &mut Connection) {
+        let tx = db.transaction().unwrap();
+        crate::person::set_person_manager(&tx, 6, 3).unwrap();
+        tx.commit().unwrap();
     }
 
     #[test]
     fn test_get_entities() {
-        let db_connection = init_test_entity();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        let expected_nb_results_for_person =
-            HashMap::from([(1, 10), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)]);
-
-        for (person_id, expected_nb_results) in expected_nb_results_for_person {
-            let (_, nb_resuts) = get_entities(
-                &db_connection,
-                RequestFilter {
-                    ..Default::default()
-                },
-                person_id,
-            )
-            .unwrap();
-            assert_eq!(nb_resuts, expected_nb_results);
+        // The admin reads all the entities, the others their entity, new.user
+        // none.
+        for (person_id, expected) in [
+            (1, vec!["Biology", "Chemistry", "Physics"]),
+            (2, vec!["Chemistry"]),
+            (3, vec!["Chemistry"]),
+            (4, vec!["Biology"]),
+            (5, vec!["Biology"]),
+            (6, vec![]),
+        ] {
+            let (entities, count) = get_entities(&db, RequestFilter::default(), person_id).unwrap();
+            assert_eq!(count, expected.len(), "{person_id}");
+            assert_eq!(names(&entities), expected, "{person_id}");
         }
     }
 
     #[test]
     fn test_get_entities_sorting() {
-        let db_connection = init_test_entity();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        // Test ascending order
-        let ascending_filter = RequestFilter {
-            order: chimitheque_types::sortorder::SortOrder::Asc,
+        let filter = RequestFilter {
+            order: SortOrder::Asc,
             ..Default::default()
         };
-        let (entities, _) = get_entities(&db_connection, ascending_filter, 1).unwrap();
-        let first_entity_name = &entities[0].entity_name;
-        let second_entity_name = &entities[1].entity_name;
-        assert!(
-            first_entity_name < second_entity_name,
-            "Entities should be in ascending order. Entities: {entities:?}"
-        );
+        let (entities, _) = get_entities(&db, filter, 1).unwrap();
+        assert_eq!(names(&entities), ["Biology", "Chemistry", "Physics"]);
 
-        // Test descending order
-        let descending_filter = RequestFilter {
-            order: chimitheque_types::sortorder::SortOrder::Desc,
+        let filter = RequestFilter {
+            order: SortOrder::Desc,
             ..Default::default()
         };
-        let (entities, _) = get_entities(&db_connection, descending_filter, 1).unwrap();
-        let first_entity_name = &entities[0].entity_name;
-        let second_entity_name = &entities[1].entity_name;
-        assert!(
-            first_entity_name > second_entity_name,
-            "Entities should be in descending order. Entities: {entities:?}"
-        );
+        let (entities, _) = get_entities(&db, filter, 1).unwrap();
+        assert_eq!(names(&entities), ["Physics", "Chemistry", "Biology"]);
     }
 
     #[test]
     fn test_get_entities_filtering() {
-        let db_connection = init_test_entity();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        // Test filtering entities by name
-        let by_name_filter = RequestFilter {
-            entity_name: Some("Chemistry Department".to_string()),
+        let filter = RequestFilter {
+            entity_name: Some("Chemistry".to_string()),
             ..Default::default()
         };
-        let (entities, _) = get_entities(&db_connection, by_name_filter, 1).unwrap();
-        assert_eq!(entities.len(), 1);
-        assert_eq!(&entities[0].entity_name, "Chemistry Department");
+        let (entities, _) = get_entities(&db, filter, 1).unwrap();
+        assert_eq!(names(&entities), ["Chemistry"]);
 
-        // Test filtering entities by id
-        let by_id_filter = RequestFilter {
+        let filter = RequestFilter {
             id: Some(2),
             ..Default::default()
         };
-        let (entities, _) = get_entities(&db_connection, by_id_filter, 1).unwrap();
-        assert_eq!(entities.len(), 1);
-        assert_eq!(entities[0].entity_id.unwrap(), 2);
+        let (entities, _) = get_entities(&db, filter, 1).unwrap();
+        assert_eq!(names(&entities), ["Biology"]);
 
-        // Test filtering entities by search query
-        let by_search_filter = RequestFilter {
-            search: Some("Physics".to_string()),
+        let filter = RequestFilter {
+            search: Some("Phys".to_string()),
             ..Default::default()
         };
-        let (entities, _) = get_entities(&db_connection, by_search_filter, 1).unwrap();
-        assert_eq!(entities.len(), 1);
-        assert_eq!(&entities[0].entity_name, "Physics Department");
+        let (entities, _) = get_entities(&db, filter, 1).unwrap();
+        assert_eq!(names(&entities), ["Physics"]);
     }
 
     #[test]
     fn test_get_entities_empty_result() {
-        let db_connection = init_test_entity();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        // Test with filter that returns no results
         let filter = RequestFilter {
             entity_name: Some("NonExistentDepartment".to_string()),
             ..Default::default()
         };
+        let (entities, count) = get_entities(&db, filter, 1).unwrap();
 
-        let (entities, count) = get_entities(&db_connection, filter, 1).unwrap();
         assert_eq!(count, 0);
         assert_eq!(entities.len(), 0);
     }
 
     #[test]
-    fn test_get_entities_managers() {
-        let db_connection = init_test_entity();
+    fn test_get_entities_managers_and_counts() {
+        let db = crate::test_utils::init_test_with_fixture();
 
-        // Person 1 has permission to see all entities
-        let filter = RequestFilter {
-            ..Default::default()
+        let (entities, _) = get_entities(&db, RequestFilter::default(), 1).unwrap();
+        let entity = |entity_id| {
+            entities
+                .iter()
+                .find(|entity| entity.entity_id == Some(entity_id))
+                .unwrap()
         };
-        let (entities, _) = get_entities(&db_connection, filter, 1).unwrap();
 
-        // We check specific entities that we know have managers in init_test_entity
-        // Entity 1 -> Person 2 (person2@example.com)
-        // Entity 2 -> Person 3 (person3@example.com)
-        // Entity 3 -> Person 4 (person4@example.com)
+        let managers = entity(1).managers.as_ref().unwrap();
+        assert_eq!(managers.len(), 1);
+        assert_eq!(managers[0].person_id, Some(2));
+        assert_eq!(managers[0].person_email, "chemistry.manager@example.com");
+        assert_eq!(entity(2).managers.as_ref().unwrap()[0].person_id, Some(4));
+        assert!(entity(3).managers.is_none());
 
-        let entity1 = entities
-            .iter()
-            .find(|e| e.entity_id == Some(1))
-            .expect("Entity 1 should exist");
-        let managers1 = entity1
-            .managers
-            .as_ref()
-            .expect("Entity 1 should have managers");
-        assert_eq!(managers1.len(), 1);
-        assert_eq!(managers1[0].person_id, Some(2));
-        assert_eq!(managers1[0].person_email, "person2@example.com");
-
-        let entity2 = entities
-            .iter()
-            .find(|e| e.entity_id == Some(2))
-            .expect("Entity 2 should exist");
-        let managers2 = entity2
-            .managers
-            .as_ref()
-            .expect("Entity 2 should have managers");
-        assert_eq!(managers2.len(), 1);
-        assert_eq!(managers2[0].person_id, Some(3));
-        assert_eq!(managers2[0].person_email, "person3@example.com");
-
-        // Check an entity that has NO manager assigned in init_test_entity (e.g., Entity 10)
-        let entity10 = entities
-            .iter()
-            .find(|e| e.entity_id == Some(10))
-            .expect("Entity 10 should exist");
-        assert!(
-            entity10.managers.is_none(),
-            "Entity 10 should not have any managers"
-        );
+        // Chemistry: 2 members, 4 store locations.
+        assert_eq!(entity(1).entity_nb_people, Some(2));
+        assert_eq!(entity(1).entity_nb_store_locations, Some(4));
+        assert_eq!(entity(3).entity_nb_people, Some(0));
     }
 
     #[test]
     fn test_create_entity() {
-        let mut db_connection = init_test_entity();
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        let new_entity = chimitheque_types::entity::Entity {
-            entity_id: None,
-            entity_name: "New Lab".to_string(),
-            entity_description: Some("Testing creation".to_string()),
-            managers: Some(vec![chimitheque_types::person::Person {
-                person_id: Some(1),
-                person_email: "person1@example.com".to_string(),
-                ..Default::default()
-            }]),
-            entity_nb_store_locations: Some(0),
-            entity_nb_people: Some(0),
+        let new_entity = EntityStruct {
+            entity_name: "Mathematics".to_string(),
+            entity_description: Some("Mathematics laboratory".to_string()),
+            managers: Some(vec![person(3)]),
+            ..Default::default()
         };
+        let entity_id = create_update_entity(&mut db, new_entity).unwrap();
 
-        let id = create_update_entity(&mut db_connection, new_entity).unwrap();
-        assert!(id > 10); // Should be greater than the 10 we inserted in init
-
-        // Verify it exists in DB
-        let mut stmt = db_connection
-            .prepare("SELECT entity_name FROM entity WHERE entity_id = ?")
-            .unwrap();
-        let name: String = stmt.query_row([id], |row| row.get(0)).unwrap();
-        assert_eq!(name, "New Lab");
-
-        // Verify manager was linked
-        let mut stmt = db_connection
-            .prepare(
-                "SELECT entitypeople_person_id FROM entitypeople WHERE entitypeople_entity_id = ?",
-            )
-            .unwrap();
-        let manager_id: u64 = stmt.query_row([id], |row| row.get(0)).unwrap();
-        assert_eq!(manager_id, 1);
+        assert_eq!(entity_id, 4);
+        assert_eq!(
+            count(
+                &db,
+                "SELECT COUNT(*) FROM entity WHERE entity_id = 4 AND entity_name = 'Mathematics'"
+            ),
+            1
+        );
+        // chemistry.user manages it, with the manager permission.
+        assert_eq!(manager_ids(&db, 4), [3]);
+        assert_eq!(
+            count(
+                &db,
+                "SELECT COUNT(*) FROM permission WHERE person = 3 AND permission_name = 'all' AND permission_item = 'all' AND permission_entity = 4"
+            ),
+            1
+        );
     }
 
     #[test]
     fn test_create_entity_unique_name_constraint() {
-        let mut db_connection = init_test_entity();
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        // Try to create an entity with a duplicate name
-        let duplicate_entity = chimitheque_types::entity::Entity {
-            entity_id: None,
-            entity_name: "Chemistry Department".to_string(), // Already exists as entity 1
-            entity_description: Some("Duplicate name test".to_string()),
-            managers: None,
-            entity_nb_store_locations: Some(0),
-            entity_nb_people: Some(0),
+        let duplicate = EntityStruct {
+            entity_name: "Chemistry".to_string(),
+            ..Default::default()
         };
 
-        let result = create_update_entity(&mut db_connection, duplicate_entity);
-
-        // Should fail due to unique constraint
-        assert!(
-            result.is_err(),
-            "Should return error for duplicate entity name"
-        );
+        assert!(create_update_entity(&mut db, duplicate).is_err());
     }
 
     #[test]
     fn test_create_update_entity_managers() {
-        let mut db_connection = init_test_entity();
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        // We need a transaction because the function requires &Transaction
-        let tx = db_connection.transaction().unwrap();
-
-        let entity = chimitheque_types::entity::Entity {
-            entity_id: Some(1), // Use existing entity 1
-            entity_name: "Test".to_string(),
-            entity_description: Some("Test".to_string()),
-            managers: Some(vec![
-                chimitheque_types::person::Person {
-                    person_id: Some(6),
-                    person_email: "person6@example.com".to_string(),
-                    ..Default::default()
-                },
-                chimitheque_types::person::Person {
-                    person_id: Some(7),
-                    person_email: "person7@example.com".to_string(),
-                    ..Default::default()
-                },
-            ]),
-            entity_nb_store_locations: Some(0),
-            entity_nb_people: Some(0),
+        // Chemistry is managed by chemistry.user and biology.user instead of
+        // chemistry.manager.
+        let entity = EntityStruct {
+            entity_id: Some(1),
+            entity_name: "Chemistry".to_string(),
+            managers: Some(vec![person(3), person(5)]),
+            ..Default::default()
         };
-
-        // Call the private function directly
+        let tx = db.transaction().unwrap();
         create_update_entity_managers(&tx, &entity).unwrap();
         tx.commit().unwrap();
 
-        // Verify that Entity 1 now has exactly 2 managers: 6 and 7
-        let mut stmt = db_connection.prepare("SELECT entitypeople_person_id FROM entitypeople WHERE entitypeople_entity_id = 1 ORDER BY entitypeople_person_id ASC").unwrap();
-        let ids: Vec<u64> = stmt
-            .query_map([], |row| row.get(0))
-            .unwrap()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
-
-        assert_eq!(ids, vec![6, 7]);
+        assert_eq!(manager_ids(&db, 1), [3, 5]);
+        // The manager permission of the former manager is removed.
+        assert_eq!(
+            count(
+                &db,
+                "SELECT COUNT(*) FROM permission WHERE person = 2 AND permission_name = 'all' AND permission_entity = 1"
+            ),
+            0
+        );
     }
 
     #[test]
     fn test_update_entity() {
-        let mut db_connection = init_test_entity();
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        let update_entity = chimitheque_types::entity::Entity {
+        let entity = EntityStruct {
             entity_id: Some(1),
-            entity_name: "Updated Chemistry Dept".to_string(),
-            entity_description: Some("Updated description".to_string()),
-            managers: Some(vec![chimitheque_types::person::Person {
-                person_id: Some(5), // Change manager from 2 to 5
-                person_email: "person5@example.com".to_string(),
-                ..Default::default()
-            }]),
-            entity_nb_store_locations: Some(0),
-            entity_nb_people: Some(0),
+            entity_name: "Organic chemistry".to_string(),
+            entity_description: Some("Organic chemistry laboratory".to_string()),
+            managers: Some(vec![person(3)]),
+            ..Default::default()
         };
+        assert_eq!(create_update_entity(&mut db, entity).unwrap(), 1);
 
-        let id = create_update_entity(&mut db_connection, update_entity).unwrap();
-        assert_eq!(id, 1);
-
-        // Verify name updated
-        let mut stmt = db_connection
-            .prepare("SELECT entity_name FROM entity WHERE entity_id = 1")
-            .unwrap();
-        let name: String = stmt.query_row([], |row| row.get(0)).unwrap();
-        assert_eq!(name, "Updated Chemistry Dept");
-
-        // Verify manager updated (old one gone, new one present)
-        let mut stmt = db_connection
-            .prepare(
-                "SELECT entitypeople_person_id FROM entitypeople WHERE entitypeople_entity_id = 1",
-            )
-            .unwrap();
-        let manager_id: u64 = stmt.query_row([], |row| row.get(0)).unwrap();
-        assert_eq!(manager_id, 5);
+        assert_eq!(
+            count(
+                &db,
+                "SELECT COUNT(*) FROM entity WHERE entity_id = 1 AND entity_name = 'Organic chemistry'"
+            ),
+            1
+        );
+        assert_eq!(manager_ids(&db, 1), [3]);
     }
 
     #[test]
     fn test_create_entity_with_invalid_manager() {
-        let mut db_connection = init_test_entity();
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        let new_entity = chimitheque_types::entity::Entity {
-            entity_id: None,
-            entity_name: "Invalid Manager Lab".to_string(),
-            entity_description: Some("Testing invalid manager".to_string()),
-            managers: Some(vec![chimitheque_types::person::Person {
-                person_id: Some(999), // Non-existent manager ID
-                person_email: "nonexistent@example.com".to_string(),
-                ..Default::default()
-            }]),
-            entity_nb_store_locations: Some(0),
-            entity_nb_people: Some(0),
+        let entity = EntityStruct {
+            entity_name: "Mathematics".to_string(),
+            managers: Some(vec![person(999)]),
+            ..Default::default()
         };
 
-        let result = create_update_entity(&mut db_connection, new_entity);
-        assert!(result.is_err(), "Should return error for invalid manager");
+        assert!(create_update_entity(&mut db, entity).is_err());
+        // Nothing is saved.
+        assert_eq!(count(&db, "SELECT COUNT(*) FROM entity"), 3);
     }
 
     #[test]
     fn test_delete_entity() {
-        let mut db_connection = init_test_entity();
-        let target_id = 10;
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        delete_entity(&mut db_connection, target_id).unwrap();
+        delete_entity(&mut db, 3).unwrap();
 
-        // Verify it is gone
-        let mut stmt = db_connection
-            .prepare("SELECT count(*) FROM entity WHERE entity_id = ?")
-            .unwrap();
-        let count: i32 = stmt.query_row([target_id], |row| row.get(0)).unwrap();
-        assert_eq!(count, 0);
+        assert_eq!(
+            count(&db, "SELECT COUNT(*) FROM entity WHERE entity_id = 3"),
+            0
+        );
     }
 
     #[test]
     fn test_delete_entity_with_store_locations() {
-        let mut db_connection = init_test_entity();
+        let mut db = crate::test_utils::init_test_with_fixture();
 
-        // First, create a store location that depends on entity 1
-        db_connection
-        .execute(
-            "INSERT INTO store_location (store_location_id, store_location_name, entity, store_location) VALUES (11, 'Test Storage', 1, NULL)",
-            [],
-        )
-        .unwrap();
-
-        // Try to delete entity 1 which now has a store location
-        let result = delete_entity(&mut db_connection, 1);
-
-        // Should fail due to foreign key constraint
-        assert!(
-            result.is_err(),
-            "Should return error when deleting entity with store locations"
+        assert!(delete_entity(&mut db, 1).is_err());
+        assert_eq!(
+            count(&db, "SELECT COUNT(*) FROM entity WHERE entity_id = 1"),
+            1
         );
-
-        // Verify entity still exists
-        let mut stmt = db_connection
-            .prepare("SELECT count(*) FROM entity WHERE entity_id = 1")
-            .unwrap();
-        let count: i32 = stmt.query_row([], |row| row.get(0)).unwrap();
-        assert_eq!(count, 1, "Entity should still exist after failed deletion");
     }
 
     #[test]
     fn test_delete_entity_with_people() {
-        let mut db_connection = init_test_entity();
+        let mut db = crate::test_utils::init_test_with_fixture();
+        manage_physics(&mut db);
 
-        // Entity 2 has members (persons 3 and 6). Its managers and
-        // permissions would be deleted with it; its members block the deletion.
-        let result = delete_entity(&mut db_connection, 2);
-
-        // Should fail due to foreign key constraint
-        let error = result.expect_err("Should return error when deleting entity with people");
+        // Physics has a member, and no store location: the member blocks the
+        // deletion.
+        let error = delete_entity(&mut db, 3).unwrap_err();
         assert!(
             error.to_string().contains("FOREIGN KEY constraint failed"),
             "{error}"
         );
-
-        // Verify entity and its members still exist
-        let count =
-            |sql: &str| -> i32 { db_connection.query_row(sql, [], |row| row.get(0)).unwrap() };
         assert_eq!(
-            count("SELECT count(*) FROM entity WHERE entity_id = 2"),
-            1,
-            "Entity should still exist after failed deletion"
-        );
-        assert_eq!(
-            count("SELECT count(*) FROM personentities WHERE personentities_entity_id = 2"),
-            2
+            count(&db, "SELECT COUNT(*) FROM entity WHERE entity_id = 3"),
+            1
         );
     }
 
     #[test]
     fn test_delete_entity_after_removing_members() {
-        let mut db_connection = init_test_entity();
+        let mut db = crate::test_utils::init_test_with_fixture();
+        manage_physics(&mut db);
+        db.execute(
+            "DELETE FROM personentities WHERE personentities_entity_id = 3",
+            [],
+        )
+        .unwrap();
 
-        // Members are what blocks the deletion: without them it succeeds.
-        db_connection
-            .execute(
-                "DELETE FROM personentities WHERE personentities_entity_id = 2",
-                [],
-            )
-            .unwrap();
-        delete_entity(&mut db_connection, 2).unwrap();
+        delete_entity(&mut db, 3).unwrap();
 
         // The entity is gone, with its managers and permissions.
-        let count =
-            |sql: &str| -> i32 { db_connection.query_row(sql, [], |row| row.get(0)).unwrap() };
-        assert_eq!(count("SELECT count(*) FROM entity WHERE entity_id = 2"), 0);
         assert_eq!(
-            count("SELECT count(*) FROM entitypeople WHERE entitypeople_entity_id = 2"),
+            count(&db, "SELECT COUNT(*) FROM entity WHERE entity_id = 3"),
             0
         );
         assert_eq!(
-            count("SELECT count(*) FROM permission WHERE permission_entity = 2"),
+            count(
+                &db,
+                "SELECT COUNT(*) FROM entitypeople WHERE entitypeople_entity_id = 3"
+            ),
+            0
+        );
+        assert_eq!(
+            count(
+                &db,
+                "SELECT COUNT(*) FROM permission WHERE permission_entity = 3"
+            ),
             0
         );
     }
 
     #[test]
     fn test_entity_name_exists() {
-        let db_connection = init_test_entity();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        assert!(entity_name_exists(&db_connection, "Physics Department", None).unwrap());
-        assert!(entity_name_exists(&db_connection, "Physics Department", Some(1)).unwrap());
+        assert!(entity_name_exists(&db, "Biology", None).unwrap());
+        assert!(entity_name_exists(&db, "Biology", Some(1)).unwrap());
         // The entity being updated keeps its own name.
-        assert!(!entity_name_exists(&db_connection, "Physics Department", Some(2)).unwrap());
+        assert!(!entity_name_exists(&db, "Biology", Some(2)).unwrap());
         // Names are compared exactly, like the UNIQUE constraint.
-        assert!(!entity_name_exists(&db_connection, "physics department", None).unwrap());
-        assert!(!entity_name_exists(&db_connection, "Unknown", None).unwrap());
+        assert!(!entity_name_exists(&db, "biology", None).unwrap());
+        assert!(!entity_name_exists(&db, "Unknown", None).unwrap());
     }
 
     #[test]
     fn test_entity_has_members_and_store_locations() {
-        let db_connection = init_test_entity();
-        db_connection
-            .execute(
-                "INSERT INTO store_location (store_location_id, store_location_name, entity) VALUES (1, 'Shelf', 1)",
-                [],
-            )
-            .unwrap();
+        let db = crate::test_utils::init_test_with_fixture();
 
-        assert!(entity_has_members(&db_connection, 2).unwrap());
-        assert!(!entity_has_members(&db_connection, 10).unwrap());
-        assert!(entity_has_store_locations(&db_connection, 1).unwrap());
-        assert!(!entity_has_store_locations(&db_connection, 2).unwrap());
+        assert!(entity_has_members(&db, 2).unwrap());
+        assert!(!entity_has_members(&db, 3).unwrap());
+        assert!(entity_has_store_locations(&db, 1).unwrap());
+        assert!(!entity_has_store_locations(&db, 3).unwrap());
     }
 }

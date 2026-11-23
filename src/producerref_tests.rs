@@ -1,195 +1,127 @@
 #[cfg(test)]
 mod tests {
-    #![allow(
-        clippy::unwrap_used,
-        clippy::expect_used,
-        clippy::panic,
-        clippy::too_many_lines
-    )]
+    #![allow(clippy::unwrap_used)]
 
     use crate::producerref::*;
     use chimitheque_types::requestfilter::RequestFilter;
-    use log::info;
     use rusqlite::Connection;
 
-    const TOTAL_PRODUCERS: usize = 5;
-    const TOTAL_SUPPLIER_REFS: usize = 13;
+    // The fixture producer references, in the order of the list: 1-3 of Acros
+    // Organics, 4 of Merck / Sigma.
+    const PRODUCER_REFS: [&str; 4] = ["ACS reagent", "ETOH-96", "ETOH-99", "Suprapur® grade"];
 
-    // Helper function to verify a producer reference in the database
-    fn verify_producer_ref(
-        conn: &Connection,
-        ref_id: u64,
-        expected_producer_id: u64,
-        expected_label: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut stmt = conn.prepare("SELECT producer_ref_id, producer_ref_label, producer FROM producer_ref WHERE producer_ref_id = ?")?;
-        let row = stmt.query_row([ref_id], |row| {
-            Ok((
-                row.get_unwrap::<_, i64>(0),
-                row.get_unwrap::<_, String>(1),
-                row.get_unwrap::<_, i64>(2),
-            ))
-        })?;
-
-        let (id, label, producer) = row;
-        assert_eq!(id, i64::try_from(ref_id).unwrap());
-        assert_eq!(label, expected_label);
-        assert_eq!(producer, i64::try_from(expected_producer_id).unwrap());
-
-        Ok(())
+    fn producer_id(db: &Connection, label: &str) -> u64 {
+        db.query_row(
+            "SELECT producer_id FROM producer WHERE producer_label = ?1",
+            [label],
+            |row| row.get(0),
+        )
+        .unwrap()
     }
 
-    // Helper function to create a producer reference in the database
-    fn insert_producer_ref(
-        conn: &Connection,
-        label: &str,
-        producer_id: u64,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        conn.execute(
-            "INSERT INTO producer_ref (producer_ref_label, producer) VALUES (?, ?)",
-            [label, producer_id.to_string().as_str()],
-        )?;
-        Ok(())
+    // The label and producer id of a stored producer reference.
+    fn stored(db: &Connection, producer_ref_id: u64) -> (String, u64) {
+        db.query_row(
+            "SELECT producer_ref_label, producer FROM producer_ref WHERE producer_ref_id = ?1",
+            [producer_ref_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap()
     }
 
-    fn init_test_producerrefs() -> Connection {
-        let db = crate::test_utils::init_test();
+    fn labels(producer_refs: &[ProducerRefStruct]) -> Vec<&str> {
+        producer_refs
+            .iter()
+            .map(|producer_ref| producer_ref.producer_ref_label.as_str())
+            .collect()
+    }
 
-        // Disable synchronous operations and foreign key constraints for faster test execution
-        db.execute("PRAGMA synchronous = OFF", []).unwrap();
-        db.execute("PRAGMA foreign_keys = OFF", []).unwrap();
-
-        // Clear existing data
-        db.execute("DELETE FROM producer_ref", []).unwrap();
-        db.execute("DELETE FROM producer", []).unwrap();
-
-        // Insert sample producers
-        for i in 1..=TOTAL_PRODUCERS {
-            db.execute(
-                "INSERT INTO producer (producer_id, producer_label) VALUES (?, ?)",
-                [i.to_string(), format!("Producer {i}")],
-            )
-            .unwrap();
+    fn new_producer_ref(label: &str, producer_id: u64) -> ProducerRefStruct {
+        ProducerRefStruct {
+            producer_ref_label: label.to_string(),
+            producer: ProducerStruct {
+                producer_id: Some(producer_id),
+                ..Default::default()
+            },
+            ..Default::default()
         }
-
-        // Insert sample producer references
-        // Producer 1
-        insert_producer_ref(&db, "Producer 1 Ref 1", 1).unwrap();
-        insert_producer_ref(&db, "Producer 1 Ref 2", 1).unwrap();
-        insert_producer_ref(&db, "Producer 1 Ref 3", 1).unwrap();
-        insert_producer_ref(&db, "Producer 1 Ref 4", 1).unwrap();
-        insert_producer_ref(&db, "Producer 1 Ref 5", 1).unwrap();
-
-        // Producer 2
-        insert_producer_ref(&db, "Producer 2 Ref 1", 2).unwrap();
-        insert_producer_ref(&db, "Producer 2 Ref 2", 2).unwrap();
-        insert_producer_ref(&db, "Producer 2 Ref 3", 2).unwrap();
-
-        // Producer 3
-        insert_producer_ref(&db, "Producer 3 Ref 1", 3).unwrap();
-        insert_producer_ref(&db, "Producer 3 Ref 2", 3).unwrap();
-
-        // Producer 4
-        insert_producer_ref(&db, "Producer 4 Ref 1", 4).unwrap();
-
-        // Producer 5
-        insert_producer_ref(&db, "Producer 5 Ref 1", 5).unwrap();
-
-        // Special ref for exact match testing
-        insert_producer_ref(&db, "Suprapur® grade", 1).unwrap();
-
-        // Enable foreign key constraints back
-        db.execute("PRAGMA foreign_keys = ON", []).unwrap();
-
-        db
     }
 
     #[test]
-    fn test_get_producer_refs_with_not_filter() {
-        let db = init_test_producerrefs();
+    fn test_get_producer_refs_with_no_filter() {
+        let db = crate::test_utils::init_test_with_fixture();
 
-        info!("testing total result");
-        let filter = RequestFilter {
-            ..Default::default()
-        };
-        let (producer_refs, count) = get_producer_refs(&db, &filter).unwrap();
+        let (producer_refs, count) = get_producer_refs(&db, &RequestFilter::default()).unwrap();
 
-        // expected number of results.
-        assert_eq!(count, TOTAL_SUPPLIER_REFS);
-        assert_eq!(producer_refs.len(), TOTAL_SUPPLIER_REFS);
-        assert_eq!(producer_refs[0].producer_ref_label, "Producer 1 Ref 1"); // Because it's at the beginning
+        assert_eq!(count, PRODUCER_REFS.len());
+        assert_eq!(labels(&producer_refs), PRODUCER_REFS);
+        assert_eq!(producer_refs[0].producer.producer_label, "Acros Organics");
     }
 
     #[test]
     fn test_get_producer_refs_with_search_filter() {
-        let db = init_test_producerrefs();
+        let db = crate::test_utils::init_test_with_fixture();
 
         let filter = RequestFilter {
-            search: Some(String::from("Producer 1 Ref")),
+            search: Some(String::from("etoh")),
             ..Default::default()
         };
         let (producer_refs, count) = get_producer_refs(&db, &filter).unwrap();
 
-        // expected number of results.
-        assert_eq!(count, 5);
-        // The function should only return 5 records with limit set to 5
-        assert_eq!(producer_refs.len(), 5);
+        assert_eq!(count, 2);
+        assert_eq!(labels(&producer_refs), ["ETOH-96", "ETOH-99"]);
+        assert!(!producer_refs[0].match_exact_search);
     }
 
     #[test]
     fn test_get_producer_refs_with_producer_filter() {
-        let db = init_test_producerrefs();
+        let db = crate::test_utils::init_test_with_fixture();
+        let acros = producer_id(&db, "Acros Organics");
 
         let filter = RequestFilter {
-            producer: Some(1),
+            producer: Some(acros),
             ..Default::default()
         };
         let (producer_refs, count) = get_producer_refs(&db, &filter).unwrap();
 
-        // expected number of results.
-        assert_eq!(count, 6);
-        assert_eq!(producer_refs.len(), 6);
+        assert_eq!(count, 3);
+        assert_eq!(
+            labels(&producer_refs),
+            ["ACS reagent", "ETOH-96", "ETOH-99"]
+        );
         assert!(
             producer_refs
                 .iter()
-                .all(|s| s.producer.producer_id == Some(1))
+                .all(|producer_ref| producer_ref.producer.producer_id == Some(acros))
         );
     }
 
     #[test]
-    fn test_get_producer_refs_with_limit() {
-        let db = init_test_producerrefs();
-
-        let filter = RequestFilter {
-            limit: Some(5),
-            ..Default::default()
-        };
-        let (producer_refs, count) = get_producer_refs(&db, &filter).unwrap();
-
-        // expected number of results.
-        assert_eq!(count, TOTAL_SUPPLIER_REFS);
-        assert_eq!(producer_refs.len(), 5);
-    }
-
-    #[test]
     fn test_get_producer_refs_with_limit_and_offset() {
-        let db = init_test_producerrefs();
+        let db = crate::test_utils::init_test_with_fixture();
 
         let filter = RequestFilter {
-            offset: Some(5),
-            limit: Some(5),
+            limit: Some(2),
             ..Default::default()
         };
         let (producer_refs, count) = get_producer_refs(&db, &filter).unwrap();
+        // The count ignores the limit and offset.
+        assert_eq!(count, PRODUCER_REFS.len());
+        assert_eq!(labels(&producer_refs), PRODUCER_REFS[..2]);
 
-        // expected number of results.
-        assert_eq!(count, TOTAL_SUPPLIER_REFS);
-        assert_eq!(producer_refs.len(), 5);
+        let filter = RequestFilter {
+            limit: Some(2),
+            offset: Some(2),
+            ..Default::default()
+        };
+        let (producer_refs, count) = get_producer_refs(&db, &filter).unwrap();
+        assert_eq!(count, PRODUCER_REFS.len());
+        assert_eq!(labels(&producer_refs), PRODUCER_REFS[2..]);
     }
 
     #[test]
     fn test_get_producer_refs_with_exact_search_match() {
-        let db = init_test_producerrefs();
+        let db = crate::test_utils::init_test_with_fixture();
 
         let filter = RequestFilter {
             search: Some(String::from("Suprapur® grade")),
@@ -198,129 +130,87 @@ mod tests {
         let (producer_refs, count) = get_producer_refs(&db, &filter).unwrap();
 
         assert_eq!(count, 1);
-        assert_eq!(producer_refs.len(), 1);
         assert!(producer_refs[0].match_exact_search);
         assert_eq!(producer_refs[0].producer_ref_label, "Suprapur® grade");
+        assert_eq!(producer_refs[0].producer.producer_label, "Merck / Sigma");
     }
 
     #[test]
-    fn test_create_update_producer_ref_create_success() {
-        let conn = init_test_producerrefs();
+    fn test_create_update_producer_ref_create() {
+        let db = crate::test_utils::init_test_with_fixture();
+        let acros = producer_id(&db, "Acros Organics");
 
-        let producer = ProducerStruct {
-            match_exact_search: false,
-            producer_id: Some(1),
-            producer_label: String::default(),
-        };
+        let producer_ref_id =
+            create_update_producer_ref(&db, &new_producer_ref("ETOH-70", acros)).unwrap();
 
-        // Insert a producer reference
-        let ref1 = ProducerRefStruct {
-            match_exact_search: false,
-            producer_ref_id: None,
-            producer_ref_label: String::from("My new producer reference"),
-            producer: producer.clone(),
-        };
-
-        let ref_id1 = create_update_producer_ref(&conn, &ref1).unwrap();
-        assert!(ref_id1 > 0);
-        verify_producer_ref(&conn, ref_id1, 1, "My new producer reference").unwrap();
+        assert!(producer_ref_id > 4);
+        assert_eq!(stored(&db, producer_ref_id), ("ETOH-70".to_string(), acros));
     }
 
     #[test]
-    fn test_create_update_producer_ref_update_success() {
-        let conn = init_test_producerrefs();
+    fn test_create_update_producer_ref_update() {
+        let db = crate::test_utils::init_test_with_fixture();
+        let merck = producer_id(&db, "Merck / Sigma");
 
-        // Test updating an existing producer reference
-        let ref2 = ProducerRefStruct {
-            match_exact_search: false,
-            producer_ref_id: Some(1),
-            producer_ref_label: String::from("Producer 1 Ref 1"),
-            producer: ProducerStruct {
-                match_exact_search: false,
-                producer_id: Some(2),
-                producer_label: String::default(),
-            },
-        };
+        // Reference 1 (ETOH-96 of Acros Organics) moved to Merck / Sigma.
+        let mut producer_ref = new_producer_ref("ETOH-96", merck);
+        producer_ref.producer_ref_id = Some(1);
+        let producer_ref_id = create_update_producer_ref(&db, &producer_ref).unwrap();
 
-        let ref_id2 = create_update_producer_ref(&conn, &ref2).unwrap();
-        assert_eq!(ref_id2, 1);
-        verify_producer_ref(&conn, ref_id2, 2, "Producer 1 Ref 1").unwrap();
+        assert_eq!(producer_ref_id, 1);
+        assert_eq!(stored(&db, 1), ("ETOH-96".to_string(), merck));
     }
 
     #[test]
     fn test_create_update_producer_ref_unicode_chars() {
-        let conn = init_test_producerrefs();
+        let db = crate::test_utils::init_test_with_fixture();
+        let merck = producer_id(&db, "Merck / Sigma");
 
-        // Test inserting a reference with Unicode characters
-        let unicode_ref = ProducerRefStruct {
-            match_exact_search: false,
-            producer_ref_id: None,
-            producer_ref_label: String::from("テストProducer®"),
-            producer: ProducerStruct {
-                match_exact_search: false,
-                producer_id: Some(2),
-                producer_label: String::default(),
-            },
-        };
+        let producer_ref_id =
+            create_update_producer_ref(&db, &new_producer_ref("テストProducer®", merck)).unwrap();
 
-        let unicode_ref_id = create_update_producer_ref(&conn, &unicode_ref).unwrap();
-        verify_producer_ref(&conn, unicode_ref_id, 2, "テストProducer®").unwrap();
+        assert_eq!(
+            stored(&db, producer_ref_id),
+            ("テストProducer®".to_string(), merck)
+        );
     }
 
     #[test]
     fn test_clean_producer_ref_label() {
-        let conn = init_test_producerrefs();
+        let db = crate::test_utils::init_test_with_fixture();
+        let acros = producer_id(&db, "Acros Organics");
 
-        // Reference with special leading/trailing characters
-        let ref1 = ProducerRefStruct {
-            match_exact_search: false,
-            producer_ref_id: None,
-            producer_ref_label: "  ^Once$Upon^   aTime@  ".to_string(),
-            producer: ProducerStruct {
-                match_exact_search: false,
-                producer_id: Some(1),
-                producer_label: String::from("Producer 1"),
-            },
-        };
+        // Surrounding spaces are trimmed and inner spaces collapsed.
+        let producer_ref_id =
+            create_update_producer_ref(&db, &new_producer_ref("  ^Once$Upon^   aTime@  ", acros))
+                .unwrap();
 
-        // The clean function should remove the leading/trailing special characters
-        let expected_label = "^Once$Upon^ aTime@";
-
-        let ref_id1 = create_update_producer_ref(&conn, &ref1).unwrap();
-        verify_producer_ref(&conn, ref_id1, 1, expected_label).unwrap();
+        assert_eq!(
+            stored(&db, producer_ref_id),
+            ("^Once$Upon^ aTime@".to_string(), acros)
+        );
     }
 
     #[test]
     fn test_create_update_producer_ref_reuses_existing() {
-        let conn = init_test_producerrefs();
-        let count = |conn: &rusqlite::Connection| -> i64 {
-            conn.query_row("SELECT COUNT(*) FROM producer_ref", [], |row| row.get(0))
+        let db = crate::test_utils::init_test_with_fixture();
+        let acros = producer_id(&db, "Acros Organics");
+        let merck = producer_id(&db, "Merck / Sigma");
+        let count = |db: &Connection| -> i64 {
+            db.query_row("SELECT COUNT(*) FROM producer_ref", [], |row| row.get(0))
                 .unwrap()
         };
 
-        let new_ref = |producer_id: u64| ProducerRefStruct {
-            match_exact_search: false,
-            producer_ref_id: None,
-            producer_ref_label: String::from("Shared reference"),
-            producer: ProducerStruct {
-                match_exact_search: false,
-                producer_id: Some(producer_id),
-                producer_label: String::default(),
-            },
-        };
-
-        let first_id = create_update_producer_ref(&conn, &new_ref(1)).unwrap();
-        let rows = count(&conn);
-
-        // The same label for the same producer, sent without an id, is reused.
-        let second_id = create_update_producer_ref(&conn, &new_ref(1)).unwrap();
-        assert_eq!(second_id, first_id);
-        assert_eq!(count(&conn), rows);
-        verify_producer_ref(&conn, second_id, 1, "Shared reference").unwrap();
+        // An existing label of the same producer, sent without an id, is reused.
+        let reused_id =
+            create_update_producer_ref(&db, &new_producer_ref("ETOH-96", acros)).unwrap();
+        assert_eq!(reused_id, 1);
+        assert_eq!(count(&db), 4);
 
         // The same label for another producer is a different reference.
-        let other_id = create_update_producer_ref(&conn, &new_ref(2)).unwrap();
-        assert_ne!(other_id, first_id);
-        assert_eq!(count(&conn), rows + 1);
+        let other_id =
+            create_update_producer_ref(&db, &new_producer_ref("ETOH-96", merck)).unwrap();
+        assert_ne!(other_id, 1);
+        assert_eq!(count(&db), 5);
     }
 }

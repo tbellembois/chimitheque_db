@@ -14,7 +14,6 @@ In `src/resources`:
 
 - `shema.sql`: the database schema, created by `create_tables`.
 - `ghscode_11.txt`: the GHS hazard and precautionary statements. `populate_db_with_base_data` loads them, with the constants of `chimitheque_defines` (units, symbols, CMR substances...), into a new database.
-- `chimitheque_base_data.sqlite`: a database with only the base data, the starting point of the test data. Keep it in sync with the base data.
-- `test.sql`: the test data, loaded by the tests. Generated with sqlseed from `chimitheque_base_data.sqlite`, `sqlfeed_generate.yaml` and `sqlfeed_links_transform.py`; the command is at the top of `sqlfeed_generate.yaml`. `test.sqlite` is the generation output and is not tracked.
+- `test_fixture.sql`: the test data: a few entities, people, store locations, products and storages, described at the top of the file. `test_utils::init_test_with_fixture` loads it on top of the base data, with the foreign keys on: every test starts from it.
 - `migration.sql`: migrates a database of the previous Chimithèque version, attached as `./storage.db`, into a new database. Run it by hand with the `sqlite3` command line tool, in the new database.
 - `migration_check.sql`: counts the rows of each table, to compare both databases after a migration.
