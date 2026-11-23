@@ -10,6 +10,8 @@ mod tests {
     // stored on Shelf (3, Chemistry): 500 mL, with a history row of 1 L; in
     // Fridge (4, Chemistry): 2 L archived; in Cabinet [CB] (6, Biology): 1 L.
     const ETHANOL: u64 = 2;
+    // Acetone (4) is restricted: 1 L in Cabinet [CA] (Chemistry).
+    const ACETONE: u64 = 4;
     // Sodium chloride (3) has no storage: the tests give it some.
     const SODIUM_CHLORIDE: u64 = 3;
 
@@ -203,5 +205,32 @@ mod tests {
             &stock_lines(&db, ETHANOL, 6),
             &[("Cabinet [CB]", Some("L"), 1.0), ("Shelf", Some("L"), 0.5)],
         );
+    }
+
+    #[test]
+    fn test_compute_stock_of_a_restricted_product() {
+        let db = crate::test_utils::init_test_with_fixture();
+        let cabinet = [("Cabinet [CA]", Some("L"), 1.0)];
+
+        // As in get_products: only for the people who can read the restricted
+        // products.
+        for (person_id, expected) in [
+            (ADMIN, &cabinet[..]),
+            (CHEMISTRY_MANAGER, &cabinet[..]),
+            (CHEMISTRY_USER, &[][..]),
+            (ALL_READER, &[][..]),
+            // Reads the restricted products, but not the Chemistry storages.
+            (BIOLOGY_USER, &[][..]),
+        ] {
+            assert_stock(&stock_lines(&db, ACETONE, person_id), expected);
+        }
+
+        // chemistry.user, allowed to read the restricted products.
+        db.execute(
+            "INSERT INTO permission (person, permission_name, permission_item, permission_entity) VALUES (?1, 'r', 'rproducts', NULL)",
+            [CHEMISTRY_USER],
+        )
+        .unwrap();
+        assert_stock(&stock_lines(&db, ACETONE, CHEMISTRY_USER), &cabinet);
     }
 }

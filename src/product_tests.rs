@@ -185,6 +185,43 @@ mod tests {
     }
 
     #[test]
+    fn test_get_products_availability_counts_current_storages_only() {
+        let db = crate::test_utils::init_test_with_fixture();
+        let availability = |db: &Connection, product_id: u64| -> Vec<String> {
+            let filter = RequestFilter {
+                id: Some(product_id),
+                ..Default::default()
+            };
+            let product = get_products(db, filter, ADMIN).unwrap().0.remove(0);
+            let mut entities: Vec<String> = product
+                .product_availability
+                .unwrap_or_default()
+                .into_iter()
+                .map(|entity| entity.entity_name)
+                .collect();
+            entities.sort();
+            entities
+        };
+
+        // Ethanol in Biology (storage 7) archived: no longer available there.
+        db.execute(
+            "UPDATE storage SET storage_archive = 1 WHERE storage_id = 7",
+            [],
+        )
+        .unwrap();
+        assert_eq!(availability(&db, ETHANOL), ["Chemistry"]);
+
+        // A history row of Water (storage 1, Chemistry) left in Biology:
+        // Water is not available in Biology.
+        db.execute(
+            "INSERT INTO storage (person, product, store_location, storage) VALUES (3, 1, 6, 1)",
+            [],
+        )
+        .unwrap();
+        assert_eq!(availability(&db, 1), ["Chemistry"]);
+    }
+
+    #[test]
     fn test_export_products_permissions() {
         let db = crate::test_utils::init_test_with_fixture();
 

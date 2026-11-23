@@ -48,7 +48,8 @@ impl From<&Row<'_>> for StockWrapper {
 /// one line per base unit, e.g. `1.5 L` for `1 L` and `500 mL`.
 ///
 /// The base unit of a unit is its parent, or itself without parent. Archived
-/// storages and history rows are not counted.
+/// storages and history rows are not counted. A restricted product has no
+/// stock for a person who can not read the restricted products.
 ///
 /// Sample request:
 /// ```sql
@@ -70,6 +71,19 @@ pub fn compute_stock(
 ) -> Result<Vec<Stock>, Box<dyn std::error::Error + Send + Sync>> {
     debug!("product_id:{product_id:?}");
     debug!("person_id:{person_id:?}");
+
+    // A restricted product has no stock for a person who can not read it, as
+    // in get_products.
+    if !crate::permission::person_can_read_restricted_products(db_connection, person_id)? {
+        let restricted: bool = db_connection.query_row(
+            "SELECT EXISTS (SELECT 1 FROM product WHERE product_id = ?1 AND product_restricted = 1)",
+            [product_id],
+            |row| row.get(0),
+        )?;
+        if restricted {
+            return Ok(vec![]);
+        }
+    }
 
     let (select_sql, select_values) = Query::select()
         .columns([

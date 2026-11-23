@@ -418,6 +418,9 @@ fn populate_product_availability(
             // product
             //
             .and_where(Expr::col((Storage::Table, Storage::Product)).eq(product_id))
+            // Only the current storages: not archived, not the history rows.
+            .and_where(Expr::col((Storage::Table, Storage::StorageArchive)).eq(false))
+            .and_where(Expr::col((Storage::Table, Storage::Storage)).is_null())
             .build_rusqlite(SqliteQueryBuilder);
 
         debug!("sql: {}", sql.as_str());
