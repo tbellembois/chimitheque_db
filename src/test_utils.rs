@@ -29,6 +29,40 @@ pub fn init_test() -> Connection {
     db_connection
 }
 
+/// The people of the test fixture (`resources/test_fixture.sql`), by profile.
+#[cfg(test)]
+pub mod profiles {
+    /// The admin: all on all the entities.
+    pub const ADMIN: u64 = 1;
+    /// Manager of Chemistry (1): all on Chemistry.
+    pub const CHEMISTRY_MANAGER: u64 = 2;
+    /// Member of Chemistry: reads its entity, writes its storages.
+    pub const CHEMISTRY_USER: u64 = 3;
+    /// Manager of Biology (2): all on Biology.
+    pub const BIOLOGY_MANAGER: u64 = 4;
+    /// Member of Biology: reads its entity and storages, and the restricted
+    /// products.
+    pub const BIOLOGY_USER: u64 = 5;
+    /// No entity: reads the products only, as a new user.
+    pub const NEW_USER: u64 = 6;
+    /// No entity: reads the products, and the storages of all the entities.
+    pub const ALL_READER: u64 = 7;
+    /// No entity: writes the products, and so reads the restricted ones.
+    pub const PRODUCT_EDITOR: u64 = 8;
+
+    /// All the profiles.
+    pub const ALL: [u64; 8] = [
+        ADMIN,
+        CHEMISTRY_MANAGER,
+        CHEMISTRY_USER,
+        BIOLOGY_MANAGER,
+        BIOLOGY_USER,
+        NEW_USER,
+        ALL_READER,
+        PRODUCT_EDITOR,
+    ];
+}
+
 /// Returns `init_test` with the base data and the test data of
 /// `resources/test_fixture.sql`, described at the top of that file. The
 /// foreign keys are on.

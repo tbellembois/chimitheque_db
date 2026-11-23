@@ -9,6 +9,8 @@
 --   4 biology.manager    manager of Biology (2)
 --   5 biology.user       member of Biology: reads its storages, and the restricted products
 --   6 new.user           no entity: reads the products only
+--   7 all.reader         no entity: reads the products, and the storages of all the entities
+--   8 product.editor     no entity: writes the products (and so reads the restricted ones)
 --
 -- Entities: 1 Chemistry, 2 Biology, 3 Physics (no member, no store location).
 --
@@ -46,7 +48,9 @@ INSERT INTO person (person_id, person_email) VALUES
     (3, 'chemistry.user@example.com'),
     (4, 'biology.manager@example.com'),
     (5, 'biology.user@example.com'),
-    (6, 'new.user@example.com');
+    (6, 'new.user@example.com'),
+    (7, 'all.reader@example.com'),
+    (8, 'product.editor@example.com');
 
 -- Members, and managers.
 INSERT INTO personentities (personentities_person_id, personentities_entity_id) VALUES
@@ -62,7 +66,9 @@ INSERT INTO permission (person, permission_name, permission_item, permission_ent
     (4, 'r', 'products', NULL), (4, 'r', 'entities', 2), (4, 'all', 'all', 2),
     (5, 'r', 'products', NULL), (5, 'r', 'entities', 2), (5, 'r', 'storages', 2),
     (5, 'r', 'rproducts', NULL),
-    (6, 'r', 'products', NULL);
+    (6, 'r', 'products', NULL),
+    (7, 'r', 'products', NULL), (7, 'r', 'storages', NULL),
+    (8, 'w', 'products', NULL);
 
 -- Store locations, with the full paths create_update_store_location writes.
 INSERT INTO store_location (store_location_id, store_location_name, store_location_color, store_location_can_store, store_location_full_path, entity, store_location) VALUES

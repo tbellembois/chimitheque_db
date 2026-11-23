@@ -3,6 +3,7 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use crate::casbin::*;
+    use crate::test_utils::profiles::*;
 
     // See the fixture description in resources/test_fixture.sql.
 
@@ -13,9 +14,14 @@ mod tests {
         // chemistry.user is a member of Chemistry (1), not of Biology (2).
         assert!(match_person_is_in_entity(&db, 3, 1).unwrap());
         assert!(!match_person_is_in_entity(&db, 3, 2).unwrap());
-        // The admin, and new.user who has no entity, are in all the entities.
-        assert!(match_person_is_in_entity(&db, 1, 2).unwrap());
-        assert!(match_person_is_in_entity(&db, 6, 2).unwrap());
+        // The admin, and the people with no entity (to be given one), are in
+        // all the entities.
+        for person_id in [ADMIN, NEW_USER, ALL_READER, PRODUCT_EDITOR] {
+            assert!(
+                match_person_is_in_entity(&db, person_id, 2).unwrap(),
+                "{person_id}"
+            );
+        }
         // An unknown person is not a person with no entity.
         assert!(match_person_is_in_entity(&db, 999, 2).is_err());
     }
@@ -101,5 +107,7 @@ mod tests {
         assert!(policy.contains("p, 2, all, all, 1\n"));
         assert!(policy.contains("p, 3, w, storages, 1\n"));
         assert!(policy.contains("p, 6, r, products, \n"));
+        assert!(policy.contains("p, 7, r, storages, \n"));
+        assert!(policy.contains("p, 8, w, products, \n"));
     }
 }

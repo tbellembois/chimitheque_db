@@ -3,6 +3,7 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use crate::stock::compute_stock;
+    use crate::test_utils::profiles::*;
     use rusqlite::Connection;
 
     // See the fixture description in resources/test_fixture.sql. Ethanol (2) is
@@ -161,19 +162,27 @@ mod tests {
     #[test]
     fn test_compute_stock_permissions() {
         let db = crate::test_utils::init_test_with_fixture();
+        let chemistry = [("Shelf", Some("L"), 0.5)];
+        let biology = [("Cabinet [CB]", Some("L"), 1.0)];
+        let all = [("Cabinet [CB]", Some("L"), 1.0), ("Shelf", Some("L"), 0.5)];
 
-        // Each member sees the stock of their entity.
-        assert_stock(&stock_lines(&db, ETHANOL, 3), &[("Shelf", Some("L"), 0.5)]);
-        assert_stock(
-            &stock_lines(&db, ETHANOL, 5),
-            &[("Cabinet [CB]", Some("L"), 1.0)],
-        );
-        // new.user reads no storage.
-        assert_stock(&stock_lines(&db, ETHANOL, 6), &[]);
+        // The stock of the entities the person reads the storages of.
+        for (person_id, expected) in [
+            (ADMIN, &all[..]),
+            (CHEMISTRY_MANAGER, &chemistry[..]),
+            (CHEMISTRY_USER, &chemistry[..]),
+            (BIOLOGY_MANAGER, &biology[..]),
+            (BIOLOGY_USER, &biology[..]),
+            (NEW_USER, &[][..]),
+            (ALL_READER, &all[..]),
+            (PRODUCT_EDITOR, &[][..]),
+        ] {
+            assert_stock(&stock_lines(&db, ETHANOL, person_id), expected);
+        }
 
-        // A permission on another item, or a n permission.
+        // A permission on another item, or a n permission, gives nothing.
         set_permissions(&db, &[("all", "products", None), ("n", "storages", None)]);
-        assert_stock(&stock_lines(&db, ETHANOL, 6), &[]);
+        assert_stock(&stock_lines(&db, ETHANOL, NEW_USER), &[]);
     }
 
     #[test]

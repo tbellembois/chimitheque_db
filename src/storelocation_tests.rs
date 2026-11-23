@@ -3,6 +3,7 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use crate::storelocation::*;
+    use crate::test_utils::profiles::*;
 
     // See the fixture description in resources/test_fixture.sql:
     //   Chemistry  1 Room 101 > 2 Cabinet [CA] > 3 Shelf
@@ -83,15 +84,47 @@ mod tests {
     #[test]
     fn test_get_store_locations_permissions() {
         let db = crate::test_utils::init_test_with_fixture();
+        let chemistry = vec!["Cabinet [CA]", "Fridge", "Room 101", "Shelf"];
+        let biology = vec!["Cabinet [CB]", "Freezer", "Room 201"];
+        let all = vec![
+            "Cabinet [CA]",
+            "Cabinet [CB]",
+            "Freezer",
+            "Fridge",
+            "Room 101",
+            "Room 201",
+            "Shelf",
+        ];
 
-        // Reading the store locations needs a storages permission: the
-        // managers and members read those of their entity, new.user none.
-        for (person_id, expected) in [(2, 4), (3, 4), (4, 3), (5, 3), (6, 0)] {
+        // Reading the store locations needs a storages permission, on their
+        // entity or on all the entities.
+        for (person_id, expected) in [
+            (ADMIN, all.clone()),
+            (CHEMISTRY_MANAGER, chemistry.clone()),
+            (CHEMISTRY_USER, chemistry),
+            (BIOLOGY_MANAGER, biology.clone()),
+            (BIOLOGY_USER, biology),
+            (NEW_USER, vec![]),
+            (ALL_READER, all),
+            (PRODUCT_EDITOR, vec![]),
+        ] {
             let (store_locations, count) =
                 get_store_locations(&db, &RequestFilter::default(), person_id).unwrap();
-            assert_eq!(count, expected, "{person_id}");
-            assert_eq!(store_locations.len(), expected, "{person_id}");
+            let found: Vec<&str> = store_locations
+                .iter()
+                .map(|store_location| store_location.store_location_name.as_str())
+                .collect();
+            assert_eq!(count, expected.len(), "{person_id}");
+            assert_eq!(found, expected, "{person_id}");
         }
+
+        // A filter does not give more than what the person can read.
+        let filter = RequestFilter {
+            entity: Some(1),
+            ..Default::default()
+        };
+        let (store_locations, _) = get_store_locations(&db, &filter, BIOLOGY_USER).unwrap();
+        assert_eq!(store_locations.len(), 0);
     }
 
     #[test]

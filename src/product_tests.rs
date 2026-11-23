@@ -3,6 +3,7 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use crate::product::*;
+    use crate::test_utils::profiles::*;
     use chimitheque_types::{
         casnumber::CasNumber as CasNumberStruct, category::Category as CategoryStruct,
         classofcompound::ClassOfCompound as ClassOfCompoundStruct,
@@ -62,25 +63,135 @@ mod tests {
     }
 
     #[test]
-    fn test_get_products() {
+    fn test_get_products_permissions() {
         let db = crate::test_utils::init_test_with_fixture();
+        let all = vec![1, 2, 3, 4, 5, 6];
+        let not_restricted = vec![1, 2, 3, 5, 6];
 
+        // Everyone reads the products (they do not belong to an entity); the
+        // restricted Acetone (4) needs r on rproducts, writing the products,
+        // or the all item.
+        for (person_id, expected) in [
+            (ADMIN, all.clone()),
+            (CHEMISTRY_MANAGER, all.clone()),
+            (CHEMISTRY_USER, not_restricted.clone()),
+            (BIOLOGY_MANAGER, all.clone()),
+            (BIOLOGY_USER, all.clone()),
+            (NEW_USER, not_restricted.clone()),
+            (ALL_READER, not_restricted),
+            (PRODUCT_EDITOR, all),
+        ] {
+            assert_eq!(
+                product_ids(&db, RequestFilter::default(), person_id),
+                expected,
+                "{person_id}"
+            );
+        }
+
+        // Without a products permission, no product.
+        db.execute("DELETE FROM permission WHERE person = ?1", [NEW_USER])
+            .unwrap();
         assert_eq!(
-            product_ids(&db, RequestFilter::default(), 1),
-            [1, 2, 3, 4, 5, 6]
+            product_ids(&db, RequestFilter::default(), NEW_USER),
+            [0u64; 0]
         );
     }
 
     #[test]
-    fn test_get_products_restricted() {
+    fn test_get_products_storage_counts_per_profile() {
         let db = crate::test_utils::init_test_with_fixture();
 
-        // Acetone (4) is restricted: read by the managers and biology.user
-        // (rproducts), not by chemistry.user and new.user.
-        for (person_id, sees_acetone) in [(2, true), (3, false), (4, true), (5, true), (6, false)] {
-            let ids = product_ids(&db, RequestFilter::default(), person_id);
-            assert_eq!(ids.contains(&4), sees_acetone, "{person_id}");
-            assert_eq!(ids.len(), if sees_acetone { 6 } else { 5 }, "{person_id}");
+        // Ethanol storages: 2 (Chemistry), 3 (Chemistry, archived), 7
+        // (Biology), and the history row 4. The counts are those of the
+        // entities the person reads the storages of; the total is for all.
+        for (person_id, current, archived) in [
+            (ADMIN, 2, 1),
+            (CHEMISTRY_MANAGER, 1, 1),
+            (CHEMISTRY_USER, 1, 1),
+            (BIOLOGY_MANAGER, 1, 0),
+            (BIOLOGY_USER, 1, 0),
+            (NEW_USER, 0, 0),
+            (ALL_READER, 2, 1),
+            (PRODUCT_EDITOR, 0, 0),
+        ] {
+            let filter = RequestFilter {
+                id: Some(ETHANOL),
+                ..Default::default()
+            };
+            let product = get_products(&db, filter, person_id).unwrap().0.remove(0);
+            assert_eq!(product.product_sc, Some(current), "{person_id}");
+            assert_eq!(product.product_asc, Some(archived), "{person_id}");
+            assert_eq!(product.product_tsc, Some(2), "{person_id}");
+        }
+    }
+
+    #[test]
+    fn test_get_products_barecodes_per_profile() {
+        let db = crate::test_utils::init_test_with_fixture();
+
+        // The barcodes of the Ethanol storages the person reads, without
+        // their copy number.
+        for (person_id, expected) in [
+            (ADMIN, vec!["CA2", "CB2"]),
+            (CHEMISTRY_USER, vec!["CA2"]),
+            (BIOLOGY_USER, vec!["CB2"]),
+            (ALL_READER, vec!["CA2", "CB2"]),
+            (NEW_USER, vec![]),
+        ] {
+            let filter = RequestFilter {
+                id: Some(ETHANOL),
+                ..Default::default()
+            };
+            let product = get_products(&db, filter, person_id).unwrap().0.remove(0);
+            let mut barecodes: Vec<String> = product
+                .product_sl
+                .unwrap_or_default()
+                .split_whitespace()
+                .map(String::from)
+                .collect();
+            barecodes.sort();
+            assert_eq!(barecodes, expected, "{person_id}");
+        }
+    }
+
+    #[test]
+    fn test_get_products_availability_per_profile() {
+        let db = crate::test_utils::init_test_with_fixture();
+
+        // The entities, with a manager, holding Ethanol: shown to anyone who
+        // reads storages, whatever their entity, to know whom to ask.
+        for (person_id, expected) in [
+            (ADMIN, vec!["Biology", "Chemistry"]),
+            (CHEMISTRY_USER, vec!["Biology", "Chemistry"]),
+            (BIOLOGY_USER, vec!["Biology", "Chemistry"]),
+            (ALL_READER, vec!["Biology", "Chemistry"]),
+            (NEW_USER, vec![]),
+            (PRODUCT_EDITOR, vec![]),
+        ] {
+            let filter = RequestFilter {
+                id: Some(ETHANOL),
+                ..Default::default()
+            };
+            let product = get_products(&db, filter, person_id).unwrap().0.remove(0);
+            let mut entities: Vec<String> = product
+                .product_availability
+                .unwrap_or_default()
+                .into_iter()
+                .map(|entity| entity.entity_name)
+                .collect();
+            entities.sort();
+            assert_eq!(entities, expected, "{person_id}");
+        }
+    }
+
+    #[test]
+    fn test_export_products_permissions() {
+        let db = crate::test_utils::init_test_with_fixture();
+
+        // A header, and a row per product the person reads.
+        for (person_id, rows) in [(ADMIN, 6), (CHEMISTRY_USER, 5), (PRODUCT_EDITOR, 6)] {
+            let csv = export_products(&db, RequestFilter::default(), person_id).unwrap();
+            assert_eq!(csv.lines().count(), rows + 1, "{person_id}");
         }
     }
 

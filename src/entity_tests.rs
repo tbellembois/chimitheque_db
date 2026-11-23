@@ -3,6 +3,7 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use crate::entity::*;
+    use crate::test_utils::profiles::*;
     use chimitheque_types::{person::Person, sortorder::SortOrder};
     use rusqlite::Connection;
 
@@ -45,23 +46,34 @@ mod tests {
     }
 
     #[test]
-    fn test_get_entities() {
+    fn test_get_entities_permissions() {
         let db = crate::test_utils::init_test_with_fixture();
 
-        // The admin reads all the entities, the others their entity, new.user
-        // none.
+        // A permission on the entities gives those entities: the admin all,
+        // the managers and members their entity, the others none.
         for (person_id, expected) in [
-            (1, vec!["Biology", "Chemistry", "Physics"]),
-            (2, vec!["Chemistry"]),
-            (3, vec!["Chemistry"]),
-            (4, vec!["Biology"]),
-            (5, vec!["Biology"]),
-            (6, vec![]),
+            (ADMIN, vec!["Biology", "Chemistry", "Physics"]),
+            (CHEMISTRY_MANAGER, vec!["Chemistry"]),
+            (CHEMISTRY_USER, vec!["Chemistry"]),
+            (BIOLOGY_MANAGER, vec!["Biology"]),
+            (BIOLOGY_USER, vec!["Biology"]),
+            (NEW_USER, vec![]),
+            // Reading the storages of all the entities is not reading them.
+            (ALL_READER, vec![]),
+            (PRODUCT_EDITOR, vec![]),
         ] {
             let (entities, count) = get_entities(&db, RequestFilter::default(), person_id).unwrap();
             assert_eq!(count, expected.len(), "{person_id}");
             assert_eq!(names(&entities), expected, "{person_id}");
         }
+
+        // A filter does not give more than what the person can read.
+        let filter = RequestFilter {
+            id: Some(2),
+            ..Default::default()
+        };
+        let (entities, _) = get_entities(&db, filter, CHEMISTRY_MANAGER).unwrap();
+        assert_eq!(entities.len(), 0);
     }
 
     #[test]
@@ -107,18 +119,12 @@ mod tests {
         };
         let (entities, _) = get_entities(&db, filter, 1).unwrap();
         assert_eq!(names(&entities), ["Physics"]);
-    }
-
-    #[test]
-    fn test_get_entities_empty_result() {
-        let db = crate::test_utils::init_test_with_fixture();
 
         let filter = RequestFilter {
             entity_name: Some("NonExistentDepartment".to_string()),
             ..Default::default()
         };
         let (entities, count) = get_entities(&db, filter, 1).unwrap();
-
         assert_eq!(count, 0);
         assert_eq!(entities.len(), 0);
     }

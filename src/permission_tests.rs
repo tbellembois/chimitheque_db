@@ -3,6 +3,7 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use crate::permission::{person_can_read_restricted_products, person_can_write_in_entity};
+    use crate::test_utils::profiles::*;
     use chimitheque_types::permission::PermissionItem;
     use rusqlite::Connection;
 
@@ -77,5 +78,63 @@ mod tests {
         assert!(!can_read(&[("w", "storages", Some(1))]));
         assert!(!can_read(&[("n", "rproducts", None)]));
         assert!(!can_read(&[("b", "rproducts", None)]));
+    }
+
+    #[test]
+    fn test_profiles_can_write_in_entity() {
+        let db = crate::test_utils::init_test_with_fixture();
+        let can_write = |person_id, item: &PermissionItem, entity_id| {
+            person_can_write_in_entity(&db, person_id, item, entity_id).unwrap()
+        };
+
+        for (person_id, chemistry_storages, biology_storages, chemistry_entity) in [
+            (ADMIN, true, true, true),
+            (CHEMISTRY_MANAGER, true, false, true),
+            (CHEMISTRY_USER, true, false, false),
+            (BIOLOGY_MANAGER, false, true, false),
+            // Reads only.
+            (BIOLOGY_USER, false, false, false),
+            (NEW_USER, false, false, false),
+            (ALL_READER, false, false, false),
+            (PRODUCT_EDITOR, false, false, false),
+        ] {
+            assert_eq!(
+                can_write(person_id, &PermissionItem::Storages, 1),
+                chemistry_storages,
+                "{person_id}"
+            );
+            assert_eq!(
+                can_write(person_id, &PermissionItem::Storages, 2),
+                biology_storages,
+                "{person_id}"
+            );
+            assert_eq!(
+                can_write(person_id, &PermissionItem::Entities, 1),
+                chemistry_entity,
+                "{person_id}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_profiles_can_read_restricted_products() {
+        let db = crate::test_utils::init_test_with_fixture();
+
+        for (person_id, expected) in [
+            (ADMIN, true),
+            (CHEMISTRY_MANAGER, true),
+            (CHEMISTRY_USER, false),
+            (BIOLOGY_MANAGER, true),
+            (BIOLOGY_USER, true),
+            (NEW_USER, false),
+            (ALL_READER, false),
+            (PRODUCT_EDITOR, true),
+        ] {
+            assert_eq!(
+                person_can_read_restricted_products(&db, person_id).unwrap(),
+                expected,
+                "{person_id}"
+            );
+        }
     }
 }
