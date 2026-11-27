@@ -2,7 +2,7 @@ use chimitheque_types::producer::Producer as ProducerStruct;
 use chimitheque_types::{
     producerref::ProducerRef as ProducerRefStruct, requestfilter::RequestFilter,
 };
-use chimitheque_utils::string::{Transform, clean};
+use chimitheque_utils::string::{Transform, clean_required_text};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
@@ -173,7 +173,10 @@ pub fn create_update_producer_ref(
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_producer_ref: {producer_ref:#?}");
 
-    let clean_producer_ref_label = clean(&producer_ref.producer_ref_label, Transform::None);
+    // Rejected here rather than by the database.
+    let clean_producer_ref_label =
+        clean_required_text(&producer_ref.producer_ref_label, Transform::None)
+            .ok_or("producer_ref_label is empty")?;
 
     // Update request: list of (columns, values) pairs to insert.
     let columns_values = vec![

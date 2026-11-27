@@ -145,6 +145,24 @@ mod tests {
     }
 
     #[test]
+    fn test_create_update_supplier_ref_rejects_empty_label() {
+        let db = crate::test_utils::init_test_with_fixture();
+        let acros = supplier_id(&db, "Acros Organics");
+        let count = |db: &Connection| -> i64 {
+            db.query_row("SELECT COUNT(*) FROM supplier_ref", [], |row| row.get(0))
+                .unwrap()
+        };
+        let before = count(&db);
+
+        for label in ["", "  \n "] {
+            let error =
+                create_update_supplier_ref(&db, &new_supplier_ref(label, acros)).unwrap_err();
+            assert_eq!(error.to_string(), "supplier_ref_label is empty");
+        }
+        assert_eq!(count(&db), before);
+    }
+
+    #[test]
     fn test_create_update_supplier_ref_update() {
         let db = crate::test_utils::init_test_with_fixture();
         let merck = supplier_id(&db, "Merck / Sigma");

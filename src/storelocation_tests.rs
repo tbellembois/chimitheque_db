@@ -324,6 +324,22 @@ mod tests {
     }
 
     #[test]
+    fn test_create_store_location_rejects_empty_name() {
+        let mut db = crate::test_utils::init_test_with_fixture();
+        let before = count(&db, "SELECT COUNT(*) FROM store_location", []);
+
+        for name in ["", "  \n "] {
+            let error = create_update_store_location(&mut db, store_location(None, name, None))
+                .unwrap_err();
+            assert_eq!(error.to_string(), "store_location_name is empty");
+        }
+        assert_eq!(
+            count(&db, "SELECT COUNT(*) FROM store_location", []),
+            before
+        );
+    }
+
+    #[test]
     fn test_update_nonexistent_store_location() {
         let mut db = crate::test_utils::init_test_with_fixture();
 

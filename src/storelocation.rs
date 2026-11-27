@@ -4,7 +4,7 @@ use chimitheque_types::{
     entity::Entity as EntityStruct, requestfilter::RequestFilter,
     storelocation::StoreLocation as StoreLocationStruct,
 };
-use chimitheque_utils::string::{Transform, clean};
+use chimitheque_utils::string::{Transform, clean_required_text};
 use log::debug;
 use rusqlite::{Connection, Row, Transaction};
 use sea_query::{
@@ -437,7 +437,10 @@ pub fn create_update_store_location(
     // Setting up the full path.
     populate_store_location_full_path(&db_transaction, &mut store_location)?;
 
-    let clean_store_location_name = clean(&store_location.store_location_name, Transform::None);
+    // Rejected here rather than by the database.
+    let clean_store_location_name =
+        clean_required_text(&store_location.store_location_name, Transform::None)
+            .ok_or("store_location_name is empty")?;
     let full_path = store_location.store_location_full_path.clone();
 
     // Update request: list of (columns, values) pairs to insert.

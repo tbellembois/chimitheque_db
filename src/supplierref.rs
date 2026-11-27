@@ -2,7 +2,7 @@ use chimitheque_types::{
     requestfilter::RequestFilter, supplier::Supplier as SupplierStruct,
     supplierref::SupplierRef as SupplierRefStruct,
 };
-use chimitheque_utils::string::{Transform, clean};
+use chimitheque_utils::string::{Transform, clean_required_text};
 use log::debug;
 use rusqlite::{Connection, Row};
 use sea_query::{
@@ -173,7 +173,10 @@ pub fn create_update_supplier_ref(
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
     debug!("create_update_supplier_ref: {supplier_ref:#?}");
 
-    let clean_supplier_ref_label = clean(&supplier_ref.supplier_ref_label, Transform::None);
+    // Rejected here rather than by the database.
+    let clean_supplier_ref_label =
+        clean_required_text(&supplier_ref.supplier_ref_label, Transform::None)
+            .ok_or("supplier_ref_label is empty")?;
 
     // Update request: list of (columns, values) pairs to insert.
     let columns_values = vec![

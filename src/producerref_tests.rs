@@ -148,6 +148,24 @@ mod tests {
     }
 
     #[test]
+    fn test_create_update_producer_ref_rejects_empty_label() {
+        let db = crate::test_utils::init_test_with_fixture();
+        let acros = producer_id(&db, "Acros Organics");
+        let count = |db: &Connection| -> i64 {
+            db.query_row("SELECT COUNT(*) FROM producer_ref", [], |row| row.get(0))
+                .unwrap()
+        };
+        let before = count(&db);
+
+        for label in ["", "  \n "] {
+            let error =
+                create_update_producer_ref(&db, &new_producer_ref(label, acros)).unwrap_err();
+            assert_eq!(error.to_string(), "producer_ref_label is empty");
+        }
+        assert_eq!(count(&db), before);
+    }
+
+    #[test]
     fn test_create_update_producer_ref_update() {
         let db = crate::test_utils::init_test_with_fixture();
         let merck = producer_id(&db, "Merck / Sigma");
